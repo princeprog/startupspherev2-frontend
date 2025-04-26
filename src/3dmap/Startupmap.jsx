@@ -6,7 +6,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
 
-export default function Startupmap({mapInstanceRef}) {
+export default function Startupmap({ mapInstanceRef }) {
   const [openLogin, setOpenLogin] = useState(false);
   const mapContainerRef = useRef(null);
 
@@ -76,7 +76,70 @@ export default function Startupmap({mapInstanceRef}) {
     }
   };
 
-  // Initialize the map
+  const loadInvestorMarkers = async (map) => {
+    try {
+      const response = await fetch("http://localhost:8080/investors", {
+        credentials: "include",
+      });
+      const investors = await response.json();
+
+      investors.forEach((investor) => {
+        if (
+          typeof investor.locationLang === "string" &&
+          typeof investor.locationLat === "string" && 
+          parseFloat(investor.locationLat) >= -90 &&
+          parseFloat(investor.locationLat) <= 90 &&
+          parseFloat(investor.locationLang) >= -180 &&
+          parseFloat(investor.locationLang) <= 180
+        ) {
+          const markerElement = document.createElement("div");
+          markerElement.style.display = "flex";
+          markerElement.style.flexDirection = "column";
+          markerElement.style.alignItems = "center";
+
+          const markerIcon = document.createElement("div");
+          markerIcon.style.width = "20px";
+          markerIcon.style.height = "20px";
+          markerIcon.style.backgroundColor = "blue";
+          markerIcon.style.borderRadius = "50%";
+          markerIcon.style.cursor = "pointer";
+          markerElement.appendChild(markerIcon);
+
+          const markerLabel = document.createElement("div");
+          markerLabel.textContent = `${investor.firstname} ${investor.lastname}`;
+          markerLabel.style.marginTop = "2px";
+          markerLabel.style.textAlign = "center";
+          markerLabel.style.color = "black";
+          markerLabel.style.fontSize = "12px";
+          markerLabel.style.fontFamily = "Arial, sans-serif";
+          markerElement.appendChild(markerLabel);
+
+          new mapboxgl.Marker(markerElement)
+            .setLngLat([
+              parseFloat(investor.locationLang),
+              parseFloat(investor.locationLat),
+            ])
+            .setPopup(
+              new mapboxgl.Popup({ offset: 25 }).setHTML(
+                `<div style="color: black; font-family: Arial, sans-serif;">
+                  <h3 style="margin: 0; color: black;">${investor.firstname} ${investor.lastname}</h3>
+                  <p style="margin: 0; color: black;">${investor.locationName}</p>
+                </div>`
+              )
+            )
+            .addTo(map);
+        } else {
+          console.warn(
+            `Invalid location for investor: ${investor.firstname} ${investor.lastname}`,
+            investor
+          );
+        }
+      });
+    } catch (error) {
+      console.error("Failed to load investors:", error);
+    }
+  };
+
   useEffect(() => {
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
@@ -91,6 +154,7 @@ export default function Startupmap({mapInstanceRef}) {
     map.resize();
 
     loadStartupMarkers(map);
+    loadInvestorMarkers(map);
 
     return () => map.remove();
   }, [mapInstanceRef]);

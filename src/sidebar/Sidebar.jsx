@@ -18,8 +18,11 @@ export default function Sidebar({ mapInstanceRef }) {
   const [loading, setLoading] = useState(false);
   const [startup, setStartup] = useState(null);
   const [investors, setInvestors] = useState([]);
+  const [investor, setInvestor] = useState(null); // New state for viewing an investor
   const [viewingType, setViewingType] = useState("startups"); // Toggle between startups and investors
   const [viewingStartup, setViewingStartup] = useState(null); // New state for viewing mode
+  const [viewingInvestor, setViewingInvestor] = useState(null); // New state for viewing an investor
+  const [searchQuery, setSearchQuery] = useState(""); // New state for search query
 
   const logout = async () => {
     try {
@@ -103,6 +106,36 @@ export default function Sidebar({ mapInstanceRef }) {
     }
   };
 
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return; // Do nothing if the search query is empty
+
+    setLoading(true);
+    try {
+      const endpoint =
+        viewingType === "startups"
+          ? `http://localhost:8080/startups/search`
+          : `http://localhost:8080/investors/search`;
+
+      const response = await fetch(`${endpoint}?query=${searchQuery}`, {
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error("Network response was not ok: ", data);
+      }
+
+      if (viewingType === "startups") {
+        setStartups(data);
+      } else {
+        setInvestors(data);
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const storedAuthState = localStorage.getItem("isAuthenticated");
     if (storedAuthState === "true") {
@@ -131,7 +164,27 @@ export default function Sidebar({ mapInstanceRef }) {
             <MdKeyboardReturn className="mr-1 cursor-pointer text-xl" />
           </button>
           <span className="text-black text-sm flex items-center">
-            Viewing <p className="font-semibold ml-2"> {viewingStartup.companyName}</p>
+            Viewing{" "}
+            <p className="font-semibold ml-2"> {viewingStartup.companyName}</p>
+          </span>
+        </div>
+      )}
+      {viewingInvestor && (
+        <div className="absolute w-fit top-4 left-1/2 transform -translate-x-1/2 bg-white shadow-md rounded-lg px-4 py-2 z-50 flex items-center space-x-2">
+          <button
+            className="text-blue-500 hover:underline flex items-center"
+            onClick={() => {
+              setViewingInvestor(null);
+              setInvestor(viewingInvestor);
+            }}
+          >
+            <MdKeyboardReturn className="mr-1 cursor-pointer text-xl" />
+          </button>
+          <span className="text-black text-sm flex items-center">
+            Viewing{" "}
+            <p className="font-semibold ml-2">
+              {viewingInvestor.firstname} {viewingInvestor.lastname}
+            </p>
           </span>
         </div>
       )}
@@ -281,7 +334,13 @@ export default function Sidebar({ mapInstanceRef }) {
 
             <h2 className="text-lg text-black font-semibold">Search</h2>
 
-            <form className="flex items-center max-w-sm mx-auto">
+            <form
+              className="flex items-center max-w-sm mx-auto"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSearch();
+              }}
+            >
               <label htmlFor="simple-search" className="sr-only">
                 Search
               </label>
@@ -306,8 +365,10 @@ export default function Sidebar({ mapInstanceRef }) {
                 <input
                   type="text"
                   id="simple-search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="bg-gray-200 border border-gray-300 text-blue-900 text-sm rounded-lg focus:ring-blue-700 focus:border-blue-700 block w-full ps-10 p-2.5"
-                  placeholder="Search startup"
+                  placeholder={`Search ${viewingType}`}
                   required
                 />
               </div>
@@ -334,40 +395,43 @@ export default function Sidebar({ mapInstanceRef }) {
               </button>
             </form>
             <div className="join join-vertical lg:join-horizontal w-full mt-4">
-              <button 
-              onClick={()=>setViewingType("startups")}
-              className="btn bg-white text-black join-item w-[50%] hover:bg-gray-200">
+              <button
+                onClick={() => setViewingType("startups")}
+                className="btn bg-white text-black join-item w-[50%] hover:bg-gray-200"
+              >
                 Startup
               </button>
-              <button 
-              onClick={()=>setViewingType("investors")}
-              className="btn join-item w-[50%] bg-white text-black hover:bg-gray-200">
+              <button
+                onClick={() => setViewingType("investors")}
+                className="btn join-item w-[50%] bg-white text-black hover:bg-gray-200"
+              >
                 Investor
               </button>
             </div>
           </div>
           <div>
-          {loading ? (
-                <div role="status">
-                  <svg
-                    aria-hidden="true"
-                    className="w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600"
-                    viewBox="0 0 100 101"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
-                      fill="currentColor"
-                    />
-                    <path
-                      d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
-                      fill="currentFill"
-                    />
-                  </svg>
-                  <span className="sr-only">Loading...</span>
-                </div>
-              ) : viewingType === "startups" ? (
+            {loading ? (
+              <div role="status">
+                <svg
+                  aria-hidden="true"
+                  className="w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600"
+                  viewBox="0 0 100 101"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
+                    fill="currentColor"
+                  />
+                  <path
+                    d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
+                    fill="currentFill"
+                  />
+                </svg>
+                <span className="sr-only">Loading...</span>
+              </div>
+            ) : viewingType === "startups" ? (
+              startups.length > 0 ? (
                 startups.map((startup) => (
                   <div
                     key={startup.id}
@@ -397,31 +461,107 @@ export default function Sidebar({ mapInstanceRef }) {
                   </div>
                 ))
               ) : (
-                investors.map((investor) => (
-                  <div
-                    key={investor.investorId}
-                    className="w-full max-w-sm px-4 py-3 bg-gray-300 shadow-md cursor-pointer hover:bg-gray-200"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-light text-gray-800">
-                        {investor.locationName}
-                      </span>
-                      <span className="px-3 py-1 text-xs text-blue-800 uppercase bg-blue-200 rounded-full dark:bg-blue-300 dark:text-blue-900">
-                        {investor.gender}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h1 className="mt-2 text-lg font-semibold text-gray-800">
-                        {investor.firstname} {investor.lastname}
-                      </h1>
-                      <p className="mt-2 text-sm text-gray-600">
-                        {investor.biography}
-                      </p>
-                    </div>
+                <div className="text-center text-gray-500 mt-4">
+                  No startups match your search.
+                </div>
+              )
+            ) : investors.length > 0 ? (
+              investors.map((investor) => (
+                <div
+                  key={investor.investorId}
+                  onClick={() => {
+                    setInvestor(investor);
+                    setShowSearchContainer(false);
+                  }}
+                  className="w-full max-w-sm px-4 py-3 bg-gray-300 shadow-md cursor-pointer hover:bg-gray-200"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-light text-gray-800">
+                      {investor.locationName}
+                    </span>
+                    <span className="px-3 py-1 text-xs text-blue-800 uppercase bg-blue-200 rounded-full dark:bg-blue-300 dark:text-blue-900">
+                      {investor.gender}
+                    </span>
                   </div>
-                ))
-              )}
+
+                  <div>
+                    <h1 className="mt-2 text-lg font-semibold text-gray-800">
+                      {investor.firstname} {investor.lastname}
+                    </h1>
+                    <p className="mt-2 text-sm text-gray-600">
+                      {investor.biography}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-500 mt-4">
+                No investors match your search.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {investor && !viewingStartup && (
+        <div className="absolute left-16 top-0 h-screen w-90 bg-gray-100 shadow-lg z-20">
+          <div className="absolute left-0 flex justify-end p-2">
+            <MdKeyboardReturn
+              className="text-black text-2xl cursor-pointer"
+              onClick={() => {
+                setInvestor(null);
+                setShowSearchContainer(true);
+              }}
+            />
+          </div>
+
+          <div className="image bg-gray-400 h-[13rem]"></div>
+
+          <div className="flex justify-between p-4">
+            <div>
+              <h1 className="text-black">
+                {investor.firstname} {investor.lastname}
+              </h1>
+              <p className="text-black flex items-center">
+                <CiLocationOn />
+                {investor.locationName}
+              </p>
+              <p className="text-blue-700 flex items-center">
+                <CiGlobe className="text-black" />
+                {investor.website}
+              </p>
+            </div>
+            <div>
+              <GrLike className="text-black text-2xl" />
+            </div>
+          </div>
+
+          <h1 className="text-black flex items-center justify-center hover:underline cursor-pointer">
+            <FaRegBookmark />
+            Add bookmark
+          </h1>
+
+          <div className="p-4">
+            <button
+              className="btn btn-outline btn-warning text-black mr-2"
+              onClick={() => {
+                if (investor && investor.locationLang && investor.locationLat) {
+                  mapInstanceRef.current.flyTo({
+                    center: [
+                      parseFloat(investor.locationLang),
+                      parseFloat(investor.locationLat),
+                    ],
+                    zoom: 14,
+                    essential: true,
+                  });
+                  setViewingInvestor(investor); // Enter viewing mode
+                  setInvestor(null);
+                }
+              }}
+            >
+              Preview
+            </button>
+            <button className="btn btn-warning">Update location</button>
           </div>
         </div>
       )}
