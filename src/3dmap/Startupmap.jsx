@@ -8,8 +8,6 @@ mapboxgl.accessToken =
 
 export default function Startupmap({mapInstanceRef}) {
   const [openLogin, setOpenLogin] = useState(false);
-  const [openRegister, setOpenRegister] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
   const mapContainerRef = useRef(null);
 
   // Fetch startups and place markers
