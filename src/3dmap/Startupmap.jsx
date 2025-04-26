@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import Sidebar from "../sidebar/Sidebar";
 import Login from "../modals/Login";
 import Signup from "../modals/Signup";
 import mapboxgl from "mapbox-gl";
@@ -9,70 +8,109 @@ mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
 
 export default function Startupmap() {
-  const [showTooltip, setShowTooltip] = useState(false);
   const [openLogin, setOpenLogin] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(null);
   const mapContainerRef = useRef(null);
-  const mapInstanceRef = useRef(null); // Store the map instance
+  const mapInstanceRef = useRef(null);
 
+  // Fetch startups and place markers
+  const loadStartupMarkers = async (map) => {
+    try {
+      const response = await fetch("http://localhost:8080/startups", {
+        credentials: "include",
+      });
+      const startups = await response.json();
+
+      startups.forEach((startup) => {
+        // Validate latitude and longitude
+        if (
+          typeof startup.locationLng === "number" &&
+          typeof startup.locationLat === "number" &&
+          startup.locationLat >= -90 &&
+          startup.locationLat <= 90 &&
+          startup.locationLng >= -180 &&
+          startup.locationLng <= 180
+        ) {
+          // Create a custom marker element
+          const markerElement = document.createElement("div");
+          markerElement.style.display = "flex";
+          markerElement.style.flexDirection = "column";
+          markerElement.style.alignItems = "center";
+
+          // Add the marker icon (red dot)
+          const markerIcon = document.createElement("div");
+          markerIcon.style.width = "20px";
+          markerIcon.style.height = "20px";
+          markerIcon.style.backgroundColor = "red";
+          markerIcon.style.borderRadius = "50%";
+          markerIcon.style.cursor = "pointer";
+          markerElement.appendChild(markerIcon);
+
+          // Add the company name below the marker
+          const markerLabel = document.createElement("div");
+          markerLabel.textContent = startup.companyName;
+          markerLabel.style.marginTop = "2px";
+          markerLabel.style.textAlign = "center";
+          markerLabel.style.color = "black";
+          markerLabel.style.fontSize = "12px";
+          markerLabel.style.fontFamily = "Arial, sans-serif";
+          markerElement.appendChild(markerLabel);
+
+          // Add the custom marker to the map
+          new mapboxgl.Marker({ color: "red" }) // <-- set to red
+            .setLngLat([startup.locationLng, startup.locationLat])
+            .setPopup(
+              new mapboxgl.Popup({ offset: 25 }).setHTML(
+                `<div style="color: black; font-family: Arial, sans-serif;">
+        <h3 style="margin: 0; color: black;">${startup.companyName}</h3>
+        <p style="margin: 0; color: black;">${startup.locationName}</p>
+      </div>`
+              )
+            )
+            .addTo(map);
+        } else {
+          console.warn(
+            `Invalid location for startup: ${startup.companyName}`,
+            startup
+          );
+        }
+      });
+    } catch (error) {
+      console.error("Failed to load startups:", error);
+    }
+  };
+
+  // Initialize the map
   useEffect(() => {
-    // Initialize the Mapbox map
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/streets-v11", // Map style
-      center: [120.9842, 14.5995], // Example: Manila coordinates
+      style: "mapbox://styles/mapbox/streets-v11",
+      center: [120.9842, 14.5995],
       zoom: 12,
     });
 
-    // Disable 3D features like pitch and rotation
     map.dragRotate.disable();
     map.touchZoomRotate.disableRotation();
-
-    // Store the map instance in a ref
     mapInstanceRef.current = map;
-
-    // Resize the map to fit the container
     map.resize();
 
-    return () => map.remove(); // Clean up on unmount
+    loadStartupMarkers(map);
+
+    return () => map.remove();
   }, []);
 
   const checkAuthentication = async () => {
     try {
       const response = await fetch("http://localhost:8080/auth/check", {
         method: "GET",
-        credentials: "include", // Include cookies for authentication
+        credentials: "include",
       });
       const data = await response.json();
-      if (response.ok) {
-        console.log("User is authenticated: ", data);
-        setIsAuthenticated(true); // Set as true if authenticated
-      } else {
-        console.log("User is not authenticated");
-        setIsAuthenticated(false); // Set as false if not authenticated
-      }
+      setIsAuthenticated(response.ok);
     } catch (error) {
       console.error("Error checking authentication:", error);
-      setIsAuthenticated(false); // Default to not authenticated on error
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      const response = await fetch("http://localhost:8080/auth/logout", {
-        method: "POST",
-        credentials: "include", // Include cookies for authentication
-      });
-
-      if (response.ok) {
-        console.log("Logout successful");
-        setIsAuthenticated(false); // Update state to reflect logged-out status
-      } else {
-        console.error("Failed to logout");
-      }
-    } catch (error) {
-      console.error("Error during logout:", error);
+      setIsAuthenticated(false);
     }
   };
 
@@ -80,77 +118,11 @@ export default function Startupmap() {
     checkAuthentication();
   }, []);
 
-  const toggleTooltip = () => {
-    setShowTooltip((prev) => !prev);
-  };
-
   return (
-    <div className="relative flex w-screen h-screen overflow-hidden">
-      {/* Avatar */}
-      <div className="absolute top-4 right-4 z-10">
-        <div className="relative">
-          <div
-            className="avatar avatar-placeholder cursor-pointer"
-            onClick={toggleTooltip}
-          >
-            <div className="bg-neutral text-neutral-content w-12 rounded-full">
-              {/* Display 'SY' if authenticated, 'G' if not authenticated, or '?' while loading */}
-              <span>
-                {isAuthenticated === null
-                  ? "?" // Loading state
-                  : isAuthenticated
-                  ? "SY" // Authenticated
-                  : "G"}
-              </span>
-            </div>
-          </div>
-
-          {/* Tooltip */}
-          {showTooltip && (
-            <div className="absolute top-14 right-0 w-32 bg-white border border-gray-300 rounded-lg shadow-lg">
-              {isAuthenticated ? (
-                <button
-                  onClick={() => {
-                    handleLogout(); // Logout the user
-                    setShowTooltip(false); // Close tooltip
-                  }}
-                  className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Logout
-                </button>
-              ) : (
-                <>
-                  <button
-                    onClick={() => {
-                      setShowTooltip(false);
-                      setOpenLogin(true); // Open login modal
-                    }}
-                    className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Login
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowTooltip(false);
-                      setOpenRegister(true); // Open register modal
-                    }}
-                    className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Register
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <Sidebar />
-
-      {/* Map Container */}
+    <div className="relative w-screen h-screen">
       <div
         ref={mapContainerRef}
-        className="absolute w-full h-full z-0"
+        className="fixed top-0 left-0 w-full h-full z-0"
         style={{ width: "100%", height: "100%" }}
       />
 

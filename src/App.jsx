@@ -1,14 +1,16 @@
-import { useState } from 'react'
-import './App.css'
-import { Router, Routes, Route, Navigate } from "react-router-dom"
-import Sidebar from './sidebar/Sidebar'
-import Startupmap from './3dmap/Startupmap'
+import { useState } from "react";
+import "./App.css";
+import { Router, Routes, Route, Navigate } from "react-router-dom";
+import Sidebar from "./sidebar/Sidebar";
+import Startupmap from "./3dmap/Startupmap";
 function App() {
   return (
     <Routes>
-      <Route path="/home" element={<Startupmap />} />
+      <Route path="/" element={<Sidebar />}>
+        <Route index element={<Startupmap />} />
+      </Route>
     </Routes>
-  )
+  );
 }
 
-export default App
+export default App;
