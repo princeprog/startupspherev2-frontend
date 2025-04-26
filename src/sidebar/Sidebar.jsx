@@ -8,7 +8,7 @@ import { GrLike } from "react-icons/gr";
 import { FaRegBookmark } from "react-icons/fa";
 import { MdKeyboardReturn } from "react-icons/md";
 
-export default function Sidebar() {
+export default function Sidebar({ mapInstanceRef }) {
   const [openLogin, setOpenLogin] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -17,6 +17,7 @@ export default function Sidebar() {
   const [startups, setStartups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [startup, setStartup] = useState(null);
+  const [viewingStartup, setViewingStartup] = useState(null); // New state for viewing mode
 
   const logout = async () => {
     try {
@@ -98,6 +99,22 @@ export default function Sidebar() {
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden">
+      {viewingStartup && (
+        <div className="absolute w-fit top-4 left-1/2 transform -translate-x-1/2 bg-white shadow-md rounded-lg px-4 py-2 z-50 flex items-center space-x-2">
+          <button
+            className="text-blue-500 hover:underline flex items-center"
+            onClick={() => {
+              setViewingStartup(null);
+              setStartup(viewingStartup);
+            }}
+          >
+            <MdKeyboardReturn className="mr-1 cursor-pointer text-xl" />
+          </button>
+          <span className="text-black text-sm flex items-center">
+            Viewing <p className="font-semibold ml-2"> {viewingStartup.companyName}</p>
+          </span>
+        </div>
+      )}
       {/* Sidebar */}
       <div className="flex h-screen w-16 flex-col justify-between border-e border-gray-100 bg-white/90 z-10">
         <div>
@@ -220,7 +237,6 @@ export default function Sidebar() {
       {showSearchContainer && (
         <div className="absolute left-16 top-0 h-screen w-90 bg-gray-100 shadow-lg z-20">
           <div className="p-4 bg-gradient-to-b from-blue-500 to-white relative">
-            {/* Close Icon */}
             <button
               className="absolute top-2 right-2 text-gray-700 hover:text-gray-900"
               onClick={() => setShowSearchContainer(false)}
@@ -360,15 +376,14 @@ export default function Sidebar() {
         </div>
       )}
 
-      {startup && (
+      {startup && !viewingStartup && (
         <div className="absolute left-16 top-0 h-screen w-90 bg-gray-100 shadow-lg z-20">
-
           <div className="absolute left-0 flex justify-end p-2">
             <MdKeyboardReturn
               className="text-black text-2xl cursor-pointer"
               onClick={() => {
-                setStartup(null)
-                setShowSearchContainer(true)
+                setStartup(null);
+                setShowSearchContainer(true);
               }}
             />
           </div>
@@ -398,7 +413,20 @@ export default function Sidebar() {
           </h1>
 
           <div className="p-4">
-            <button className="btn btn-outline btn-warning text-black mr-2">
+            <button
+              className="btn btn-outline btn-warning text-black mr-2"
+              onClick={() => {
+                if (startup && startup.locationLng && startup.locationLat) {
+                  mapInstanceRef.current.flyTo({
+                    center: [startup.locationLng, startup.locationLat],
+                    zoom: 14,
+                    essential: true,
+                  });
+                  setViewingStartup(startup); // Enter viewing mode
+                  setStartup(null);
+                }
+              }}
+            >
               Preview
             </button>
             <button className="btn btn-warning">Update location</button>

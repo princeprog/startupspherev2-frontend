@@ -1,18 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 import Login from "../modals/Login";
-import Signup from "../modals/Signup";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
 
-export default function Startupmap() {
+export default function Startupmap({mapInstanceRef}) {
   const [openLogin, setOpenLogin] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(null);
   const mapContainerRef = useRef(null);
-  const mapInstanceRef = useRef(null);
 
   // Fetch startups and place markers
   const loadStartupMarkers = async (map) => {
@@ -57,8 +55,7 @@ export default function Startupmap() {
           markerLabel.style.fontFamily = "Arial, sans-serif";
           markerElement.appendChild(markerLabel);
 
-          // Add the custom marker to the map
-          new mapboxgl.Marker({ color: "red" }) // <-- set to red
+          new mapboxgl.Marker({ color: "red" })
             .setLngLat([startup.locationLng, startup.locationLat])
             .setPopup(
               new mapboxgl.Popup({ offset: 25 }).setHTML(
@@ -98,7 +95,7 @@ export default function Startupmap() {
     loadStartupMarkers(map);
 
     return () => map.remove();
-  }, []);
+  }, [mapInstanceRef]);
 
   const checkAuthentication = async () => {
     try {
@@ -139,8 +136,6 @@ export default function Startupmap() {
           }}
         />
       )}
-
-      {openRegister && <Signup closeModal={() => setOpenRegister(false)} />}
     </div>
   );
 }
