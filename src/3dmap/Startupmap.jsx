@@ -95,24 +95,6 @@ export default function Startupmap({mapInstanceRef}) {
     return () => map.remove();
   }, [mapInstanceRef]);
 
-  const checkAuthentication = async () => {
-    try {
-      const response = await fetch("http://localhost:8080/auth/check", {
-        method: "GET",
-        credentials: "include",
-      });
-      const data = await response.json();
-      setIsAuthenticated(response.ok);
-    } catch (error) {
-      console.error("Error checking authentication:", error);
-      setIsAuthenticated(false);
-    }
-  };
-
-  useEffect(() => {
-    checkAuthentication();
-  }, []);
-
   return (
     <div className="relative w-screen h-screen">
       <div
