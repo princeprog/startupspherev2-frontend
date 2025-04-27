@@ -7,6 +7,7 @@ import { CiGlobe } from "react-icons/ci";
 import { GrLike } from "react-icons/gr";
 import { FaRegBookmark } from "react-icons/fa";
 import { MdKeyboardReturn } from "react-icons/md";
+import Bookmarks from "./Bookmarks"; // Import the Bookmarks component
 
 export default function Sidebar({ mapInstanceRef }) {
   const [openLogin, setOpenLogin] = useState(false);
@@ -24,6 +25,8 @@ export default function Sidebar({ mapInstanceRef }) {
   const [viewingInvestor, setViewingInvestor] = useState(null); // New state for viewing an investor
   const [searchQuery, setSearchQuery] = useState(""); // New state for search query
   const [containerMode, setContainerMode] = useState(null); // "search" or "recents"
+  const [bookmarkedStartups, setBookmarkedStartups] = useState([]); // For bookmarked startups
+  const [bookmarkedInvestors, setBookmarkedInvestors] = useState([]); // For bookmarked investors
 
   const addToRecents = (item, type) => {
     const key = type === "startups" ? "recentStartups" : "recentInvestors";
@@ -154,6 +157,44 @@ export default function Sidebar({ mapInstanceRef }) {
       setLoading(false);
     }
   };
+
+    // Fetch the bookmarked items from localStorage
+    useEffect(() => {
+      const storedBookmarkedStartups = JSON.parse(localStorage.getItem("bookmarkedStartups")) || [];
+      const storedBookmarkedInvestors = JSON.parse(localStorage.getItem("bookmarkedInvestors")) || [];
+      setBookmarkedStartups(storedBookmarkedStartups);
+      setBookmarkedInvestors(storedBookmarkedInvestors);
+    }, []);
+  
+    // Function to add a startup to bookmarks
+    const addToBookmarks = (item, type) => {
+      const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
+      const existingBookmarks = JSON.parse(localStorage.getItem(key)) || [];
+      const updatedBookmarks = [
+        item,
+        ...existingBookmarks.filter((i) => i.id !== item.id),
+      ];
+      localStorage.setItem(key, JSON.stringify(updatedBookmarks));
+      // Update state to reflect changes in UI
+      if (type === "startups") {
+        setBookmarkedStartups(updatedBookmarks);
+      } else {
+        setBookmarkedInvestors(updatedBookmarks);
+      }
+    };
+  
+    // Function to remove an item from bookmarks
+    const removeFromBookmarks = (item, type) => {
+      const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
+      const updatedBookmarks = JSON.parse(localStorage.getItem(key)).filter((b) => b.id !== item.id);
+      localStorage.setItem(key, JSON.stringify(updatedBookmarks));
+      // Update state to reflect changes in UI
+      if (type === "startups") {
+        setBookmarkedStartups(updatedBookmarks);
+      } else {
+        setBookmarkedInvestors(updatedBookmarks);
+      }
+    };
 
   useEffect(() => {
     const storedAuthState = localStorage.getItem("isAuthenticated");
@@ -313,33 +354,21 @@ export default function Sidebar({ mapInstanceRef }) {
                         </span>
                       </button>
                     </li>
-                    ;{/* Bookmarks Icon */}
-                    <li>
-                      <button
-                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
-                        onClick={() => {
-                          console.log("Show bookmarks");
-                        }}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-7 opacity-80"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M5 3v18l7-5 7 5V3H5z"
-                          />
-                        </svg>
-                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
-                          Bookmarks
-                        </span>
-                      </button>
-                    </li>
+                    ; {/* Bookmarks Icon */}
+                <li>
+                  <button
+                    className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                    onClick={() => {
+                      setContainerMode("bookmarks");
+                      setShowSearchContainer(false); // Close the search container
+                    }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-7 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18l7-5 7 5V3H5z" />
+                    </svg>
+                    <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">Bookmarks</span>
+                  </button>
+                </li>
                   </>
                 )}
               </ul>
@@ -698,6 +727,18 @@ export default function Sidebar({ mapInstanceRef }) {
             )}
           </div>
         </div>
+      )}
+
+      {containerMode === "bookmarks" && (
+        <Bookmarks 
+          startups={bookmarkedStartups}
+          investors={bookmarkedInvestors}
+          mapInstanceRef={mapInstanceRef}
+          setViewingStartup={setViewingStartup}
+          setViewingInvestor={setViewingInvestor}
+          removeFromBookmarks={removeFromBookmarks}
+          setContainerMode={setContainerMode}
+        />
       )}
 
       {investor && !viewingStartup && (
