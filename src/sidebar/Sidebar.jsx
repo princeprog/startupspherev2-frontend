@@ -23,6 +23,25 @@ export default function Sidebar({ mapInstanceRef }) {
   const [viewingStartup, setViewingStartup] = useState(null); // New state for viewing mode
   const [viewingInvestor, setViewingInvestor] = useState(null); // New state for viewing an investor
   const [searchQuery, setSearchQuery] = useState(""); // New state for search query
+  const [containerMode, setContainerMode] = useState(null); // "search" or "recents"
+
+  const addToRecents = (item, type) => {
+    const key = type === "startups" ? "recentStartups" : "recentInvestors";
+    const existingRecents = JSON.parse(localStorage.getItem(key)) || [];
+    const updatedRecents = [
+      item,
+      ...existingRecents.filter((i) => i.id !== item.id),
+    ].slice(0, 10); // Limit to 10 items
+    localStorage.setItem(key, JSON.stringify(updatedRecents));
+  };
+
+  const getRecents = (type) => {
+    const key = type === "startups" ? "recentStartups" : "recentInvestors";
+    return JSON.parse(localStorage.getItem(key)) || [];
+  };
+
+  const [recentStartups, setRecentStartups] = useState([]);
+  const [recentInvestors, setRecentInvestors] = useState([]);
 
   const logout = async () => {
     try {
@@ -150,6 +169,42 @@ export default function Sidebar({ mapInstanceRef }) {
     setShowTooltip((prev) => !prev);
   };
 
+  const handleStartupClick = (startup) => {
+    if (startup.locationLng && startup.locationLat) {
+      mapInstanceRef.current.flyTo({
+        center: [startup.locationLng, startup.locationLat],
+        zoom: 14,
+        essential: true,
+      });
+    }
+    addToRecents(startup, "startups"); // Add to recents
+    setStartup(startup);
+    setShowSearchContainer(false); // Close the search container
+  };
+
+  const handleInvestorClick = (investor) => {
+    if (investor.locationLang && investor.locationLat) {
+      mapInstanceRef.current.flyTo({
+        center: [
+          parseFloat(investor.locationLang),
+          parseFloat(investor.locationLat),
+        ],
+        zoom: 14,
+        essential: true,
+      });
+    }
+    addToRecents(investor, "investors"); // Add to recents
+    setInvestor(investor);
+    setShowSearchContainer(false); // Close the search container
+  };
+
+  useEffect(() => {
+    if (containerMode === "recents") {
+      setRecentStartups(getRecents("startups"));
+      setRecentInvestors(getRecents("investors"));
+    }
+  }, [containerMode]);
+
   return (
     <div className="relative flex h-screen w-screen overflow-hidden">
       {viewingStartup && (
@@ -189,23 +244,25 @@ export default function Sidebar({ mapInstanceRef }) {
         </div>
       )}
       {/* Sidebar */}
-      <div className="flex h-screen w-16 flex-col justify-between border-e border-gray-100 bg-white/90 z-10">
+      <div className="flex h-screen w-20 flex-col justify-between border-e border-gray-100 bg-white/90 z-10">
         <div>
           <div className="border-t border-gray-100">
             <div className="px-2">
-              <ul className="space-y-1 border-t border-gray-100 pt-4">
+              <ul className="space-y-2 border-t border-gray-100 pt-6">
+                {/* Search Icon */}
                 <li>
                   <button
-                    className="group relative flex justify-center rounded-sm px-2 py-1.5 text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                    className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
                     onClick={() => {
                       fetchStartups();
                       fetchInvestors();
+                      setContainerMode("search");
                       setShowSearchContainer((prev) => !prev);
                     }}
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="size-5 opacity-75"
+                      className="h-6 w-7 opacity-80"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -217,12 +274,74 @@ export default function Sidebar({ mapInstanceRef }) {
                         d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
                       />
                     </svg>
-
-                    <span className="invisible absolute start-full top-1/2 ms-4 -translate-y-1/2 rounded-sm bg-gray-900 px-2 py-1.5 text-xs font-medium text-white group-hover:visible">
+                    <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
                       Search
                     </span>
                   </button>
                 </li>
+
+                {/* Recents and Bookmarks Icons (Only if Authenticated) */}
+                {isAuthenticated && (
+                  <>
+                    {/* Recents Icon */}
+                    <li>
+                      <button
+                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                        onClick={() => {
+                          setContainerMode("recents");
+                          setShowSearchContainer(false); // Close the search container
+                          setStartup(null)
+                          setInvestor(null)
+                        }}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-7 opacity-80"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                          Recents
+                        </span>
+                      </button>
+                    </li>
+                    ;{/* Bookmarks Icon */}
+                    <li>
+                      <button
+                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                        onClick={() => {
+                          console.log("Show bookmarks");
+                        }}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-7 opacity-80"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 3v18l7-5 7 5V3H5z"
+                          />
+                        </svg>
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                          Bookmarks
+                        </span>
+                      </button>
+                    </li>
+                  </>
+                )}
               </ul>
             </div>
           </div>
@@ -308,8 +427,92 @@ export default function Sidebar({ mapInstanceRef }) {
         </div>
       </div>
 
+      {containerMode === "recents" && (
+        <div className="absolute left-19 top-0 h-screen w-90 bg-gray-100 shadow-lg z-5 search-container-animate">
+          <div className="p-4 bg-gradient-to-b from-blue-500 to-white relative">
+            <h2 className="text-lg text-black font-semibold">Recents</h2>
+            <div className="join join-vertical lg:join-horizontal w-full mt-4">
+              <button
+                onClick={() => setViewingType("startups")}
+                className="btn bg-white text-black join-item w-[50%] hover:bg-gray-200"
+              >
+                Startup
+              </button>
+              <button
+                onClick={() => setViewingType("investors")}
+                className="btn join-item w-[50%] bg-white text-black hover:bg-gray-200"
+              >
+                Investor
+              </button>
+            </div>
+          </div>
+          <div>
+            {viewingType === "startups" ? (
+              recentStartups.length > 0 ? (
+                recentStartups.map((startup) => (
+                  <div
+                    key={startup.id}
+                    onClick={() => handleStartupClick(startup)}
+                    className="w-full max-w-sm px-4 py-3 bg-gray-300 shadow-md cursor-pointer hover:bg-gray-200"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-light text-gray-800">
+                        {startup.locationName}
+                      </span>
+                      <span className="px-3 py-1 text-xs text-blue-800 uppercase bg-blue-200 rounded-full dark:bg-blue-300 dark:text-blue-900">
+                        {startup.industry}
+                      </span>
+                    </div>
+                    <div>
+                      <h1 className="mt-2 text-lg font-semibold text-gray-800">
+                        {startup.companyName}
+                      </h1>
+                      <p className="mt-2 text-sm text-gray-600">
+                        {startup.companyDescription}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 mt-4">
+                  No recent startups found.
+                </div>
+              )
+            ) : recentInvestors.length > 0 ? (
+              recentInvestors.map((investor) => (
+                <div
+                  key={investor.investorId}
+                  onClick={() => handleInvestorClick(investor)}
+                  className="w-full max-w-sm px-4 py-3 bg-gray-300 shadow-md cursor-pointer hover:bg-gray-200"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-light text-gray-800">
+                      {investor.locationName}
+                    </span>
+                    <span className="px-3 py-1 text-xs text-blue-800 uppercase bg-blue-200 rounded-full dark:bg-blue-300 dark:text-blue-900">
+                      {investor.gender}
+                    </span>
+                  </div>
+                  <div>
+                    <h1 className="mt-2 text-lg font-semibold text-gray-800">
+                      {investor.firstname} {investor.lastname}
+                    </h1>
+                    <p className="mt-2 text-sm text-gray-600">
+                      {investor.biography}
+                    </p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-500 mt-4">
+                No recent investors found.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {showSearchContainer && (
-        <div className="absolute left-16 top-0 h-screen w-90 bg-gray-100 shadow-lg z-20">
+        <div className="absolute left-19 top-0 h-screen w-90 bg-gray-100 shadow-lg z-5 search-container-animate">
           <div className="p-4 bg-gradient-to-b from-blue-500 to-white relative">
             <button
               className="absolute top-2 right-2 text-gray-700 hover:text-gray-900"
@@ -435,10 +638,7 @@ export default function Sidebar({ mapInstanceRef }) {
                 startups.map((startup) => (
                   <div
                     key={startup.id}
-                    onClick={() => {
-                      setStartup(startup);
-                      setShowSearchContainer(false);
-                    }}
+                    onClick={() => handleStartupClick(startup)}
                     className="w-full max-w-sm px-4 py-3 bg-gray-300 shadow-md cursor-pointer hover:bg-gray-200"
                   >
                     <div className="flex items-center justify-between">
@@ -469,10 +669,7 @@ export default function Sidebar({ mapInstanceRef }) {
               investors.map((investor) => (
                 <div
                   key={investor.investorId}
-                  onClick={() => {
-                    setInvestor(investor);
-                    setShowSearchContainer(false);
-                  }}
+                  onClick={() => handleInvestorClick(investor)}
                   className="w-full max-w-sm px-4 py-3 bg-gray-300 shadow-md cursor-pointer hover:bg-gray-200"
                 >
                   <div className="flex items-center justify-between">
@@ -567,7 +764,7 @@ export default function Sidebar({ mapInstanceRef }) {
       )}
 
       {startup && !viewingStartup && (
-        <div className="absolute left-16 top-0 h-screen w-90 bg-gray-100 shadow-lg z-20">
+        <div className="absolute left-16 top-0 h-screen overflow-y-auto w-90 bg-gray-100 shadow-lg z-20">
           <div className="absolute left-0 flex justify-end p-2">
             <MdKeyboardReturn
               className="text-black text-2xl cursor-pointer"
@@ -612,7 +809,7 @@ export default function Sidebar({ mapInstanceRef }) {
                     zoom: 14,
                     essential: true,
                   });
-                  setViewingStartup(startup); // Enter viewing mode
+                  setViewingStartup(startup);
                   setStartup(null);
                 }
               }}
@@ -620,6 +817,19 @@ export default function Sidebar({ mapInstanceRef }) {
               Preview
             </button>
             <button className="btn btn-warning">Update location</button>
+          </div>
+          <div className="p-4">
+            <h1 className="text-black font-semibold">{startup.foundedDate}</h1>
+            <p className="text-gray-400 font-semibold">Established</p>
+            <p className="text-black">{startup.companyDescription}</p>
+            <p className="text-black">Categories: </p>
+            <p className="text-black">{startup.industry}</p>
+            <p className="text-black">ContactInfo: </p>
+            <p className="text-black">{startup.contactEmail}</p>
+            <p className="text-black">Funds Raised: None</p>
+            <p className="text-black">Funding Rounds: 0</p>
+            <p className="text-black">Total Investors: 0</p>
+            <p className="text-black">Team size: {startup.numberOfEmployees}</p>
           </div>
         </div>
       )}
