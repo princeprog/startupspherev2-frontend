@@ -8,6 +8,7 @@ import { GrLike } from "react-icons/gr";
 import { FaRegBookmark } from "react-icons/fa";
 import { MdKeyboardReturn } from "react-icons/md";
 import Bookmarks from "./Bookmarks"; // Import the Bookmarks component
+import { AiFillLike } from "react-icons/ai";
 
 export default function Sidebar({ mapInstanceRef }) {
   const [openLogin, setOpenLogin] = useState(false);
@@ -27,6 +28,25 @@ export default function Sidebar({ mapInstanceRef }) {
   const [containerMode, setContainerMode] = useState(null); // "search" or "recents"
   const [bookmarkedStartups, setBookmarkedStartups] = useState([]); // For bookmarked startups
   const [bookmarkedInvestors, setBookmarkedInvestors] = useState([]); // For bookmarked investors
+  const [likedStartups, setLikedStartups] = useState([]);
+  const [likedInvestors, setLikedInvestors] = useState([]);
+  const [user, setUser] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser)); // Restore user details
+        setIsAuthenticated(true); // Set authentication state
+      } catch (error) {
+        console.error("Error parsing user data from localStorage:", error);
+        setIsAuthenticated(false);
+      }
+    } else {
+      setIsAuthenticated(false);
+    }
+  }, []);
 
   const addToRecents = (item, type) => {
     const key = type === "startups" ? "recentStartups" : "recentInvestors";
@@ -117,10 +137,15 @@ export default function Sidebar({ mapInstanceRef }) {
         credentials: "include",
       });
       const data = await response.json();
-      if (!response.ok) {
-        throw new Error("Network response was not ok: ", data);
-      }
-      setInvestors(data);
+      console.log("Fetched investors:", data); // Verify the `investorId` field is present
+  
+      // Map investorId to id for consistency
+      const mappedInvestors = data.map((investor) => ({
+        ...investor,
+        id: investor.investorId, // Map investorId to id
+      }));
+  
+      setInvestors(mappedInvestors);
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
@@ -158,43 +183,45 @@ export default function Sidebar({ mapInstanceRef }) {
     }
   };
 
-    // Fetch the bookmarked items from localStorage
-    useEffect(() => {
-      const storedBookmarkedStartups = JSON.parse(localStorage.getItem("bookmarkedStartups")) || [];
-      const storedBookmarkedInvestors = JSON.parse(localStorage.getItem("bookmarkedInvestors")) || [];
-      setBookmarkedStartups(storedBookmarkedStartups);
-      setBookmarkedInvestors(storedBookmarkedInvestors);
-    }, []);
-  
-    // Function to add a startup to bookmarks
-    const addToBookmarks = (item, type) => {
-      const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
-      const existingBookmarks = JSON.parse(localStorage.getItem(key)) || [];
-      const updatedBookmarks = [
-        item,
-        ...existingBookmarks.filter((i) => i.id !== item.id),
-      ];
-      localStorage.setItem(key, JSON.stringify(updatedBookmarks));
-      // Update state to reflect changes in UI
-      if (type === "startups") {
-        setBookmarkedStartups(updatedBookmarks);
-      } else {
-        setBookmarkedInvestors(updatedBookmarks);
-      }
-    };
-  
-    // Function to remove an item from bookmarks
-    const removeFromBookmarks = (item, type) => {
-      const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
-      const updatedBookmarks = JSON.parse(localStorage.getItem(key)).filter((b) => b.id !== item.id);
-      localStorage.setItem(key, JSON.stringify(updatedBookmarks));
-      // Update state to reflect changes in UI
-      if (type === "startups") {
-        setBookmarkedStartups(updatedBookmarks);
-      } else {
-        setBookmarkedInvestors(updatedBookmarks);
-      }
-    };
+
+
+  // Fetch the bookmarked items from localStorage
+  useEffect(() => {
+    const storedBookmarkedStartups = JSON.parse(localStorage.getItem("bookmarkedStartups")) || [];
+    const storedBookmarkedInvestors = JSON.parse(localStorage.getItem("bookmarkedInvestors")) || [];
+    setBookmarkedStartups(storedBookmarkedStartups);
+    setBookmarkedInvestors(storedBookmarkedInvestors);
+  }, []);
+
+  // Function to add a startup to bookmarks
+  const addToBookmarks = (item, type) => {
+    const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
+    const existingBookmarks = JSON.parse(localStorage.getItem(key)) || [];
+    const updatedBookmarks = [
+      item,
+      ...existingBookmarks.filter((i) => i.id !== item.id),
+    ];
+    localStorage.setItem(key, JSON.stringify(updatedBookmarks));
+    // Update state to reflect changes in UI
+    if (type === "startups") {
+      setBookmarkedStartups(updatedBookmarks);
+    } else {
+      setBookmarkedInvestors(updatedBookmarks);
+    }
+  };
+
+  // Function to remove an item from bookmarks
+  const removeFromBookmarks = (item, type) => {
+    const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
+    const updatedBookmarks = JSON.parse(localStorage.getItem(key)).filter((b) => b.id !== item.id);
+    localStorage.setItem(key, JSON.stringify(updatedBookmarks));
+    // Update state to reflect changes in UI
+    if (type === "startups") {
+      setBookmarkedStartups(updatedBookmarks);
+    } else {
+      setBookmarkedInvestors(updatedBookmarks);
+    }
+  };
 
   useEffect(() => {
     const storedAuthState = localStorage.getItem("isAuthenticated");
@@ -224,6 +251,11 @@ export default function Sidebar({ mapInstanceRef }) {
   };
 
   const handleInvestorClick = (investor) => {
+    if (!investor || !investor.id) {
+      console.error("Invalid investor object:", investor);
+      return;
+    }
+  
     if (investor.locationLang && investor.locationLat) {
       mapInstanceRef.current.flyTo({
         center: [
@@ -234,8 +266,9 @@ export default function Sidebar({ mapInstanceRef }) {
         essential: true,
       });
     }
+  
     addToRecents(investor, "investors"); // Add to recents
-    setInvestor(investor);
+    setInvestor(investor); // Set the investor object
     setShowSearchContainer(false); // Close the search container
   };
 
@@ -245,6 +278,125 @@ export default function Sidebar({ mapInstanceRef }) {
       setRecentInvestors(getRecents("investors"));
     }
   }, [containerMode]);
+
+  const handleLikeStartup = async (startupId) => {
+    if (!isAuthenticated) {
+      alert("You must be logged in to like a startup.");
+      return;
+    }
+
+    if (!user || !user.id) {
+      console.error("User ID is missing. Cannot like startup.");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:8080/api/likes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          userId: user.id, // Use the actual user ID from the user state
+          startupId: startupId,
+          investorId: null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to like startup");
+      }
+
+      const newLike = await response.json();
+      setLikedStartups((prev) => [...prev, startupId]);
+      console.log("Startup liked:", newLike);
+    } catch (error) {
+      console.error("Error liking startup:", error);
+    }
+  };
+
+  const handleLikeInvestor = async (investorId) => {
+    if (!isAuthenticated) {
+      alert("You must be logged in to like an investor.");
+      return;
+    }
+  
+    if (!user || !user.id) {
+      console.error("User ID is missing. Cannot like investor.");
+      return;
+    }
+  
+    if (!investorId) {
+      console.error("Investor ID is missing. Cannot like investor.");
+      return;
+    }
+  
+    console.log("Sending request with userId:", user.id, "and investorId:", investorId);
+  
+    try {
+      const response = await fetch("http://localhost:8080/api/likes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({
+          userId: user.id, // Use the actual user ID from the user state
+          startupId: null,
+          investorId: investorId, // Ensure this is not undefined
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to like investor");
+      }
+  
+      const newLike = await response.json();
+      setLikedInvestors((prev) => [...prev, investorId]);
+      console.log("Investor liked:", newLike);
+    } catch (error) {
+      console.error("Error liking investor:", error);
+    }
+  };
+
+  const handleUnlike = async (likeId, type) => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/likes/${likeId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to unlike");
+      }
+
+      console.log("Like removed:", likeId);
+
+      if (type === "startups") {
+        setLikedStartups((prev) => prev.filter((id) => id !== likeId));
+      } else if (type === "investors") {
+        setLikedInvestors((prev) => prev.filter((id) => id !== likeId));
+      }
+    } catch (error) {
+      console.error("Error unliking:", error);
+    }
+  };
+
+  useEffect(() => {
+    const storedLikedStartups = JSON.parse(localStorage.getItem("likedStartups")) || [];
+    const storedLikedInvestors = JSON.parse(localStorage.getItem("likedInvestors")) || [];
+    setLikedStartups(storedLikedStartups);
+    setLikedInvestors(storedLikedInvestors);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("likedStartups", JSON.stringify(likedStartups));
+  }, [likedStartups]);
+
+  useEffect(() => {
+    localStorage.setItem("likedInvestors", JSON.stringify(likedInvestors));
+  }, [likedInvestors]);
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden">
@@ -355,20 +507,20 @@ export default function Sidebar({ mapInstanceRef }) {
                       </button>
                     </li>
                     ; {/* Bookmarks Icon */}
-                <li>
-                  <button
-                    className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
-                    onClick={() => {
-                      setContainerMode("bookmarks");
-                      setShowSearchContainer(false); // Close the search container
-                    }}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-7 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18l7-5 7 5V3H5z" />
-                    </svg>
-                    <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">Bookmarks</span>
-                  </button>
-                </li>
+                    <li>
+                      <button
+                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                        onClick={() => {
+                          setContainerMode("bookmarks");
+                          setShowSearchContainer(false); // Close the search container
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-7 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18l7-5 7 5V3H5z" />
+                        </svg>
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">Bookmarks</span>
+                      </button>
+                    </li>
                   </>
                 )}
               </ul>
@@ -730,7 +882,7 @@ export default function Sidebar({ mapInstanceRef }) {
       )}
 
       {containerMode === "bookmarks" && (
-        <Bookmarks 
+        <Bookmarks
           startups={bookmarkedStartups}
           investors={bookmarkedInvestors}
           mapInstanceRef={mapInstanceRef}
@@ -770,7 +922,17 @@ export default function Sidebar({ mapInstanceRef }) {
               </p>
             </div>
             <div>
-              <GrLike className="text-black text-2xl" />
+              <button
+                onClick={() =>
+                  likedInvestors.includes(investor.id)
+                    ? handleUnlike(investor.id, "investors")
+                    : handleLikeInvestor(investor.id) // Pass investor.id here
+                }
+                className={`text-black text-2xl ${likedInvestors.includes(investor.id) ? "text-red-500" : ""
+                  }`}
+              >
+                <AiFillLike />
+              </button>
             </div>
           </div>
 
@@ -831,7 +993,17 @@ export default function Sidebar({ mapInstanceRef }) {
               </p>
             </div>
             <div>
-              <GrLike className="text-black text-2xl" />
+              <button
+                onClick={() =>
+                  likedStartups.includes(startup.id)
+                    ? handleUnlike(startup.id, "startups")
+                    : handleLikeStartup(startup.id)
+                }
+                className={`text-black text-2xl ${likedStartups.includes(startup.id) ? "text-red-500" : ""
+                  }`}
+              >
+                <AiFillLike />
+              </button>
             </div>
           </div>
 
@@ -886,9 +1058,27 @@ export default function Sidebar({ mapInstanceRef }) {
             setOpenLogin(false);
             setOpenRegister(true);
           }}
-          onLoginSuccess={() => {
-            setIsAuthenticated(true);
-            setOpenLogin(false);
+          onLoginSuccess={async () => {
+            setIsAuthenticated(true); // Set authentication state
+            setOpenLogin(false); // Close the login modal
+
+            try {
+              const response = await fetch("http://localhost:8080/users/me", {
+                method: "GET",
+                credentials: "include", // Include cookies for authentication
+              });
+
+              if (response.ok) {
+                const userDetails = await response.json();
+                setUser(userDetails); // Set user details in state
+                localStorage.setItem("user", JSON.stringify(userDetails)); // Persist user details
+                console.log("User details fetched:", userDetails);
+              } else {
+                console.error("Failed to fetch user details");
+              }
+            } catch (error) {
+              console.error("Error fetching user details:", error);
+            }
           }}
         />
       )}
