@@ -28,10 +28,6 @@ export default function Sidebar({ mapInstanceRef }) {
   const [containerMode, setContainerMode] = useState(null); // "search" or "recents"
   const [bookmarkedStartups, setBookmarkedStartups] = useState([]); // For bookmarked startups
   const [bookmarkedInvestors, setBookmarkedInvestors] = useState([]); // For bookmarked investors
-  const [likedStartups, setLikedStartups] = useState([]);
-  const [likedInvestors, setLikedInvestors] = useState([]);
-  const [user, setUser] = useState(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
