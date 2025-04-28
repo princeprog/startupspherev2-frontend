@@ -76,7 +76,12 @@ export default function Sidebar({ mapInstanceRef }) {
       if (response.ok) {
         console.log("Logout successful");
         setIsAuthenticated(false);
-        localStorage.removeItem("isAuthenticated");
+        setUser(null); // Clear user state
+        setLikedStartups([]); // Clear likes
+        setLikedInvestors([]); // Clear likes
+        localStorage.removeItem("likedStartups");
+        localStorage.removeItem("likedInvestors");
+        localStorage.removeItem("user");
         document.cookie =
           "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       } else {
@@ -138,13 +143,13 @@ export default function Sidebar({ mapInstanceRef }) {
       });
       const data = await response.json();
       console.log("Fetched investors:", data); // Verify the `investorId` field is present
-  
+
       // Map investorId to id for consistency
       const mappedInvestors = data.map((investor) => ({
         ...investor,
         id: investor.investorId, // Map investorId to id
       }));
-  
+
       setInvestors(mappedInvestors);
     } catch (error) {
       console.error("Fetch error:", error);
@@ -229,6 +234,10 @@ export default function Sidebar({ mapInstanceRef }) {
       setIsAuthenticated(true);
     } else {
       setIsAuthenticated(false);
+      setLikedStartups([]); // Clear likes
+      setLikedInvestors([]); // Clear likes
+      localStorage.removeItem("likedStartups");
+      localStorage.removeItem("likedInvestors");
     }
     checkAuthentication();
   }, []);
@@ -255,7 +264,7 @@ export default function Sidebar({ mapInstanceRef }) {
       console.error("Invalid investor object:", investor);
       return;
     }
-  
+
     if (investor.locationLang && investor.locationLat) {
       mapInstanceRef.current.flyTo({
         center: [
@@ -266,7 +275,7 @@ export default function Sidebar({ mapInstanceRef }) {
         essential: true,
       });
     }
-  
+
     addToRecents(investor, "investors"); // Add to recents
     setInvestor(investor); // Set the investor object
     setShowSearchContainer(false); // Close the search container
@@ -279,124 +288,104 @@ export default function Sidebar({ mapInstanceRef }) {
     }
   }, [containerMode]);
 
-  const handleLikeStartup = async (startupId) => {
-    if (!isAuthenticated) {
-      alert("You must be logged in to like a startup.");
-      return;
-    }
+  useEffect(() => {
+    const fetchLikesOnLoad = async () => {
+      console.log("useEffect triggered for fetchUserLikes"); // Debugging log
+      if (user && user.id) {
+        await fetchUserLikes();
+      } else {
+        console.log("User is not authenticated or does not have an ID");
+      }
+    };
 
-    if (!user || !user.id) {
-      console.error("User ID is missing. Cannot like startup.");
-      return;
+    fetchLikesOnLoad();
+  }, [user?.id]);
+
+  const fetchUserLikes = async () => {
+    if (!user || !user.id) return;
+  
+    try {
+      const response = await fetch("http://localhost:8080/api/likes", {
+        method: "GET",
+        credentials: "include",
+      });
+  
+      if (response.ok) {
+        const likesData = await response.json();
+  
+        // Fetch all startups and investors
+        const startupsResponse = await fetch("http://localhost:8080/startups", {
+          credentials: "include",
+        });
+        const investorsResponse = await fetch("http://localhost:8080/investors", {
+          credentials: "include",
+        });
+  
+        const startups = await startupsResponse.json();
+        const investors = await investorsResponse.json();
+  
+        // Map likes to startups and investors
+        const userLikedStartups = likesData
+          .map((like) => startups.find((startup) => startup.id === like.id))
+          .filter(Boolean)
+          .map((startup) => startup.id);
+  
+        const userLikedInvestors = likesData
+          .map((like) => investors.find((investor) => investor.id === like.id))
+          .filter(Boolean)
+          .map((investor) => investor.id);
+  
+        // Log the processed data
+        console.log("User liked startups:", userLikedStartups);
+        console.log("User liked investors:", userLikedInvestors);
+  
+        // Update state
+        setLikedStartups(userLikedStartups);
+        setLikedInvestors(userLikedInvestors);
+      } else {
+        console.error("Failed to fetch likes for the user");
+      }
+    } catch (error) {
+      console.error("Error fetching user likes:", error);
     }
+  };
+
+  const toggleLike = async (userId, startupId, investorId) => {
+    const payload = { userId, startupId, investorId };
 
     try {
       const response = await fetch("http://localhost:8080/api/likes", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          userId: user.id, // Use the actual user ID from the user state
-          startupId: startupId,
-          investorId: null,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to like startup");
-      }
+      if (response.ok) {
+        const result = await response.json();
 
-      const newLike = await response.json();
-      setLikedStartups((prev) => [...prev, startupId]);
-      console.log("Startup liked:", newLike);
-    } catch (error) {
-      console.error("Error liking startup:", error);
-    }
-  };
-
-  const handleLikeInvestor = async (investorId) => {
-    if (!isAuthenticated) {
-      alert("You must be logged in to like an investor.");
-      return;
-    }
-  
-    if (!user || !user.id) {
-      console.error("User ID is missing. Cannot like investor.");
-      return;
-    }
-  
-    if (!investorId) {
-      console.error("Investor ID is missing. Cannot like investor.");
-      return;
-    }
-  
-    console.log("Sending request with userId:", user.id, "and investorId:", investorId);
-  
-    try {
-      const response = await fetch("http://localhost:8080/api/likes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          userId: user.id, // Use the actual user ID from the user state
-          startupId: null,
-          investorId: investorId, // Ensure this is not undefined
-        }),
-      });
-  
-      if (!response.ok) {
-        throw new Error("Failed to like investor");
-      }
-  
-      const newLike = await response.json();
-      setLikedInvestors((prev) => [...prev, investorId]);
-      console.log("Investor liked:", newLike);
-    } catch (error) {
-      console.error("Error liking investor:", error);
-    }
-  };
-
-  const handleUnlike = async (likeId, type) => {
-    try {
-      const response = await fetch(`http://localhost:8080/api/likes/${likeId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to unlike");
-      }
-
-      console.log("Like removed:", likeId);
-
-      if (type === "startups") {
-        setLikedStartups((prev) => prev.filter((id) => id !== likeId));
-      } else if (type === "investors") {
-        setLikedInvestors((prev) => prev.filter((id) => id !== likeId));
+        if (result && result.message === "Like removed") {
+          console.log("Like removed:", result);
+          if (startupId) {
+            setLikedStartups((prev) => prev.filter((id) => id !== startupId));
+          } else if (investorId) {
+            setLikedInvestors((prev) => prev.filter((id) => id !== investorId));
+          }
+        } else {
+          console.log("Like created:", result);
+          if (startupId) {
+            setLikedStartups((prev) => [...prev, startupId]);
+          } else if (investorId) {
+            setLikedInvestors((prev) => [...prev, investorId]);
+          }
+        }
+      } else {
+        console.error("Error toggling like");
       }
     } catch (error) {
-      console.error("Error unliking:", error);
+      console.error("Error toggling like:", error);
     }
   };
-
-  useEffect(() => {
-    const storedLikedStartups = JSON.parse(localStorage.getItem("likedStartups")) || [];
-    const storedLikedInvestors = JSON.parse(localStorage.getItem("likedInvestors")) || [];
-    setLikedStartups(storedLikedStartups);
-    setLikedInvestors(storedLikedInvestors);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("likedStartups", JSON.stringify(likedStartups));
-  }, [likedStartups]);
-
-  useEffect(() => {
-    localStorage.setItem("likedInvestors", JSON.stringify(likedInvestors));
-  }, [likedInvestors]);
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden">
@@ -923,12 +912,8 @@ export default function Sidebar({ mapInstanceRef }) {
             </div>
             <div>
               <button
-                onClick={() =>
-                  likedInvestors.includes(investor.id)
-                    ? handleUnlike(investor.id, "investors")
-                    : handleLikeInvestor(investor.id) // Pass investor.id here
-                }
-                className={`text-black text-2xl ${likedInvestors.includes(investor.id) ? "text-red-500" : ""
+                onClick={() => toggleLike(user.id, null, investor.id)}
+                className={`cursor-pointer text-black text-2xl ${likedInvestors.includes(investor.id) ? "text-blue-500" : ""
                   }`}
               >
                 <AiFillLike />
@@ -994,12 +979,8 @@ export default function Sidebar({ mapInstanceRef }) {
             </div>
             <div>
               <button
-                onClick={() =>
-                  likedStartups.includes(startup.id)
-                    ? handleUnlike(startup.id, "startups")
-                    : handleLikeStartup(startup.id)
-                }
-                className={`text-black text-2xl ${likedStartups.includes(startup.id) ? "text-red-500" : ""
+                onClick={() => toggleLike(user.id, startup.id, null)}
+                className={`cursor-pointer text-black text-2xl ${likedStartups.includes(startup.id) ? "text-blue-500" : "text-gray-500"
                   }`}
               >
                 <AiFillLike />
@@ -1059,25 +1040,25 @@ export default function Sidebar({ mapInstanceRef }) {
             setOpenRegister(true);
           }}
           onLoginSuccess={async () => {
-            setIsAuthenticated(true); // Set authentication state
-            setOpenLogin(false); // Close the login modal
+            setIsAuthenticated(true);
+            setOpenLogin(false);
 
             try {
               const response = await fetch("http://localhost:8080/users/me", {
                 method: "GET",
-                credentials: "include", // Include cookies for authentication
+                credentials: "include",
               });
 
               if (response.ok) {
                 const userDetails = await response.json();
-                setUser(userDetails); // Set user details in state
-                localStorage.setItem("user", JSON.stringify(userDetails)); // Persist user details
-                console.log("User details fetched:", userDetails);
-              } else {
-                console.error("Failed to fetch user details");
+                setUser(userDetails);
+                localStorage.setItem("user", JSON.stringify(userDetails));
+
+                // Fetch user likes
+                await fetchUserLikes();
               }
             } catch (error) {
-              console.error("Error fetching user details:", error);
+              console.error("Error during login:", error);
             }
           }}
         />
