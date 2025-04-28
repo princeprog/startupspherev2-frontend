@@ -47,6 +47,25 @@ export default function Sidebar({ mapInstanceRef }) {
       setIsAuthenticated(false);
     }
   }, []);
+  const [likedStartups, setLikedStartups] = useState([]);
+  const [likedInvestors, setLikedInvestors] = useState([]);
+  const [user, setUser] = useState(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser)); // Restore user details
+        setIsAuthenticated(true); // Set authentication state
+      } catch (error) {
+        console.error("Error parsing user data from localStorage:", error);
+        setIsAuthenticated(false);
+      }
+    } else {
+      setIsAuthenticated(false);
+    }
+  }, []);
 
   const addToRecents = (item, type) => {
     const key = type === "startups" ? "recentStartups" : "recentInvestors";
@@ -143,13 +162,13 @@ export default function Sidebar({ mapInstanceRef }) {
       });
       const data = await response.json();
       console.log("Fetched investors:", data); // Verify the `investorId` field is present
-
+  
       // Map investorId to id for consistency
       const mappedInvestors = data.map((investor) => ({
         ...investor,
         id: investor.investorId, // Map investorId to id
       }));
-
+  
       setInvestors(mappedInvestors);
     } catch (error) {
       console.error("Fetch error:", error);
@@ -187,8 +206,6 @@ export default function Sidebar({ mapInstanceRef }) {
       setLoading(false);
     }
   };
-
-
 
   // Fetch the bookmarked items from localStorage
   useEffect(() => {
@@ -264,7 +281,7 @@ export default function Sidebar({ mapInstanceRef }) {
       console.error("Invalid investor object:", investor);
       return;
     }
-
+  
     if (investor.locationLang && investor.locationLat) {
       mapInstanceRef.current.flyTo({
         center: [
@@ -275,7 +292,7 @@ export default function Sidebar({ mapInstanceRef }) {
         essential: true,
       });
     }
-
+  
     addToRecents(investor, "investors"); // Add to recents
     setInvestor(investor); // Set the investor object
     setShowSearchContainer(false); // Close the search container
@@ -496,6 +513,20 @@ export default function Sidebar({ mapInstanceRef }) {
                       </button>
                     </li>
                     ; {/* Bookmarks Icon */}
+                    <li>
+                      <button
+                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                        onClick={() => {
+                          setContainerMode("bookmarks");
+                          setShowSearchContainer(false); // Close the search container
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-7 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18l7-5 7 5V3H5z" />
+                        </svg>
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">Bookmarks</span>
+                      </button>
+                    </li>
                     <li>
                       <button
                         className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
