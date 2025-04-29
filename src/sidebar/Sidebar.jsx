@@ -158,13 +158,13 @@ export default function Sidebar({ mapInstanceRef }) {
       });
       const data = await response.json();
       console.log("Fetched investors:", data); // Verify the `investorId` field is present
-  
+
       // Map investorId to id for consistency
       const mappedInvestors = data.map((investor) => ({
         ...investor,
         id: investor.investorId, // Map investorId to id
       }));
-  
+
       setInvestors(mappedInvestors);
     } catch (error) {
       console.error("Fetch error:", error);
@@ -205,15 +205,18 @@ export default function Sidebar({ mapInstanceRef }) {
 
   // Fetch the bookmarked items from localStorage
   useEffect(() => {
-    const storedBookmarkedStartups = JSON.parse(localStorage.getItem("bookmarkedStartups")) || [];
-    const storedBookmarkedInvestors = JSON.parse(localStorage.getItem("bookmarkedInvestors")) || [];
+    const storedBookmarkedStartups =
+      JSON.parse(localStorage.getItem("bookmarkedStartups")) || [];
+    const storedBookmarkedInvestors =
+      JSON.parse(localStorage.getItem("bookmarkedInvestors")) || [];
     setBookmarkedStartups(storedBookmarkedStartups);
     setBookmarkedInvestors(storedBookmarkedInvestors);
   }, []);
 
   // Function to add a startup to bookmarks
   const addToBookmarks = (item, type) => {
-    const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
+    const key =
+      type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
     const existingBookmarks = JSON.parse(localStorage.getItem(key)) || [];
     const updatedBookmarks = [
       item,
@@ -230,8 +233,11 @@ export default function Sidebar({ mapInstanceRef }) {
 
   // Function to remove an item from bookmarks
   const removeFromBookmarks = (item, type) => {
-    const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
-    const updatedBookmarks = JSON.parse(localStorage.getItem(key)).filter((b) => b.id !== item.id);
+    const key =
+      type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
+    const updatedBookmarks = JSON.parse(localStorage.getItem(key)).filter(
+      (b) => b.id !== item.id
+    );
     localStorage.setItem(key, JSON.stringify(updatedBookmarks));
     // Update state to reflect changes in UI
     if (type === "startups") {
@@ -277,7 +283,7 @@ export default function Sidebar({ mapInstanceRef }) {
       console.error("Invalid investor object:", investor);
       return;
     }
-  
+
     if (investor.locationLang && investor.locationLat) {
       mapInstanceRef.current.flyTo({
         center: [
@@ -288,7 +294,7 @@ export default function Sidebar({ mapInstanceRef }) {
         essential: true,
       });
     }
-  
+
     addToRecents(investor, "investors"); // Add to recents
     setInvestor(investor); // Set the investor object
     setShowSearchContainer(false); // Close the search container
@@ -316,42 +322,45 @@ export default function Sidebar({ mapInstanceRef }) {
 
   const fetchUserLikes = async () => {
     if (!user || !user.id) return;
-  
+
     try {
       const response = await fetch("http://localhost:8080/api/likes", {
         method: "GET",
         credentials: "include",
       });
-  
+
       if (response.ok) {
         const likesData = await response.json();
-  
+
         // Fetch all startups and investors
         const startupsResponse = await fetch("http://localhost:8080/startups", {
           credentials: "include",
         });
-        const investorsResponse = await fetch("http://localhost:8080/investors", {
-          credentials: "include",
-        });
-  
+        const investorsResponse = await fetch(
+          "http://localhost:8080/investors",
+          {
+            credentials: "include",
+          }
+        );
+
         const startups = await startupsResponse.json();
         const investors = await investorsResponse.json();
-  
+
         // Map likes to startups and investors
         const userLikedStartups = likesData
           .map((like) => startups.find((startup) => startup.id === like.id))
           .filter(Boolean)
           .map((startup) => startup.id);
-  
+
         const userLikedInvestors = likesData
           .map((like) => investors.find((investor) => investor.id === like.id))
           .filter(Boolean)
           .map((investor) => investor.id);
-  
+
         // Log the processed data
         console.log("User liked startups:", userLikedStartups);
         console.log("User liked investors:", userLikedInvestors);
-  
+
         // Update state
         setLikedStartups(userLikedStartups);
         setLikedInvestors(userLikedInvestors);
@@ -485,8 +494,8 @@ export default function Sidebar({ mapInstanceRef }) {
                         onClick={() => {
                           setContainerMode("recents");
                           setShowSearchContainer(false); // Close the search container
-                          setStartup(null)
-                          setInvestor(null)
+                          setStartup(null);
+                          setInvestor(null);
                         }}
                       >
                         <svg
@@ -517,24 +526,46 @@ export default function Sidebar({ mapInstanceRef }) {
                           setShowSearchContainer(false); // Close the search container
                         }}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-7 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18l7-5 7 5V3H5z" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-7 opacity-80"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 3v18l7-5 7 5V3H5z"
+                          />
                         </svg>
-                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">Bookmarks</span>
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                          Bookmarks
+                        </span>
                       </button>
                     </li>
                     <li>
                       <button
                         className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
-                        onClick={() => {
-                          setContainerMode("bookmarks");
-                          setShowSearchContainer(false); // Close the search container
-                        }}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-7 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18l7-5 7 5V3H5z" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-7 opacity-80"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M4 6h16M4 12h8m-8 6h16"
+                          />
                         </svg>
-                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">Bookmarks</span>
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                          Dashboard
+                        </span>
                       </button>
                     </li>
                   </>
@@ -940,8 +971,9 @@ export default function Sidebar({ mapInstanceRef }) {
             <div>
               <button
                 onClick={() => toggleLike(user.id, null, investor.id)}
-                className={`cursor-pointer text-black text-2xl ${likedInvestors.includes(investor.id) ? "text-blue-500" : ""
-                  }`}
+                className={`cursor-pointer text-black text-2xl ${
+                  likedInvestors.includes(investor.id) ? "text-blue-500" : ""
+                }`}
               >
                 <AiFillLike />
               </button>
@@ -1007,8 +1039,11 @@ export default function Sidebar({ mapInstanceRef }) {
             <div>
               <button
                 onClick={() => toggleLike(user.id, startup.id, null)}
-                className={`cursor-pointer text-black text-2xl ${likedStartups.includes(startup.id) ? "text-blue-500" : "text-gray-500"
-                  }`}
+                className={`cursor-pointer text-black text-2xl ${
+                  likedStartups.includes(startup.id)
+                    ? "text-blue-500"
+                    : "text-gray-500"
+                }`}
               >
                 <AiFillLike />
               </button>

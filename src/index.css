@@ -1,5 +1,7 @@
 @import "tailwindcss";
 @plugin "daisyui";
+@import "flowbite";
+@source "../node_modules/flowbite-datepicker";
 
 
 @keyframes slideIn {
