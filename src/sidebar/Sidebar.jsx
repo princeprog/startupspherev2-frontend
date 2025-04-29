@@ -9,6 +9,7 @@ import { FaRegBookmark } from "react-icons/fa";
 import { MdKeyboardReturn } from "react-icons/md";
 import Bookmarks from "./Bookmarks"; // Import the Bookmarks component
 import { AiFillLike, AiOutlineLike } from 'react-icons/ai';
+import { FaHeart } from "react-icons/fa";
 
 export default function Sidebar({ mapInstanceRef }) {
   const [openLogin, setOpenLogin] = useState(false);
@@ -385,24 +386,35 @@ export default function Sidebar({ mapInstanceRef }) {
       if (response.ok) {
         const result = await response.json();
 
-        // Remove like if the result message indicates "Like removed"
-        if (result && result.message === "Like removed") {
-          console.log("Like removed:", result);
+        if (result.message === "Like removed") {
           if (startupId) {
             setLikedStartups((prev) => prev.filter((id) => id !== startupId));
+            setStartupLikeCounts((prev) => ({
+              ...prev,
+              [startupId]: Math.max((prev[startupId] || 1) - 1, 0),
+            }));
           } else if (investorId) {
             setLikedInvestors((prev) => prev.filter((id) => id !== investorId));
+            setInvestorLikeCounts((prev) => ({
+              ...prev,
+              [investorId]: Math.max((prev[investorId] || 1) - 1, 0),
+            }));
           }
         } else {
-          console.log("Like created:", result);
           if (startupId) {
             setLikedStartups((prev) => [...prev, startupId]);
+            setStartupLikeCounts((prev) => ({
+              ...prev,
+              [startupId]: (prev[startupId] || 0) + 1,
+            }));
           } else if (investorId) {
             setLikedInvestors((prev) => [...prev, investorId]);
+            setInvestorLikeCounts((prev) => ({
+              ...prev,
+              [investorId]: (prev[investorId] || 0) + 1,
+            }));
           }
         }
-        console.log("Updated liked startups:", likedStartups);
-        console.log("Updated liked investors:", likedInvestors);
       } else {
         console.error("Error toggling like");
       }
@@ -410,6 +422,36 @@ export default function Sidebar({ mapInstanceRef }) {
       console.error("Error toggling like:", error);
     }
   };
+
+
+  const [startupLikeCounts, setStartupLikeCounts] = useState({});
+  const [investorLikeCounts, setInvestorLikeCounts] = useState({});
+
+
+  useEffect(() => {
+    fetch("http://localhost:8080/api/likes", {
+      credentials: "include",
+    })
+      .then((res) => res.json())
+      .then((likes) => {
+        const startupCounts = {};
+        const investorCounts = {};
+
+        likes.forEach((like) => {
+          if (like.startupId !== null) {
+            startupCounts[like.startupId] = (startupCounts[like.startupId] || 0) + 1;
+          }
+          if (like.investorId !== null) {
+            investorCounts[like.investorId] = (investorCounts[like.investorId] || 0) + 1;
+          }
+        });
+
+        setStartupLikeCounts(startupCounts);
+        setInvestorLikeCounts(investorCounts);
+      })
+      .catch((err) => console.error("Failed to fetch likes:", err));
+  }, []);
+
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden">
@@ -951,29 +993,38 @@ export default function Sidebar({ mapInstanceRef }) {
 
           <div className="image bg-gray-400 h-[13rem]"></div>
 
-          <div className="flex justify-between p-4">
-            <div>
-              <h1 className="text-black">
+          <div className="flex justify-between p-4 gap-4">
+            {/* Text content area */}
+            <div className="flex-1 min-w-0">
+              <h1 className="text-black font-semibold text-lg truncate">
                 {investor.firstname} {investor.lastname}
               </h1>
-              <p className="text-black flex items-center">
+              <p className="text-black flex items-center space-x-1 truncate">
                 <CiLocationOn />
-                {investor.locationName}
+                <span>{investor.locationName}</span>
               </p>
-              <p className="text-blue-700 flex items-center">
+              <p className="text-blue-700 flex items-center space-x-1 break-words">
                 <CiGlobe className="text-black" />
-                {investor.website}
+                <span className="break-words">{investor.website}</span>
               </p>
             </div>
-            <div>
+
+            {/* Like button area */}
+            <div className="flex flex-col items-center w-16 shrink-0">
               <button
                 onClick={() => toggleLike(user.id, null, investor.id)}
-                className={`cursor-pointer text-2xl ${likedInvestors.includes(investor.id) ? "text-blue-500" : "text-gray-500"}`}
+                className={`cursor-pointer text-2xl transition-transform duration-300 ${likedInvestors.includes(investor.id) ? "text-red-500" : "text-gray-500"
+                  }`}
               >
-                <AiFillLike />
+                <FaHeart />
               </button>
+              <p className="text-sm text-black text-center">
+                {investorLikeCounts[investor.id] || 0}
+              </p>
             </div>
           </div>
+
+
 
           <h1 className="text-black flex items-center justify-center hover:underline cursor-pointer">
             <FaRegBookmark />
@@ -1031,14 +1082,18 @@ export default function Sidebar({ mapInstanceRef }) {
                 {startup.website}
               </p>
             </div>
-            <div>
+            <div className="flex flex-col items-center space-y-1">
               <button
                 onClick={() => toggleLike(user.id, startup.id, null)}
-                className={`cursor-pointer text-2xl ${likedStartups.includes(startup.id) ? "text-blue-500" : "text-gray-500"}`}
+                className={`cursor-pointer text-2xl ${likedStartups.includes(startup.id) ? "text-red-500" : "text-gray-500"
+                  }`}
               >
-                <AiFillLike />
+                <FaHeart />
               </button>
+              <p className="text-sm text-black">{startupLikeCounts[startup.id] || 0} Likes</p>
             </div>
+
+
           </div>
 
           <h1 className="text-black flex items-center justify-center hover:underline cursor-pointer">
