@@ -8,7 +8,7 @@ import { GrLike } from "react-icons/gr";
 import { FaRegBookmark } from "react-icons/fa";
 import { MdKeyboardReturn } from "react-icons/md";
 import Bookmarks from "./Bookmarks"; // Import the Bookmarks component
-import { AiFillLike } from "react-icons/ai";
+import { AiFillLike, AiOutlineLike } from 'react-icons/ai';
 
 export default function Sidebar({ mapInstanceRef }) {
   const [openLogin, setOpenLogin] = useState(false);
@@ -28,6 +28,35 @@ export default function Sidebar({ mapInstanceRef }) {
   const [containerMode, setContainerMode] = useState(null); // "search" or "recents"
   const [bookmarkedStartups, setBookmarkedStartups] = useState([]); // For bookmarked startups
   const [bookmarkedInvestors, setBookmarkedInvestors] = useState([]); // For bookmarked investors
+  const [likedInvestors, setLikedInvestors] = useState([]);
+  const [likedStartups, setLikedStartups] = useState([]); // For liked startups
+  const [user, setUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Fetch user on mount
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/users/me", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Current user:", data);
+          setCurrentUser(data);
+        } else {
+          console.error("Failed to fetch current user");
+        }
+      } catch (error) {
+        console.error("Error fetching current user:", error);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
+
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -43,10 +72,6 @@ export default function Sidebar({ mapInstanceRef }) {
       setIsAuthenticated(false);
     }
   }, []);
-  const [likedStartups, setLikedStartups] = useState([]);
-  const [likedInvestors, setLikedInvestors] = useState([]);
-  const [user, setUser] = useState(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -255,8 +280,6 @@ export default function Sidebar({ mapInstanceRef }) {
       setIsAuthenticated(false);
       setLikedStartups([]); // Clear likes
       setLikedInvestors([]); // Clear likes
-      localStorage.removeItem("likedStartups");
-      localStorage.removeItem("likedInvestors");
     }
     checkAuthentication();
   }, []);
@@ -386,6 +409,7 @@ export default function Sidebar({ mapInstanceRef }) {
       if (response.ok) {
         const result = await response.json();
 
+        // Remove like if the result message indicates "Like removed"
         if (result && result.message === "Like removed") {
           console.log("Like removed:", result);
           if (startupId) {
@@ -401,6 +425,8 @@ export default function Sidebar({ mapInstanceRef }) {
             setLikedInvestors((prev) => [...prev, investorId]);
           }
         }
+        console.log("Updated liked startups:", likedStartups);
+        console.log("Updated liked investors:", likedInvestors);
       } else {
         console.error("Error toggling like");
       }
@@ -460,6 +486,7 @@ export default function Sidebar({ mapInstanceRef }) {
                     onClick={() => {
                       fetchStartups();
                       fetchInvestors();
+                      fetchUserLikes();
                       setContainerMode("search");
                       setShowSearchContainer((prev) => !prev);
                     }}
@@ -607,27 +634,42 @@ export default function Sidebar({ mapInstanceRef }) {
         <div className="relative">
           <div
             className="avatar avatar-placeholder cursor-pointer"
-            onClick={toggleTooltip}
+            onClick={() => setShowTooltip((prev) => !prev)}
           >
-            <div className="bg-neutral text-neutral-content w-12 rounded-full">
-              <span>
-                {isAuthenticated === null ? "?" : isAuthenticated ? "SY" : "G"}
+            <div className="bg-neutral text-neutral-content w-12 rounded-full flex items-center justify-center">
+              <span className="text-lg font-semibold">
+                {isAuthenticated === null
+                  ? "?"
+                  : isAuthenticated && currentUser
+                    ? `${currentUser.firstname?.[0] ?? ""}${currentUser.lastname?.[0] ?? ""}`.toUpperCase()
+                    : "G"}
               </span>
             </div>
+
           </div>
 
           {showTooltip && (
-            <div className="absolute top-14 right-0 w-32 bg-white border border-gray-300 rounded-lg shadow-lg z-50">
+            <div className="absolute top-14 right-0 w-56 bg-white border border-gray-300 rounded-lg shadow-lg z-50">
               {isAuthenticated ? (
-                <button
-                  onClick={() => {
-                    logout();
-                    setShowTooltip(false);
-                  }}
-                  className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Logout
-                </button>
+                <>
+                  <div className="px-4 py-2 border-b">
+                    <div className="text-sm font-semibold text-gray-800">
+                      {currentUser?.firstname} {currentUser?.lastname}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {currentUser?.email}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      logout();
+                      setShowTooltip(false);
+                    }}
+                    className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Logout
+                  </button>
+                </>
               ) : (
                 <>
                   <button
@@ -654,6 +696,7 @@ export default function Sidebar({ mapInstanceRef }) {
           )}
         </div>
       </div>
+
 
       {containerMode === "recents" && (
         <div className="absolute left-19 top-0 h-screen w-90 bg-gray-100 shadow-lg z-5 search-container-animate">
