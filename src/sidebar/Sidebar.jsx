@@ -231,15 +231,18 @@ export default function Sidebar({ mapInstanceRef }) {
 
   // Fetch the bookmarked items from localStorage
   useEffect(() => {
-    const storedBookmarkedStartups = JSON.parse(localStorage.getItem("bookmarkedStartups")) || [];
-    const storedBookmarkedInvestors = JSON.parse(localStorage.getItem("bookmarkedInvestors")) || [];
+    const storedBookmarkedStartups =
+      JSON.parse(localStorage.getItem("bookmarkedStartups")) || [];
+    const storedBookmarkedInvestors =
+      JSON.parse(localStorage.getItem("bookmarkedInvestors")) || [];
     setBookmarkedStartups(storedBookmarkedStartups);
     setBookmarkedInvestors(storedBookmarkedInvestors);
   }, []);
 
   // Function to add a startup to bookmarks
   const addToBookmarks = (item, type) => {
-    const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
+    const key =
+      type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
     const existingBookmarks = JSON.parse(localStorage.getItem(key)) || [];
     const updatedBookmarks = [
       item,
@@ -256,8 +259,11 @@ export default function Sidebar({ mapInstanceRef }) {
 
   // Function to remove an item from bookmarks
   const removeFromBookmarks = (item, type) => {
-    const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
-    const updatedBookmarks = JSON.parse(localStorage.getItem(key)).filter((b) => b.id !== item.id);
+    const key =
+      type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
+    const updatedBookmarks = JSON.parse(localStorage.getItem(key)).filter(
+      (b) => b.id !== item.id
+    );
     localStorage.setItem(key, JSON.stringify(updatedBookmarks));
     // Update state to reflect changes in UI
     if (type === "startups") {
@@ -350,18 +356,36 @@ export default function Sidebar({ mapInstanceRef }) {
       if (response.ok) {
         const likesData = await response.json();
 
-        // ✅ Correctly map liked startup and investor IDs
+        // Fetch all startups and investors
+        const startupsResponse = await fetch("http://localhost:8080/startups", {
+          credentials: "include",
+        });
+        const investorsResponse = await fetch(
+          "http://localhost:8080/investors",
+          {
+            credentials: "include",
+          }
+        );
+
+        const startups = await startupsResponse.json();
+        const investors = await investorsResponse.json();
+
+        // Map likes to startups and investors
         const userLikedStartups = likesData
-          .filter((like) => like.startupId !== null && like.userId === user.id)
-          .map((like) => like.startupId);
+          .map((like) => startups.find((startup) => startup.id === like.id))
+          .filter(Boolean)
+          .map((startup) => startup.id);
 
         const userLikedInvestors = likesData
-          .filter((like) => like.investorId !== null && like.userId === user.id)
-          .map((like) => like.investorId);
+          .map((like) => investors.find((investor) => investor.id === like.id))
+          .filter(Boolean)
+          .map((investor) => investor.id);
 
-        console.log("Updated liked startups:", userLikedStartups);
-        console.log("Updated liked investors:", userLikedInvestors);
+        // Log the processed data
+        console.log("User liked startups:", userLikedStartups);
+        console.log("User liked investors:", userLikedInvestors);
 
+        // Update state
         setLikedStartups(userLikedStartups);
         setLikedInvestors(userLikedInvestors);
       } else {
@@ -539,8 +563,8 @@ export default function Sidebar({ mapInstanceRef }) {
                         onClick={() => {
                           setContainerMode("recents");
                           setShowSearchContainer(false); // Close the search container
-                          setStartup(null)
-                          setInvestor(null)
+                          setStartup(null);
+                          setInvestor(null);
                         }}
                       >
                         <svg
@@ -571,24 +595,46 @@ export default function Sidebar({ mapInstanceRef }) {
                           setShowSearchContainer(false); // Close the search container
                         }}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-7 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18l7-5 7 5V3H5z" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-7 opacity-80"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 3v18l7-5 7 5V3H5z"
+                          />
                         </svg>
-                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">Bookmarks</span>
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                          Bookmarks
+                        </span>
                       </button>
                     </li>
                     <li>
                       <button
                         className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
-                        onClick={() => {
-                          setContainerMode("bookmarks");
-                          setShowSearchContainer(false); // Close the search container
-                        }}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-7 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18l7-5 7 5V3H5z" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-7 opacity-80"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M4 6h16M4 12h8m-8 6h16"
+                          />
                         </svg>
-                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">Bookmarks</span>
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                          Dashboard
+                        </span>
                       </button>
                     </li>
                   </>
@@ -1013,8 +1059,10 @@ export default function Sidebar({ mapInstanceRef }) {
             <div className="flex flex-col items-center w-16 shrink-0">
               <button
                 onClick={() => toggleLike(user.id, null, investor.id)}
-                className={`cursor-pointer text-2xl transition-transform duration-300 ${likedInvestors.includes(investor.id) ? "text-red-500" : "text-gray-500"
-                  }`}
+                className={`cursor-pointer text-black text-2xl ${
+                  likedInvestors.includes(investor.id) ? "text-blue-500" : ""
+                }`}
+
               >
                 <FaHeart />
               </button>
@@ -1085,8 +1133,11 @@ export default function Sidebar({ mapInstanceRef }) {
             <div className="flex flex-col items-center space-y-1">
               <button
                 onClick={() => toggleLike(user.id, startup.id, null)}
-                className={`cursor-pointer text-2xl ${likedStartups.includes(startup.id) ? "text-red-500" : "text-gray-500"
-                  }`}
+                className={`cursor-pointer text-black text-2xl ${
+                  likedStartups.includes(startup.id)
+                    ? "text-blue-500"
+                    : "text-gray-500"
+                }`}
               >
                 <FaHeart />
               </button>

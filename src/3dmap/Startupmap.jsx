@@ -6,9 +6,11 @@ import "mapbox-gl/dist/mapbox-gl.css";
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
 
-export default function Startupmap({ mapInstanceRef }) {
+export default function Startupmap({ mapInstanceRef, onMapClick }) {
   const [openLogin, setOpenLogin] = useState(false);
   const mapContainerRef = useRef(null);
+  const [userMarker, setUserMarker] = useState(null); // State to manage the single marker
+  const markerRef = useRef(null);
 
   // Fetch startups and place markers
   const loadStartupMarkers = async (map) => {
@@ -86,7 +88,7 @@ export default function Startupmap({ mapInstanceRef }) {
       investors.forEach((investor) => {
         if (
           typeof investor.locationLang === "string" &&
-          typeof investor.locationLat === "string" && 
+          typeof investor.locationLat === "string" &&
           parseFloat(investor.locationLat) >= -90 &&
           parseFloat(investor.locationLat) <= 90 &&
           parseFloat(investor.locationLang) >= -180 &&
@@ -153,11 +155,31 @@ export default function Startupmap({ mapInstanceRef }) {
     mapInstanceRef.current = map;
     map.resize();
 
+    map.on("click", (e) => {
+      const { lng, lat } = e.lngLat;
+
+      // Remove the previous marker if it exists
+      if (markerRef.current) {
+        markerRef.current.remove();
+      }
+
+      const newMarker = new mapboxgl.Marker({ color: "red" })
+        .setLngLat([lng, lat])
+        .addTo(map);
+
+      markerRef.current = newMarker;
+
+      // Pass the latitude and longitude to the parent component
+      if (onMapClick) {
+        onMapClick(lat, lng);
+      }
+    });
+
     loadStartupMarkers(map);
     loadInvestorMarkers(map);
 
     return () => map.remove();
-  }, [mapInstanceRef]);
+  }, []); // Empty dependency array ensures this runs only once // Removed userMarker from dependencies
 
   return (
     <div className="relative w-screen h-screen">
