@@ -5,11 +5,12 @@ import Signup from "../modals/Signup";
 import { CiLocationOn } from "react-icons/ci";
 import { CiGlobe } from "react-icons/ci";
 import { GrLike } from "react-icons/gr";
-import { FaRegBookmark } from "react-icons/fa";
 import { MdKeyboardReturn } from "react-icons/md";
+import { FaRegBookmark, FaBookmark } from 'react-icons/fa';
 import Bookmarks from "./Bookmarks"; // Import the Bookmarks component
 
 export default function Sidebar({ mapInstanceRef }) {
+  const [userId, setUserId] = useState(null);
   const [openLogin, setOpenLogin] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -78,17 +79,19 @@ export default function Sidebar({ mapInstanceRef }) {
         console.log("User is authenticated: ", data);
         setIsAuthenticated(true);
         localStorage.setItem("isAuthenticated", "true"); // Persist state
+        setUserId(data.id); // <-- set userId from API response
       } else {
         console.log("User is not authenticated");
         setIsAuthenticated(false);
-        localStorage.removeItem("isAuthenticated"); // Clear state
+        localStorage.removeItem("isAuthenticated");
       }
     } catch (error) {
       console.error("Error checking authentication:", error);
       setIsAuthenticated(false);
-      localStorage.removeItem("isAuthenticated"); // Clear state
+      localStorage.removeItem("isAuthenticated");
     }
   };
+  
 
   const fetchStartups = async () => {
     setLoading(true);
@@ -166,22 +169,9 @@ export default function Sidebar({ mapInstanceRef }) {
       setBookmarkedInvestors(storedBookmarkedInvestors);
     }, []);
   
-    // Function to add a startup to bookmarks
-    const addToBookmarks = (item, type) => {
-      const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
-      const existingBookmarks = JSON.parse(localStorage.getItem(key)) || [];
-      const updatedBookmarks = [
-        item,
-        ...existingBookmarks.filter((i) => i.id !== item.id),
-      ];
-      localStorage.setItem(key, JSON.stringify(updatedBookmarks));
-      // Update state to reflect changes in UI
-      if (type === "startups") {
-        setBookmarkedStartups(updatedBookmarks);
-      } else {
-        setBookmarkedInvestors(updatedBookmarks);
-      }
-    };
+    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [bookmarkId, setBookmarkId] = useState(null);
+    
   
     // Function to remove an item from bookmarks
     const removeFromBookmarks = (item, type) => {
@@ -205,6 +195,139 @@ export default function Sidebar({ mapInstanceRef }) {
     }
     checkAuthentication();
   }, []);
+
+ // Update the handleBookmarkClick function
+    const handleBookmarkClick = async () => {
+      if (!isAuthenticated) {
+        setOpenLogin(true);
+        return;
+      }
+      
+      try {
+        // Determine what we're bookmarking
+        const currentItem = startup || investor;
+        const itemType = startup ? 'startups' : 'investors';
+        
+        if (!currentItem) return;
+        
+        const bookmarkData = {
+          startupId: startup ? startup.id : null,
+          investorId: investor ? investor.investorId : null,
+        };
+        
+        if (isBookmarked) {
+          // Remove bookmark
+          const response = await fetch(`http://localhost:8080/api/bookmarks/${bookmarkId}`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          
+          if (response.ok) {
+            setIsBookmarked(false);
+            setBookmarkId(null);
+            
+            // Update bookmarked items
+            if (itemType === 'startups') {
+              const updatedBookmarks = bookmarkedStartups.filter(s => s.id !== currentItem.id);
+              setBookmarkedStartups(updatedBookmarks);
+              localStorage.setItem("bookmarkedStartups", JSON.stringify(updatedBookmarks));
+            } else {
+              const updatedBookmarks = bookmarkedInvestors.filter(i => i.investorId !== currentItem.investorId);
+              setBookmarkedInvestors(updatedBookmarks);
+              localStorage.setItem("bookmarkedInvestors", JSON.stringify(updatedBookmarks));
+            }
+            
+            console.log("Successfully removed bookmark");
+          } else {
+            console.error("Error removing bookmark");
+          }
+        } else {
+          // Add bookmark
+          const response = await fetch(`http://localhost:8080/api/bookmarks`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify(bookmarkData),
+          });
+          
+          if (response.ok) {
+            const createdBookmark = await response.json();
+            setIsBookmarked(true);
+            setBookmarkId(createdBookmark.id);
+            
+            // Add bookmarkId to the item
+            const itemWithBookmarkId = { ...currentItem, bookmarkId: createdBookmark.id };
+            
+            // Update bookmarked items
+            if (itemType === 'startups') {
+              if (!bookmarkedStartups.some(s => s.id === currentItem.id)) {
+                const updatedBookmarks = [...bookmarkedStartups, itemWithBookmarkId];
+                setBookmarkedStartups(updatedBookmarks);
+                localStorage.setItem("bookmarkedStartups", JSON.stringify(updatedBookmarks));
+              }
+            } else {
+              if (!bookmarkedInvestors.some(i => i.investorId === currentItem.investorId)) {
+                const updatedBookmarks = [...bookmarkedInvestors, itemWithBookmarkId];
+                setBookmarkedInvestors(updatedBookmarks);
+                localStorage.setItem("bookmarkedInvestors", JSON.stringify(updatedBookmarks));
+              }
+            }
+            
+            console.log("Successfully added bookmark");
+          } else {
+            console.error("Error adding bookmark");
+          }
+        }
+      } catch (error) {
+        console.error("Error bookmarking item", error);
+      }
+    };
+
+    const fetchBookmarks = async () => {
+      try {
+        const response = await fetch(`http://localhost:8080/api/bookmarks`, {
+          credentials: "include",
+        });
+    
+        if (response.ok) {
+          const data = await response.json();
+    
+          // Process startup bookmarks
+          if (data.startups && Array.isArray(data.startups)) {
+            setBookmarkedStartups(data.startups);
+            localStorage.setItem("bookmarkedStartups", JSON.stringify(data.startups));
+          }
+    
+          // Process investor bookmarks
+          if (data.investors && Array.isArray(data.investors)) {
+            setBookmarkedInvestors(data.investors);
+            localStorage.setItem("bookmarkedInvestors", JSON.stringify(data.investors));
+          }
+        } else {
+          console.error("Failed to fetch bookmarks");
+        }
+      } catch (error) {
+        console.error("Error fetching bookmarks:", error);
+      }
+    };    
+
+    useEffect(() => {
+      fetchBookmarks();
+    }, []);
+    
+
+    
+    const isItemBookmarked = (item, type) => {
+      if (type === "startups") {
+        return bookmarkedStartups.some(s => s.id === item.id);
+      } else if (type === "investors") {
+        return bookmarkedInvestors.some(i => i.investorId === item.investorId);
+      }
+      return false;
+    };
+    
 
   const toggleTooltip = () => {
     setShowTooltip((prev) => !prev);
@@ -734,13 +857,50 @@ export default function Sidebar({ mapInstanceRef }) {
           startups={bookmarkedStartups}
           investors={bookmarkedInvestors}
           mapInstanceRef={mapInstanceRef}
-          setViewingStartup={setViewingStartup}
-          setViewingInvestor={setViewingInvestor}
-          removeFromBookmarks={removeFromBookmarks}
+          setViewingStartup={(startup) => {
+            setViewingStartup(startup);
+            setStartup(startup); // Sync with main state
+          }}
+          setViewingInvestor={(investor) => {
+            setViewingInvestor(investor);
+            setInvestor(investor); // Sync with main state
+          }}
+          removeFromBookmarks={(item, type) => {
+            // Update local state
+            if (type === "startups") {
+              setBookmarkedStartups(prev => prev.filter(s => s.id !== item.id));
+              // Update localStorage
+              const updatedBookmarks = bookmarkedStartups.filter(s => s.id !== item.id);
+              localStorage.setItem("bookmarkedStartups", JSON.stringify(updatedBookmarks));
+            } else {
+              setBookmarkedInvestors(prev => prev.filter(i => i.investorId !== item.investorId));
+              // Update localStorage
+              const updatedBookmarks = bookmarkedInvestors.filter(i => i.investorId !== item.investorId);
+              localStorage.setItem("bookmarkedInvestors", JSON.stringify(updatedBookmarks));
+            }
+          }}
           setContainerMode={setContainerMode}
+          userId={userId}
+          addToBookmarks={(item, type) => {
+            // Update local state
+            if (type === "startups") {
+              if (!bookmarkedStartups.some(s => s.id === item.id)) {
+                const updatedBookmarks = [...bookmarkedStartups, item];
+                setBookmarkedStartups(updatedBookmarks);
+                localStorage.setItem("bookmarkedStartups", JSON.stringify(updatedBookmarks));
+              }
+            } else {
+              if (!bookmarkedInvestors.some(i => i.investorId === item.investorId)) {
+                const updatedBookmarks = [...bookmarkedInvestors, item];
+                setBookmarkedInvestors(updatedBookmarks);
+                localStorage.setItem("bookmarkedInvestors", JSON.stringify(updatedBookmarks));
+              }
+            }
+          }}
         />
       )}
 
+    {/* Viewing of Investor and Startup */}
       {investor && !viewingStartup && (
         <div className="absolute left-16 top-0 h-screen w-90 bg-gray-100 shadow-lg z-20">
           <div className="absolute left-0 flex justify-end p-2">
@@ -774,9 +934,12 @@ export default function Sidebar({ mapInstanceRef }) {
             </div>
           </div>
 
-          <h1 className="text-black flex items-center justify-center hover:underline cursor-pointer">
-            <FaRegBookmark />
-            Add bookmark
+          <h1 
+            className="text-black flex items-center justify-center hover:underline cursor-pointer"
+            onClick={handleBookmarkClick}
+          >
+            {isBookmarked ? <FaBookmark /> : <FaRegBookmark />}
+            {isBookmarked ? " Remove Bookmark" : " Add Bookmark"}
           </h1>
 
           <div className="p-4">
@@ -835,9 +998,12 @@ export default function Sidebar({ mapInstanceRef }) {
             </div>
           </div>
 
-          <h1 className="text-black flex items-center justify-center hover:underline cursor-pointer">
-            <FaRegBookmark />
-            Add bookmark
+          <h1 
+            className="text-black flex items-center justify-center hover:underline cursor-pointer"
+            onClick={handleBookmarkClick}
+          >
+            {isBookmarked ? <FaBookmark /> : <FaRegBookmark />}
+            {isBookmarked ? " Remove Bookmark" : " Add Bookmark"}
           </h1>
 
           <div className="p-4">
