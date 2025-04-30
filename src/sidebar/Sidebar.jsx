@@ -285,15 +285,55 @@ export default function Sidebar({ mapInstanceRef }) {
   };
 
   const handleStartupClick = (startup) => {
+    fetch(`http://localhost:8080/startups/${startup.id}/increment-views`, {
+      method: 'PUT',
+      credentials: 'include', // Include credentials to support session cookies
+    })
+      .then((response) => {
+        if (response.ok) {
+          console.log('Views incremented successfully');
+
+          // After incrementing views, fetch the updated view count
+          fetch(`http://localhost:8080/startups/${startup.id}/views`, {
+            method: 'GET',
+            credentials: 'include', // Include credentials to support session cookies
+          })
+            .then((response) => response.json())
+            .then((views) => {
+              console.log('Updated views count:', views);
+
+              // Optionally, update the UI with the new view count
+              setStartup((prevStartup) => ({
+                ...prevStartup,
+                viewsCount: views, // Assuming views is the response object
+              }));
+            })
+            .catch((error) => {
+              console.error('Error fetching updated view count:', error);
+            });
+        } else {
+          console.error('Failed to increment views');
+        }
+      })
+      .catch((error) => {
+        console.error('Error incrementing views:', error);
+      });
+
+    // Zoom into the startup's location on the map if valid location data exists
     if (startup.locationLng && startup.locationLat) {
       mapInstanceRef.current.flyTo({
-        center: [startup.locationLng, startup.locationLat],
+        center: [
+          parseFloat(startup.locationLng),
+          parseFloat(startup.locationLat),
+        ],
         zoom: 14,
         essential: true,
       });
     }
-    addToRecents(startup, "startups"); // Add to recents
-    setStartup(startup);
+
+    // Add the startup to recents and update the UI
+    addToRecents(startup, 'startups'); // Add to recents
+    setStartup(startup); // Set the startup object
     setShowSearchContainer(false); // Close the search container
   };
 
@@ -1123,6 +1163,8 @@ export default function Sidebar({ mapInstanceRef }) {
                 {startup.website}
               </p>
             </div>
+
+            {/* Like button area */}
             <div className="flex flex-col items-center space-y-1">
               <button
                 onClick={() => toggleLike(user.id, startup.id, null)}
@@ -1133,8 +1175,15 @@ export default function Sidebar({ mapInstanceRef }) {
               </button>
               <p className="text-sm text-black">{startupLikeCounts[startup.id] || 0}</p>
             </div>
-
-
+          </div>
+          {/* View count area */}
+          <div className="flex justify-between p-4 gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-black text-1xl font-semibold flex items-center">
+                <FaRegEye className="mr-1 text-2xl text-gray-700" />
+                {startup.viewsCount || 0} {/* Displaying views count here */}
+              </p>
+            </div>
           </div>
 
           <h1 className="text-black flex items-center justify-center hover:underline cursor-pointer">
