@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import Login from "../modals/Login";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css"; // Import Geocoder CSS
+import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
@@ -11,6 +13,7 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
   const mapContainerRef = useRef(null);
   const [userMarker, setUserMarker] = useState(null); // State to manage the single marker
   const markerRef = useRef(null);
+  const geocoderContainerRef = useRef(null);
 
   // Fetch startups and place markers
   const loadStartupMarkers = async (map) => {
@@ -155,6 +158,35 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
     mapInstanceRef.current = map;
     map.resize();
 
+    const geocoder = new MapboxGeocoder({
+      accessToken: mapboxgl.accessToken,
+      mapboxgl: mapboxgl,
+      marker: false, // Disable default marker
+      placeholder: "Search for places...", // Placeholder text in the search bar
+    });
+
+    if (geocoderContainerRef.current) {
+      geocoderContainerRef.current.innerHTML = "";
+      geocoderContainerRef.current.appendChild(geocoder.onAdd(map));
+    }
+
+    geocoder.on("result", (event) => {
+      const { center } = event.result; // Get the coordinates of the searched location
+      map.flyTo({
+        center: center, // Navigate to the searched location
+        zoom: 14, // Set the zoom level
+        essential: true, // This ensures the animation is smooth
+      });
+
+      // Add a marker at the searched location
+      if (markerRef.current) {
+        markerRef.current.remove(); // Remove the previous marker if it exists
+      }
+      markerRef.current = new mapboxgl.Marker({ color: "green" })
+        .setLngLat(center)
+        .addTo(map);
+    });
+
     map.on("click", (e) => {
       const { lng, lat } = e.lngLat;
 
@@ -188,7 +220,21 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
         className="fixed top-0 left-0 w-full h-full z-0"
         style={{ width: "100%", height: "100%" }}
       />
-
+      <div
+        ref={geocoderContainerRef}
+        className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 w-3/4 max-w-lg"
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          position: "absolute",
+          top: "10px", // Adjust the distance from the top
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 10,
+        }}
+      />
+  
       {openLogin && (
         <Login
           closeModal={() => setOpenLogin(false)}
