@@ -10,6 +10,7 @@ import Bookmarks from "./Bookmarks"; // Import the Bookmarks component
 import { FaHeart } from "react-icons/fa";
 import { RiLoginBoxFill } from "react-icons/ri";
 import { LuLayoutDashboard } from "react-icons/lu";
+import { FaRegEye } from "react-icons/fa";
 
 export default function Sidebar({ mapInstanceRef }) {
   const [openLogin, setOpenLogin] = useState(false);
@@ -302,6 +303,41 @@ export default function Sidebar({ mapInstanceRef }) {
       return;
     }
 
+    // Increment views on the backend by sending a PUT request
+    fetch(`http://localhost:8080/investors/${investor.id}/increment-views`, {
+      method: 'PUT',
+      credentials: 'include', // Include credentials to support session cookies
+    })
+      .then((response) => {
+        if (response.ok) {
+          console.log('Views incremented successfully');
+
+          // After incrementing views, fetch the updated view count
+          fetch(`http://localhost:8080/investors/${investor.id}/views`, {
+            method: 'GET',
+            credentials: 'include', // Include credentials to support session cookies
+          })
+            .then((response) => response.json())
+            .then((views) => {
+              console.log('Updated views count:', views);
+              // Optionally, update the UI with the new view count
+              setInvestor((prevInvestor) => ({
+                ...prevInvestor,
+                views: views, // Assuming views is the response object
+              }));
+            })
+            .catch((error) => {
+              console.error('Error fetching updated view count:', error);
+            });
+        } else {
+          console.error('Failed to increment views');
+        }
+      })
+      .catch((error) => {
+        console.error('Error incrementing views:', error);
+      });
+
+    // Zoom into the investor's location on the map if valid location data exists
     if (investor.locationLang && investor.locationLat) {
       mapInstanceRef.current.flyTo({
         center: [
@@ -313,10 +349,13 @@ export default function Sidebar({ mapInstanceRef }) {
       });
     }
 
+    // Add the investor to recents and update the UI
     addToRecents(investor, "investors"); // Add to recents
     setInvestor(investor); // Set the investor object
     setShowSearchContainer(false); // Close the search container
   };
+
+
 
   useEffect(() => {
     if (containerMode === "recents") {
@@ -582,7 +621,7 @@ export default function Sidebar({ mapInstanceRef }) {
                         <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
                           Dashboard
                         </span>
-                        <LuLayoutDashboard className="text-2xl"/>
+                        <LuLayoutDashboard className="text-2xl" />
                       </button>
                     </li>
                   </>
@@ -1008,8 +1047,7 @@ export default function Sidebar({ mapInstanceRef }) {
             <div className="flex flex-col items-center w-16 shrink-0">
               <button
                 onClick={() => toggleLike(user.id, null, investor.id)}
-                className={`cursor-pointer text-2xl ${likedInvestors.includes(investor.id) ? "text-red-500" : "text-gray-500"
-                  }`}
+                className={`cursor-pointer text-2xl ${likedInvestors.includes(investor.id) ? "text-red-500" : "text-gray-500"}`}
               >
                 <FaHeart />
               </button>
@@ -1019,7 +1057,15 @@ export default function Sidebar({ mapInstanceRef }) {
             </div>
           </div>
 
-
+          {/* View count area */}
+          <div className="flex justify-between p-4 gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-black text-1xl font-semibold flex items-center">
+                <FaRegEye className="mr-1 text-2xl  text-gray-700" />
+                {investor.views || 0}
+              </p>
+            </div>
+          </div>
 
           <h1 className="text-black flex items-center justify-center hover:underline cursor-pointer">
             <FaRegBookmark />
