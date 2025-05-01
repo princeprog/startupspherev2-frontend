@@ -17,7 +17,6 @@ function App() {
         <Route path="/startup-dashboard" element={<StartupDashboard/>}/>
       </Route>
       <Route path="/add-startup" element={<Startupadd/>}/>
-      
     </Routes>
   );
 }
