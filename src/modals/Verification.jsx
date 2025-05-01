@@ -1,4 +1,4 @@
-export default function Verification({setVerificationMOdal}) {
+export default function Verification({setVerificationMOdal,setSelectedTab}) {
   return (
     <div id="modal">
       <div className="fixed inset-0 p-4 flex flex-wrap justify-center items-center w-full h-full z-[1000] before:fixed before:inset-0 before:w-full before:h-full before:bg-[rgba(0,0,0,0.5)] overflow-auto">
@@ -47,7 +47,10 @@ export default function Verification({setVerificationMOdal}) {
           <button
             id="closeButton"
             type="button"
-            onClick={()=>setVerificationMOdal(false)}
+            onClick={()=>{
+              setVerificationMOdal(false)
+              setSelectedTab("Upload Data")
+            }}
             className="px-5 py-2.5 w-full rounded-lg text-white text-sm font-medium border-none outline-none bg-gray-800 hover:bg-gray-700"
           >
             Got it

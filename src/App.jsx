@@ -14,7 +14,7 @@ function App() {
         <Route index element={<Startupmap mapInstanceRef={mapInstanceRef} />} />
         <Route path="dashboard" element={<Startup/>}/>
       </Route>
-      <Route path="/startup" element={<Startupadd/>}/>
+      <Route path="/add-startup" element={<Startupadd/>}/>
     </Routes>
   );
 }

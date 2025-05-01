@@ -13,7 +13,7 @@ mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
 export default function Startupadd() {
   const [selectedTab, setSelectedTab] = useState("Company Information"); // State to track the selected tab
-  
+  const [startupId, setStartupId] = useState(null); // State to store the startup ID
   const [formData, setFormData] = useState({
     companyName: "",
     companyDescription: "",
@@ -36,9 +36,12 @@ export default function Startupadd() {
     locationLat: null,
     locationLng: null,
     locationName: "",
+    fundingStage: "",
+    operatingHours: "",
+    businessActivity: "",
   });
 
-  const [verificationModal , setVerificationMOdal] = useState(false)
+  const [verificationModal, setVerificationMOdal] = useState(false);
 
   const [error, setError] = useState("");
 
@@ -47,13 +50,65 @@ export default function Startupadd() {
     "Contact Information",
     "Address Information",
     "Social Media Links",
+    "Additional Information",
     "Location Info",
+    "Upload Data", // New tab for file upload
   ];
 
   const mapContainerRef = useRef(null);
   const markerRef = useRef(null);
   const geocoderContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+
+  const [uploadedFile, setUploadedFile] = useState(null);
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Check if the file is a CSV
+      if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
+        toast.error("Invalid file type. Please upload a .csv file.");
+        return;
+      }
+
+      setUploadedFile(file);
+      toast.success("CSV file selected successfully!");
+    } else {
+      toast.error("No file selected.");
+    }
+  };
+
+  const handleFileSubmit = async () => {
+    if (!uploadedFile) {
+      toast.error("Please select a file before uploading.");
+      return;
+    }
+  
+    if (!startupId) {
+      toast.error("Startup ID is missing. Please add a startup first.");
+      return;
+    }
+  
+    const formData = new FormData();
+    formData.append("file", uploadedFile);
+  
+    try {
+      const response = await fetch(`http://localhost:8080/startups/${startupId}/upload-csv`, {
+        method: "PUT",
+        body: formData,
+      });
+  
+      if (response.ok) {
+        toast.success("File uploaded successfully!");
+      } else {
+        const errorData = await response.json();
+        toast.error(`Failed to upload file: ${errorData.message || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error("An error occurred while uploading the file.");
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -146,23 +201,28 @@ export default function Startupadd() {
 
   const validateCompanyInformation = () => {
     if (!formData.companyName) return toast.error("Company Name is required.");
-    if (!formData.companyDescription) return toast.error("Company Description is required.");
+    if (!formData.companyDescription)
+      return toast.error("Company Description is required.");
     if (!formData.foundedDate) return toast.error("Founded Date is required.");
-    if (!formData.numberOfEmployees) return toast.error("Number of Employees is required.");
-    if (!formData.typeOfCompany) return toast.error("Type of Company is required.");
+    if (!formData.numberOfEmployees)
+      return toast.error("Number of Employees is required.");
+    if (!formData.typeOfCompany)
+      return toast.error("Type of Company is required.");
     if (!formData.industry) return toast.error("Industry is required.");
     return ""; // No errors
   };
 
   const validateContactInformation = () => {
     if (!formData.phoneNumber) return toast.error("Phone Number is required.");
-    if (!formData.contactEmail) return toast.error("Contact Email is required.");
+    if (!formData.contactEmail)
+      return toast.error("Contact Email is required.");
     if (!formData.website) return toast.error("Website is required.");
     return ""; // No errors
   };
 
   const validateAddressInformation = () => {
-    if (!formData.streetAddress) return toast.error("Street Address is required.");
+    if (!formData.streetAddress)
+      return toast.error("Street Address is required.");
     if (!formData.city) return toast.error("City is required.");
     if (!formData.province) return toast.error("Province is required.");
     if (!formData.country) return toast.error("Country is required.");
@@ -173,7 +233,7 @@ export default function Startupadd() {
   const validateSocialMediaLinks = () => {
     if (!formData.facebook) return toast.error("Facebook URL is required.");
     if (!formData.linkedIn) return toast.error("LinkedIn URL is required.");
-    return ""; 
+    return "";
   };
 
   const handleNext = () => {
@@ -209,28 +269,34 @@ export default function Startupadd() {
     }
   };
 
-  const handleSubmit = async() =>{
+  const handleSubmit = async () => {
     try {
-        const response = await fetch('http://localhost:8080/startups',{
-            method:"POST",
-            headers:{
-                "Content-Type":"application/json"
-            },
-            body: JSON.stringify(formData),
-            credentials:'include'
-        })
+      const response = await fetch("http://localhost:8080/startups", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formData),
+        credentials: "include",
+      });
 
-        const data = await response.json();
-        if(response.ok){
-            console.log("Check your company email for verifation: ",data);
-            setVerificationMOdal(true)
-        }else{
-            console.log("Error adding a startup: ",data);
-        }
+      const data = await response.json();
+      if (response.ok) {
+        console.log("Startup added successfully: ", data);
+        const startupId = data.id; // Fetch the startup ID from the response
+        toast.success("Startup added successfully!");
+        setUploadedFile(null); // Reset the uploaded file state
+        setStartupId(startupId); // Store the startup ID for the upload
+        setVerificationMOdal(true)
+      } else {
+        console.error("Error adding a startup: ", data);
+        toast.error("Failed to add startup.");
+      }
     } catch (error) {
-        console.log(error)
+      console.error("Error:", error);
+      toast.error("An error occurred while adding the startup.");
     }
-  }
+  };
 
   return (
     <div className="bg-gray-100 min-h-screen text-gray-800 relative">
@@ -248,7 +314,6 @@ export default function Startupadd() {
                   ? "text-[#1D3557] border-b-2 border-[#1D3557]"
                   : "text-gray-500"
               }`}
-              onClick={() => setSelectedTab(tab)}
             >
               {tab}
             </div>
@@ -608,6 +673,106 @@ export default function Startupadd() {
             </div>
           </div>
         )}
+        {selectedTab === "Additional Information" && (
+          <form className="grid grid-cols-2 gap-6">
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Funding Stage
+              </label>
+              <select
+                name="fundingStage"
+                className="w-full border border-gray-300 rounded-md px-4 py-2"
+                value={formData.fundingStage}
+                onChange={handleChange}
+              >
+                <option value="">Select funding stage</option>
+                <option value="bootstrapped">Bootstrapped</option>
+                <option value="seed">Seed</option>
+                <option value="series_a">Series A</option>
+                <option value="series_b">Series B</option>
+                <option value="series_c">Series C</option>
+                <option value="ipo">IPO</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Business Activity
+              </label>
+              <input
+                type="text"
+                name="businessActivity"
+                placeholder="Describe your business activity"
+                className="w-full border border-gray-300 rounded-md px-4 py-2"
+                value={formData.businessActivity}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Operating Hours
+              </label>
+              <input
+                type="text"
+                name="operatingHours"
+                placeholder="e.g., 9 AM - 5 PM"
+                className="w-full border border-gray-300 rounded-md px-4 py-2"
+                value={formData.operatingHours}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div className="col-span-2 flex justify-between mt-4">
+              <button
+                type="button"
+                className="bg-gray-300 px-6 py-2 rounded-md"
+                onClick={handleBack}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
+                onClick={handleNext}
+              >
+                Next
+              </button>
+            </div>
+          </form>
+        )}
+        {selectedTab === "Upload Data" && (
+          <form className="grid grid-cols-1 gap-6">
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Upload Confidential Data (CSV)
+              </label>
+              <input
+                type="file"
+                accept=".csv" // Restrict file selection to CSV files
+                className="w-full border border-gray-300 rounded-md px-4 py-2"
+                onChange={(e) => handleFileUpload(e)}
+              />
+            </div>
+
+            <div className="col-span-1 flex justify-between mt-4">
+              <button
+                type="button"
+                className="bg-gray-300 px-6 py-2 rounded-md"
+                onClick={handleBack}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
+                onClick={handleFileSubmit}
+              >
+                Upload
+              </button>
+            </div>
+          </form>
+        )}
       </div>
       <ToastContainer
         position="top-right"
@@ -621,7 +786,12 @@ export default function Startupadd() {
         theme="colored"
       />
 
-      {verificationModal && <Verification setVerificationMOdal={setVerificationMOdal}/>}
+      {verificationModal && (
+        <Verification
+          setVerificationMOdal={setVerificationMOdal}
+          setSelectedTab={setSelectedTab}
+        />
+      )}
     </div>
   );
 }
