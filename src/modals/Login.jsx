@@ -20,10 +20,12 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
         credentials: "include",
         body: JSON.stringify({ email, password }),
       });
-
+      
       if (!response.ok) {
+        const data = await response.json()
         const errorData = await response.json();
         console.log(errorData.description);
+        console.log(data)
         throw new Error(errorData.description || "Failed to login");
       } else {
         const data = await response.json();

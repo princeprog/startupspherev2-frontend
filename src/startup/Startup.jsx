@@ -1,4 +1,8 @@
+import { useNavigate } from "react-router-dom";
+
 export default function Startup() {
+
+  const navigate = useNavigate()
   return (
     <div className=" flex flex-col items-center justify-center h-screen">
       <div className="stats shadow">
@@ -115,7 +119,9 @@ export default function Startup() {
           </tfoot>
         </table>
         <div className="flex justify-end">
-          <button className="btn">Add startup</button>
+          <button className="btn"
+            onClick={()=>navigate("/add-startup")}
+          >Add startup</button>
         </div>
       </div>
     </div>
