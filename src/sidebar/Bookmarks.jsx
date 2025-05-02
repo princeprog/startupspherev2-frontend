@@ -1,19 +1,91 @@
-import React, { useState } from 'react';
-import { MdKeyboardReturn } from 'react-icons/md';
+import React, { useState, useEffect } from 'react';
 import { CiLocationOn, CiGlobe } from 'react-icons/ci';
-import { GrLike } from 'react-icons/gr';
-import { FaRegBookmark, FaBookmark } from 'react-icons/fa';
+import { FaBookmark } from 'react-icons/fa';
 
-const Bookmarks = ({ 
-  startups, 
-  investors, 
-  mapInstanceRef, 
-  setViewingStartup, 
-  setViewingInvestor, 
-  removeFromBookmarks,
+const Bookmarks = ({
+  userId,
+  mapInstanceRef,
+  setViewingStartup,
+  setViewingInvestor,
   setContainerMode
 }) => {
+  const [startups, setStartups] = useState([]);
+  const [investors, setInvestors] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("startups"); // Default to startups tab
+
+  const removeFromBookmarks = async (item, type) => {
+    try {
+      const response = await fetch(`http://localhost:8080/api/bookmarks/${item.bookmarkId}`, {
+        method: 'DELETE', 
+        credentials: 'include',
+      });
+
+      if (response.ok) {
+        console.log(`${type} bookmark removed successfully!`);
+
+        if (type === 'startups') {
+          setStartups((prevStartups) =>
+            prevStartups.filter((startup) => startup.bookmarkId !== item.bookmarkId)
+          );
+        } else if (type === 'investors') {
+          setInvestors((prevInvestors) =>
+            prevInvestors.filter((investor) => investor.bookmarkId !== item.bookmarkId)
+          );
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('Error removing bookmark:', errorData);
+      }
+    } catch (error) {
+      console.error('Error in removing bookmark:', error);
+    }
+  };
+
+
+  const fetchBookmarks = async () => {
+    console.log("Fetching bookmarks for user:", userId);
+    setLoading(true);
+    try {
+      const response = await fetch(`http://localhost:8080/api/bookmarks`, {
+        credentials: "include",
+      });
+      const data = await response.json();
+      console.log("Bookmarks fetched:", data);
+
+      const bookmarkedStartups = data
+        .filter(item => item.startup !== null)
+        .map(item => ({
+          ...item.startup,
+          bookmarkId: item.id,
+        }));
+
+      const bookmarkedInvestors = data
+        .filter(item => item.investor !== null)
+        .map(item => ({
+          ...item.investor,
+          bookmarkId: item.id,
+        }));
+
+      setStartups(bookmarkedStartups);
+      setInvestors(bookmarkedInvestors);
+    } catch (error) {
+      console.error("Fetch bookmarks error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    if (userId) {
+      fetchBookmarks();
+    }
+  }, [userId]);
+
+  const handleRemoveBookmark = (item, type) => {
+    removeFromBookmarks(item, type);
+  };
 
   const handlePreviewStartup = (startup) => {
     if (startup.locationLng && startup.locationLat) {
@@ -64,7 +136,7 @@ const Bookmarks = ({
         </button>
 
         <h2 className="text-lg text-black font-semibold">My Bookmarks</h2>
-        
+
         <div className="join join-vertical lg:join-horizontal w-full mt-4">
           <button
             onClick={() => setActiveTab("startups")}
@@ -81,8 +153,12 @@ const Bookmarks = ({
         </div>
       </div>
 
-      <div className="p-2 overflow-y-auto" style={{maxHeight: "calc(100vh - 120px)"}}>
-        {activeTab === "startups" ? (
+      <div className="p-2 overflow-y-auto" style={{ maxHeight: "calc(100vh - 120px)" }}>
+        {loading ? (
+          <div className="text-center py-8 text-gray-500">
+            Loading...
+          </div>
+        ) : activeTab === "startups" ? (
           startups.length > 0 ? (
             startups.map((startup) => (
               <div key={startup.id} className="mb-4 bg-white rounded-lg shadow-md p-4">
@@ -104,7 +180,7 @@ const Bookmarks = ({
                     </span>
                   </div>
                 </div>
-                
+
                 <div className="mt-3 flex items-center justify-between">
                   <button
                     onClick={() => handlePreviewStartup(startup)}
@@ -113,7 +189,7 @@ const Bookmarks = ({
                     Preview
                   </button>
                   <button
-                    onClick={() => removeFromBookmarks(startup, "startups")}
+                    onClick={() => handleRemoveBookmark(startup, "startups")}
                     className="flex items-center text-red-500 hover:text-red-700"
                   >
                     <FaBookmark className="mr-1" />
@@ -129,7 +205,7 @@ const Bookmarks = ({
           )
         ) : investors.length > 0 ? (
           investors.map((investor) => (
-            <div key={investor.investorId} className="mb-4 bg-white rounded-lg shadow-md p-4">
+            <div key={investor.id} className="mb-4 bg-white rounded-lg shadow-md p-4">
               <div className="flex justify-between">
                 <div>
                   <h1 className="text-lg font-semibold text-black">
@@ -152,7 +228,7 @@ const Bookmarks = ({
                   )}
                 </div>
               </div>
-              
+
               <div className="mt-3 flex items-center justify-between">
                 <button
                   onClick={() => handlePreviewInvestor(investor)}
@@ -161,7 +237,7 @@ const Bookmarks = ({
                   Preview
                 </button>
                 <button
-                  onClick={() => removeFromBookmarks(investor, "investors")}
+                  onClick={() => handleRemoveBookmark(investor, "investors")}
                   className="flex items-center text-red-500 hover:text-red-700"
                 >
                   <FaBookmark className="mr-1" />

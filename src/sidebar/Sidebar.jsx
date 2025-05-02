@@ -239,22 +239,7 @@ export default function Sidebar({ mapInstanceRef }) {
     setBookmarkedInvestors(storedBookmarkedInvestors);
   }, []);
 
-  // Function to add a startup to bookmarks
-  const addToBookmarks = (item, type) => {
-    const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
-    const existingBookmarks = JSON.parse(localStorage.getItem(key)) || [];
-    const updatedBookmarks = [
-      item,
-      ...existingBookmarks.filter((i) => i.id !== item.id),
-    ];
-    localStorage.setItem(key, JSON.stringify(updatedBookmarks));
-    // Update state to reflect changes in UI
-    if (type === "startups") {
-      setBookmarkedStartups(updatedBookmarks);
-    } else {
-      setBookmarkedInvestors(updatedBookmarks);
-    }
-  };
+
 
   // Function to remove an item from bookmarks
   const removeFromBookmarks = (item, type) => {
@@ -430,7 +415,6 @@ export default function Sidebar({ mapInstanceRef }) {
       if (response.ok) {
         const likesData = await response.json();
 
-        // ✅ Correctly map liked startup and investor IDs
         const userLikedStartups = likesData
           .filter((like) => like.startupId !== null && like.userId === user.id)
           .map((like) => like.startupId);
@@ -500,6 +484,38 @@ export default function Sidebar({ mapInstanceRef }) {
       }
     } catch (error) {
       console.error("Error toggling like:", error);
+    }
+  };
+
+  const toggleBookmark = async () => {
+    if (!user) {
+      alert("Please log in to bookmark.");
+      return;
+    }
+
+    const payload = {
+      startupId: startup ? startup.id : null,
+      investorId: investor ? investor.id : null
+    };
+
+    try {
+      const response = await fetch("http://localhost:8080/api/bookmarks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert("Bookmark added successfully!");
+      } else {
+        const result = await response.json();
+        alert(`Failed to add bookmark: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Error adding bookmark:", error);
+      alert("An error occurred.");
     }
   };
 
@@ -662,6 +678,7 @@ export default function Sidebar({ mapInstanceRef }) {
                       onClick={()=>navigate("/startup-dashboard")}
 
                       className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition">
+
                         <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
                           Dashboard
                         </span>
@@ -1047,14 +1064,14 @@ export default function Sidebar({ mapInstanceRef }) {
 
       {containerMode === "bookmarks" && (
         <Bookmarks
-          startups={bookmarkedStartups}
-          investors={bookmarkedInvestors}
+          userId={user}
           mapInstanceRef={mapInstanceRef}
           setViewingStartup={setViewingStartup}
           setViewingInvestor={setViewingInvestor}
           removeFromBookmarks={removeFromBookmarks}
           setContainerMode={setContainerMode}
         />
+
       )}
 
       {investor && !viewingStartup && (
@@ -1111,10 +1128,15 @@ export default function Sidebar({ mapInstanceRef }) {
             </div>
           </div>
 
-          <h1 className="text-black flex items-center justify-center hover:underline cursor-pointer">
-            <FaRegBookmark />
-            Add bookmark
-          </h1>
+          <button
+            onClick={() => toggleBookmark(user.id, null, investor.id)}
+            className="text-black flex items-center justify-center hover:underline cursor-pointer"
+          >
+            <FaRegBookmark className="mr-1" />
+            {bookmarkedInvestors.includes(investor.id) ? "Bookmarked" : "Add bookmark"}
+          </button>
+
+
 
           <div className="p-4">
             <button
@@ -1190,10 +1212,15 @@ export default function Sidebar({ mapInstanceRef }) {
             </div>
           </div>
 
-          <h1 className="text-black flex items-center justify-center hover:underline cursor-pointer">
-            <FaRegBookmark />
-            Add bookmark
-          </h1>
+          <button
+            onClick={() => toggleBookmark(user.id, startup.id, null)}
+            className="text-black flex items-center justify-center hover:underline cursor-pointer"
+          >
+            <FaRegBookmark className="mr-1" />
+            {bookmarkedStartups.includes(startup.id) ? "Bookmarked" : "Add bookmark"}
+          </button>
+
+
 
           <div className="p-4">
             <button
