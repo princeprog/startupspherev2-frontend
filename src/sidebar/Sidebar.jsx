@@ -674,9 +674,11 @@ export default function Sidebar({ mapInstanceRef }) {
                       </button>
                     </li>
                     <li>
-                      <button
-                        onClick={() => navigate("/dashboard")}
-                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition">
+                      <button 
+                      onClick={()=>navigate("/startup-dashboard")}
+
+                      className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition">
+
                         <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
                           Dashboard
                         </span>
@@ -1255,7 +1257,7 @@ export default function Sidebar({ mapInstanceRef }) {
         </div>
       )}
 
-      <div className={`flex-1`}>
+      <div className={`flex-1 overflow-auto`}>
         <Outlet />
       </div>
 
