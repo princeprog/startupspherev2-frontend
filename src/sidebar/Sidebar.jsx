@@ -4,13 +4,15 @@ import Login from "../modals/Login";
 import Signup from "../modals/Signup";
 import { CiLocationOn } from "react-icons/ci";
 import { CiGlobe } from "react-icons/ci";
-import { FaRegBookmark } from "react-icons/fa";
+import { FaBookmark } from "react-icons/fa6";
 import { MdKeyboardReturn } from "react-icons/md";
 import Bookmarks from "./Bookmarks"; // Import the Bookmarks component
 import { FaHeart } from "react-icons/fa";
 import { RiLoginBoxFill } from "react-icons/ri";
 import { LuLayoutDashboard } from "react-icons/lu";
 import { FaRegEye } from "react-icons/fa";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export default function Sidebar({ mapInstanceRef }) {
   const navigate = useNavigate()
@@ -35,6 +37,7 @@ export default function Sidebar({ mapInstanceRef }) {
   const [likedStartups, setLikedStartups] = useState([]); // For liked startups
   const [user, setUser] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [isCurrentItemBookmarked, setIsCurrentItemBookmarked] = useState(false);
 
   // Fetch user on mount
   useEffect(() => {
@@ -239,21 +242,6 @@ export default function Sidebar({ mapInstanceRef }) {
     setBookmarkedInvestors(storedBookmarkedInvestors);
   }, []);
 
-
-
-  // Function to remove an item from bookmarks
-  const removeFromBookmarks = (item, type) => {
-    const key = type === "startups" ? "bookmarkedStartups" : "bookmarkedInvestors";
-    const updatedBookmarks = JSON.parse(localStorage.getItem(key)).filter((b) => b.id !== item.id);
-    localStorage.setItem(key, JSON.stringify(updatedBookmarks));
-    // Update state to reflect changes in UI
-    if (type === "startups") {
-      setBookmarkedStartups(updatedBookmarks);
-    } else {
-      setBookmarkedInvestors(updatedBookmarks);
-    }
-  };
-
   useEffect(() => {
     const storedAuthState = localStorage.getItem("isAuthenticated");
     if (storedAuthState === "true") {
@@ -271,6 +259,12 @@ export default function Sidebar({ mapInstanceRef }) {
   };
 
   const handleStartupClick = (startup) => {
+    // Close other sidebars
+    setInvestor(null);
+    setViewingStartup(null);
+    setViewingInvestor(null);
+    setContainerMode(null);
+
     fetch(`http://localhost:8080/startups/${startup.id}/increment-views`, {
       method: 'PUT',
       credentials: 'include', // Include credentials to support session cookies
@@ -328,6 +322,12 @@ export default function Sidebar({ mapInstanceRef }) {
       console.error("Invalid investor object:", investor);
       return;
     }
+
+    // Close other sidebars
+    setStartup(null);
+    setViewingStartup(null);
+    setViewingInvestor(null);
+    setContainerMode(null);
 
     // Increment views on the backend by sending a PUT request
     fetch(`http://localhost:8080/investors/${investor.id}/increment-views`, {
@@ -487,9 +487,35 @@ export default function Sidebar({ mapInstanceRef }) {
     }
   };
 
+  const checkIfBookmarked = async () => {
+    if (!user || (!startup && !investor)) return;
+
+    try {
+      const response = await fetch("http://localhost:8080/api/bookmarks", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const bookmarks = await response.json();
+        const isBookmarked = bookmarks.some(bookmark => 
+          (startup && bookmark.startup?.id === startup.id) || 
+          (investor && bookmark.investor?.id === investor.id)
+        );
+        setIsCurrentItemBookmarked(isBookmarked);
+      }
+    } catch (error) {
+      console.error("Error checking bookmark status:", error);
+    }
+  };
+
+  useEffect(() => {
+    checkIfBookmarked();
+  }, [startup, investor]);
+
   const toggleBookmark = async () => {
     if (!user) {
-      alert("Please log in to bookmark.");
+      toast.error("Please log in to bookmark.");
       return;
     }
 
@@ -499,23 +525,69 @@ export default function Sidebar({ mapInstanceRef }) {
     };
 
     try {
-      const response = await fetch("http://localhost:8080/api/bookmarks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
+      if (isCurrentItemBookmarked) {
+        // If already bookmarked, remove it
+        const checkResponse = await fetch("http://localhost:8080/api/bookmarks", {
+          method: "GET",
+          credentials: "include",
+        });
 
-      if (response.ok) {
-        const result = await response.json();
-        alert("Bookmark added successfully!");
+        if (checkResponse.ok) {
+          const bookmarks = await checkResponse.json();
+          const existingBookmark = bookmarks.find(bookmark => 
+            (startup && bookmark.startup?.id === startup.id) || 
+            (investor && bookmark.investor?.id === investor.id)
+          );
+
+          if (existingBookmark) {
+            const deleteResponse = await fetch(`http://localhost:8080/api/bookmarks/${existingBookmark.id}`, {
+              method: "DELETE",
+              credentials: "include",
+              headers: {
+                "Content-Type": "application/json"
+              }
+            });
+
+            if (deleteResponse.ok) {
+              if (startup) {
+                setBookmarkedStartups(prev => prev.filter(id => id !== startup.id));
+              } else if (investor) {
+                setBookmarkedInvestors(prev => prev.filter(id => id !== investor.id));
+              }
+              setIsCurrentItemBookmarked(false);
+              toast.success("Bookmark removed successfully!");
+            } else {
+              toast.error("Failed to remove bookmark");
+            }
+          }
+        }
       } else {
-        const result = await response.json();
-        alert(`Failed to add bookmark: ${result.message}`);
+        // If not bookmarked, add it
+        const addResponse = await fetch("http://localhost:8080/api/bookmarks", {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json"
+          },
+          credentials: "include",
+          body: JSON.stringify(payload)
+        });
+
+        if (addResponse.ok) {
+          const result = await addResponse.json();
+          if (startup) {
+            setBookmarkedStartups(prev => [...prev, startup.id]);
+          } else if (investor) {
+            setBookmarkedInvestors(prev => [...prev, investor.id]);
+          }
+          setIsCurrentItemBookmarked(true);
+          toast.success("Bookmark added successfully!");
+        } else {
+          toast.error("Failed to add bookmark");
+        }
       }
     } catch (error) {
-      console.error("Error adding bookmark:", error);
-      alert("An error occurred.");
+      console.error("Error toggling bookmark:", error);
+      toast.error("An error occurred while toggling bookmark.");
     }
   };
 
@@ -551,6 +623,17 @@ export default function Sidebar({ mapInstanceRef }) {
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden">
+      <ToastContainer
+        position="bottom-right"
+        autoClose={1000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
       {viewingStartup && (
         <div className="absolute w-fit top-4 left-1/2 transform -translate-x-1/2 bg-white shadow-md rounded-lg px-4 py-2 z-50 flex items-center space-x-2">
           <button
@@ -603,6 +686,8 @@ export default function Sidebar({ mapInstanceRef }) {
                       fetchUserLikes();
                       setContainerMode("search");
                       setShowSearchContainer((prev) => !prev);
+                      setViewingStartup(null);
+                      setViewingInvestor(null);
                     }}
                   >
                     <svg
@@ -637,6 +722,8 @@ export default function Sidebar({ mapInstanceRef }) {
                           setShowSearchContainer(false); // Close the search container
                           setStartup(null)
                           setInvestor(null)
+                          setViewingStartup(null);
+                          setViewingInvestor(null);
                         }}
                       >
                         <svg
@@ -658,13 +745,17 @@ export default function Sidebar({ mapInstanceRef }) {
                         </span>
                       </button>
                     </li>
-                    ; {/* Bookmarks Icon */}
+                    {/* Bookmarks Icon */}
                     <li>
                       <button
                         className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
                         onClick={() => {
                           setContainerMode("bookmarks");
                           setShowSearchContainer(false); // Close the search container
+                          setStartup(null);
+                          setInvestor(null);
+                          setViewingStartup(null);
+                          setViewingInvestor(null);
                         }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-7 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -1068,10 +1159,8 @@ export default function Sidebar({ mapInstanceRef }) {
           mapInstanceRef={mapInstanceRef}
           setViewingStartup={setViewingStartup}
           setViewingInvestor={setViewingInvestor}
-          removeFromBookmarks={removeFromBookmarks}
           setContainerMode={setContainerMode}
         />
-
       )}
 
       {investor && !viewingStartup && (
@@ -1106,15 +1195,25 @@ export default function Sidebar({ mapInstanceRef }) {
 
             {/* Like button area */}
             <div className="flex flex-col items-center w-16 shrink-0">
-              <button
-                onClick={() => toggleLike(user.id, null, investor.id)}
-                className={`cursor-pointer text-2xl ${likedInvestors.includes(investor.id) ? "text-red-500" : "text-gray-500"}`}
-              >
-                <FaHeart />
-              </button>
-              <p className="text-sm text-black text-center">
-                {investorLikeCounts[investor.id] || 0}
-              </p>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => toggleLike(user.id, null, investor.id)}
+                    className={`cursor-pointer text-2xl ${likedInvestors.includes(investor.id) ? "text-red-500" : "text-gray-500"}`}
+                  >
+                    <FaHeart />
+                  </button>
+                  <p className="text-sm text-black ml-1">
+                    {investorLikeCounts[investor.id] || 0}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleBookmark}
+                  className={`cursor-pointer text-2xl ${isCurrentItemBookmarked ? "text-blue-500" : "text-gray-500"}`}
+                >
+                  <FaBookmark />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1127,16 +1226,6 @@ export default function Sidebar({ mapInstanceRef }) {
               </p>
             </div>
           </div>
-
-          <button
-            onClick={() => toggleBookmark(user.id, null, investor.id)}
-            className="text-black flex items-center justify-center hover:underline cursor-pointer"
-          >
-            <FaRegBookmark className="mr-1" />
-            {bookmarkedInvestors.includes(investor.id) ? "Bookmarked" : "Add bookmark"}
-          </button>
-
-
 
           <div className="p-4">
             <button
@@ -1192,14 +1281,25 @@ export default function Sidebar({ mapInstanceRef }) {
 
             {/* Like button area */}
             <div className="flex flex-col items-center space-y-1">
-              <button
-                onClick={() => toggleLike(user.id, startup.id, null)}
-                className={`cursor-pointer text-2xl ${likedStartups.includes(startup.id) ? "text-red-500" : "text-gray-500"
-                  }`}
-              >
-                <FaHeart />
-              </button>
-              <p className="text-sm text-black">{startupLikeCounts[startup.id] || 0}</p>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center">
+                  <button
+                    onClick={() => toggleLike(user.id, startup.id, null)}
+                    className={`cursor-pointer text-2xl ${likedStartups.includes(startup.id) ? "text-red-500" : "text-gray-500"}`}
+                  >
+                    <FaHeart />
+                  </button>
+                  <p className="text-sm text-black ml-1">
+                    {startupLikeCounts[startup.id] || 0}
+                  </p>
+                </div>
+                <button
+                  onClick={toggleBookmark}
+                  className={`cursor-pointer text-2xl ${isCurrentItemBookmarked ? "text-blue-500" : "text-gray-500"}`}
+                >
+                  <FaBookmark />
+                </button>
+              </div>
             </div>
           </div>
           {/* View count area */}
@@ -1211,16 +1311,6 @@ export default function Sidebar({ mapInstanceRef }) {
               </p>
             </div>
           </div>
-
-          <button
-            onClick={() => toggleBookmark(user.id, startup.id, null)}
-            className="text-black flex items-center justify-center hover:underline cursor-pointer"
-          >
-            <FaRegBookmark className="mr-1" />
-            {bookmarkedStartups.includes(startup.id) ? "Bookmarked" : "Add bookmark"}
-          </button>
-
-
 
           <div className="p-4">
             <button

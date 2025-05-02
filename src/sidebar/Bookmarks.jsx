@@ -16,9 +16,16 @@ const Bookmarks = ({
 
   const removeFromBookmarks = async (item, type) => {
     try {
-      const response = await fetch(`http://localhost:8080/api/bookmarks/${item.bookmarkId}`, {
-        method: 'DELETE', 
+      console.log("Removing bookmark:", item);
+      const bookmarkId = item.id;
+      console.log("Using bookmarkId:", bookmarkId);
+      
+      const response = await fetch(`http://localhost:8080/api/bookmarks/${bookmarkId}`, {
+        method: 'DELETE',
         credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (response.ok) {
@@ -26,30 +33,37 @@ const Bookmarks = ({
 
         if (type === 'startups') {
           setStartups((prevStartups) =>
-            prevStartups.filter((startup) => startup.bookmarkId !== item.bookmarkId)
+            prevStartups.filter((startup) => startup.id !== item.id)
           );
         } else if (type === 'investors') {
           setInvestors((prevInvestors) =>
-            prevInvestors.filter((investor) => investor.bookmarkId !== item.bookmarkId)
+            prevInvestors.filter((investor) => investor.id !== item.id)
           );
         }
       } else {
-        const errorData = await response.json();
-        console.error('Error removing bookmark:', errorData);
+        console.error('Failed to remove bookmark:', await response.text());
       }
     } catch (error) {
       console.error('Error in removing bookmark:', error);
     }
   };
 
-
   const fetchBookmarks = async () => {
     console.log("Fetching bookmarks for user:", userId);
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/bookmarks`, {
-        credentials: "include",
+      const response = await fetch('http://localhost:8080/api/bookmarks', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch bookmarks');
+      }
+
       const data = await response.json();
       console.log("Bookmarks fetched:", data);
 
@@ -57,25 +71,24 @@ const Bookmarks = ({
         .filter(item => item.startup !== null)
         .map(item => ({
           ...item.startup,
-          bookmarkId: item.id,
+          id: item.id // Use the bookmark's ID
         }));
 
       const bookmarkedInvestors = data
         .filter(item => item.investor !== null)
         .map(item => ({
           ...item.investor,
-          bookmarkId: item.id,
+          id: item.id // Use the bookmark's ID
         }));
 
       setStartups(bookmarkedStartups);
       setInvestors(bookmarkedInvestors);
     } catch (error) {
-      console.error("Fetch bookmarks error:", error);
+      console.error("Fetch bookmarks error:", error.message);
     } finally {
       setLoading(false);
     }
   };
-
 
   useEffect(() => {
     if (userId) {
