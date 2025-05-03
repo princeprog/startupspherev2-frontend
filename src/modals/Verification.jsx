@@ -1,56 +1,88 @@
-export default function Verification({setVerificationMOdal,setSelectedTab}) {
+import { useState } from "react";
+import { toast } from "react-toastify";
+
+export default function Verification({ setVerificationModal, setSelectedTab, startupId, contactEmail }) {
+  const [verificationCode, setVerificationCode] = useState("");
+  const [error, setError] = useState("");
+
+  const handleVerify = async () => {
+    if (!verificationCode) {
+      toast.error("Please enter the verification code.");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:8080/startups/verify-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          startupId,
+          email: contactEmail,
+          code: verificationCode,
+        }),
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        toast.success("Email verified successfully!");
+        setVerificationModal(false);
+        setSelectedTab("Upload Data");
+      } else {
+        const errorData = await response.json();
+        toast.error(`Verification failed: ${errorData.message || "Invalid code"}`);
+        setError(errorData.message || "Invalid code");
+      }
+    } catch (error) {
+      console.error("Error verifying email:", error);
+      toast.error("An error occurred while verifying the email.");
+      setError("An error occurred while verifying the email.");
+    }
+  };
+
+  const handleClose = () => {
+    setVerificationModal(false);
+    setSelectedTab("Additional Information"); // Go back to form if canceled
+  };
+
   return (
-    <div id="modal">
-      <div className="fixed inset-0 p-4 flex flex-wrap justify-center items-center w-full h-full z-[1000] before:fixed before:inset-0 before:w-full before:h-full before:bg-[rgba(0,0,0,0.5)] overflow-auto">
-        <div className="w-full max-w-lg bg-white shadow-lg rounded-lg p-6 relative">
-          <svg
-            id="closeIcon"
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-3.5 h-3.5 cursor-pointer shrink-0 fill-gray-400 hover:fill-red-500 float-right"
-            viewBox="0 0 320.591 320.591"
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-md shadow-md w-1/3">
+        <h2 className="text-xl font-semibold mb-4">Verify Your Email</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          A verification code has been sent to {contactEmail}. Please enter the code below.
+        </p>
+        <div className="mb-4">
+          <label className="block mb-1 text-sm font-medium">Verification Code</label>
+          <input
+            type="text"
+            value={verificationCode}
+            onChange={(e) => setVerificationCode(e.target.value)}
+            placeholder="Enter code"
+            className="w-full border border-gray-300 rounded-md px-4 py-2"
+          />
+          {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+        </div>
+        <div className="flex justify-end gap-4">
+          <button
+            type="button"
+            className="bg-gray-300 px-4 py-2 rounded-md"
+            onClick={handleClose}
           >
-            <path
-              d="M30.391 318.583a30.37 30.37 0 0 1-21.56-7.288c-11.774-11.844-11.774-30.973 0-42.817L266.643 10.665c12.246-11.459 31.462-10.822 42.921 1.424 10.362 11.074 10.966 28.095 1.414 39.875L51.647 311.295a30.366 30.366 0 0 1-21.256 7.288z"
-              data-original="#000000"
-            ></path>
-            <path
-              d="M287.9 318.583a30.37 30.37 0 0 1-21.257-8.806L8.83 51.963C-2.078 39.225-.595 20.055 12.143 9.146c11.369-9.736 28.136-9.736 39.504 0l259.331 257.813c12.243 11.462 12.876 30.679 1.414 42.922-.456.487-.927.958-1.414 1.414a30.368 30.368 0 0 1-23.078 7.288z"
-              data-original="#000000"
-            ></path>
-          </svg>
-
-          <div className="my-10 text-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="w-14 shrink-0 fill-green-500 inline"
-              viewBox="0 0 512 512"
-            >
-              <path
-                d="M383.841 171.838c-7.881-8.31-21.02-8.676-29.343-.775L221.987 296.732l-63.204-64.893c-8.005-8.213-21.13-8.393-29.35-.387-8.213 7.998-8.386 21.137-.388 29.35l77.492 79.561a20.687 20.687 0 0 0 14.869 6.275 20.744 20.744 0 0 0 14.288-5.694l147.373-139.762c8.316-7.888 8.668-21.027.774-29.344z"
-                data-original="#000000"
-              />
-              <path
-                d="M256 0C114.84 0 0 114.84 0 256s114.84 256 256 256 256-114.84 256-256S397.16 0 256 0zm0 470.487c-118.265 0-214.487-96.214-214.487-214.487 0-118.265 96.221-214.487 214.487-214.487 118.272 0 214.487 96.221 214.487 214.487 0 118.272-96.215 214.487-214.487 214.487z"
-                data-original="#000000"
-              />
-            </svg>
-            <h4 className="text-xl text-slate-900 font-semibold mt-4">
-              Startup Added Successfully!
-            </h4>
-            <p className="text-sm text-slate-500 leading-relaxed mt-4">
-              Please check your email inbox for a verification link to confirm
-              your email address. This step is required to ensure your email is
-              valid and to complete the process.
-            </p>
-          </div>
-
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="bg-[#1D3557] text-white px-4 py-2 rounded-md"
+            onClick={handleVerify}
+          >
+            Verify
+          </button>
           <button
             id="closeButton"
             type="button"
-            onClick={()=>{
-              setVerificationMOdal(false)
-              setSelectedTab("Upload Data")
-            }}
+            onClick={handleClose}
             className="px-5 py-2.5 w-full rounded-lg text-white text-sm font-medium border-none outline-none bg-gray-800 hover:bg-gray-700"
           >
             Got it
