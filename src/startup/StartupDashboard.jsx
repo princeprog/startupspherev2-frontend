@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Select, Option } from "@material-tailwind/react";
+import { FaEye } from "react-icons/fa";
+import { BiLike } from "react-icons/bi";
+import { FaBookBookmark } from "react-icons/fa6";
+
 import {
   Chart as ChartJS,
   ArcElement,
@@ -10,7 +13,7 @@ import {
   PointElement,
   LineElement,
 } from "chart.js";
-import { Doughnut, Line } from "react-chartjs-2"; // Import Doughnut and Line components
+import { Doughnut, Line } from "react-chartjs-2";
 
 import Card from "../components/Card";
 import CardContent from "../components/CardContent";
@@ -27,283 +30,50 @@ ChartJS.register(
 );
 
 export default function StartupDashboard() {
-  const [likes, setLikes] = useState(null);
   const [startupIds, setStartupIds] = useState([]);
-  const [bookmarks, setBookmarks] = useState(null);
-  const [views, setViews] = useState(null);
   const [startups, setStartups] = useState([]);
-  const [selectedStartup, setSelectedStartup] = useState(null);
-  const [view, setView] = useState(null);
-  const [bookmark, setBookmark] = useState(null);
-  const [like, setLike] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [selectedStartup, setSelectedStartup] = useState("all"); 
+
+  const [metrics, setMetrics] = useState({
+    views: 0,
+    likes: 0,
+    bookmarks: 0,
+  });
+
+  const [loading, setLoading] = useState(true); 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [error, setError] = useState(null); 
   const navigate = useNavigate();
 
-  const fetchStartupIds = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:8080/startups/my-startups",
-        {
-          credentials: "include",
-        }
-      );
-      const data = await response.json();
-      if (response.ok) {
-        console.log("Startup IDs fetched successfully: ", data);
-        setStartupIds(data);
-        fetchLikes(data);
-        fetchBookmarks(data);
-        fetchViews(data);
-      } else {
-        console.log("Error fetching startup IDs: ", data);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
+  const months = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+  ];
 
-  const fetchStartups = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:8080/startups/my-startups/details",
-        {
-          credentials: "include",
-        }
-      );
-      const data = await response.json();
-      if (response.ok) {
-        console.log("Startups fetched successfully: ", data);
-        setStartups(data);
-      } else {
-        console.log("error fetching startups: ", data);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const fetchLikes = async (ids) => {
-    try {
-      let totalLikes = 0;
-      for (const id of ids) {
-        const response = await fetch(
-          `http://localhost:8080/api/likes/count/startup/${id}`,
-          {
-            credentials: "include",
-          }
-        );
-        const data = await response.json();
-        if (response.ok) {
-          console.log(`Likes for startup ${id}: `, data);
-          totalLikes += data;
-        } else {
-          console.log(`Error fetching likes for startup ${id}: `, data);
-        }
-      }
-
-      setLikes(totalLikes);
-      console.log("Total likes: ", totalLikes);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const fetchBookmarks = async (ids) => {
-    try {
-      let totalBookmarks = 0;
-      for (const id of ids) {
-        const response = await fetch(
-          `http://localhost:8080/api/bookmarks/count/startup/${id}`,
-          {
-            credentials: "include",
-          }
-        );
-        const data = await response.json();
-        if (response.ok) {
-          console.log(`Bookmarks for startup ${id}: `, data);
-          totalBookmarks += data;
-        } else {
-          console.log(`Error fetching bookmarks for startup ${id}: `, data);
-        }
-      }
-
-      setBookmarks(totalBookmarks);
-      console.log("Total bookmarks: ", totalBookmarks);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const fetchViews2 = async (id) => {
-    try {
-      const response = await fetch(
-        `http://localhost:8080/startups/${id}/view-count`,
-        {
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-      if (response.ok) {
-        console.log("Views fetched successfully: ", data);
-        setView(data);
-      } else {
-        console.log("Error fetching views: ", data);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const fetchBookmarks2 = async (id) => {
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/bookmarks/count/startup/${id}`,
-        {
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-      if (response.ok) {
-        console.log("bookmarks fetched successfully: ", data);
-        setBookmark(data);
-      } else {
-        console.log("Error fetching bookmarks: ", data);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const fetchLikes2 = async (id) => {
-    try {
-      const response = await fetch(
-        `http://localhost:8080/api/likes/count/startup/${id}`,
-        {
-          credentials: "include",
-        }
-      );
-
-      const data = await response.json();
-      if (response.ok) {
-        console.log("likes fetched successfully: ", data);
-        setLike(data);
-      } else {
-        console.log("Error fetching likes: ", data);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  useEffect(() => {
-    setLoading(true);
-    if (selectedStartup) {
-      fetchViews2(selectedStartup);
-      fetchBookmarks2(selectedStartup);
-      fetchLikes2(selectedStartup);
-      fetchLikesGroupedByMonth(selectedStartup);
-    }
-    setLoading(false);
-  }, [selectedStartup]);
-
-  const fetchViews = async (ids) => {
-    try {
-      let totalViews = 0;
-      for (const id of ids) {
-        const response = await fetch(
-          `http://localhost:8080/startups/${id}/view-count`,
-          {
-            credentials: "include",
-          }
-        );
-        const data = await response.json();
-        if (response.ok) {
-          console.log(`views for startup ${id}: `, data);
-          totalViews += data;
-        } else {
-          console.log(`Error fetching views for startup ${id}: `, data);
-        }
-      }
-
-      setViews(totalViews);
-      console.log("Total bookmarks: ", totalViews);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  const handleChange = (e) => {
-    const selectedId = e.target.value;
-    setSelectedStartup(selectedId);
-    console.log("Selected Startup ID: ", selectedId);
-  };
-
-  useEffect(() => {
-    fetchStartupIds();
-    fetchStartups();
-  }, []);
-
-  const centerTextPlugin = {
-    id: "centerText",
-    beforeDraw(chart) {
-      const { width, height, ctx } = chart;
-      ctx.save();
-
-      const text = chart.config.data.labels[0] || "";
-
-      let fontSize = Math.min(width, height) / 10;
-      ctx.font = `${fontSize}px sans-serif`;
-      ctx.textBaseline = "middle";
-      ctx.textAlign = "center";
-      ctx.fillStyle = "#3b82f6";
-
-      const centerX = width / 2;
-      const centerY = height / 2;
-
-      ctx.fillText(text, centerX, centerY);
-      ctx.restore();
-    },
-  };
-
-  const donutData = {
-    labels: ["Pinoy Tech Solutions"],
+  const [donutData, setDonutData] = useState({
+    labels: ["Likes", "Bookmarks", "Views"],
     datasets: [
       {
-        data: [100],
-        backgroundColor: ["#3b82f6"],
+        data: [0, 0, 0],
+        backgroundColor: ["#3b82f6", "#10b981", "#f59e0b"],
         borderWidth: 0,
       },
     ],
-  };
-
-  const companyInfo = {
-    companyName: "TechNova",
-    foundedDate: "2020",
-    typeOfCompany: "Software",
-    industry: "Information Technology",
-    contactEmail: "contact@technova.com",
-    phoneNumber: "+1234567890",
-    locationName: "San Francisco, CA",
-    website: "https://technova.com",
-  };
+  });
 
   const [engagementData, setEngagementData] = useState({
-    labels: [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "June",
-      "July",
-      "Aug",
-      "Sept",
-      "Oct",
-      "Nov",
-      "Dec",
-    ],
+    labels: months,
     datasets: [
       {
         label: "Likes",
@@ -313,206 +83,866 @@ export default function StartupDashboard() {
       },
       {
         label: "Bookmarks",
-        data: [3, 5, 4, 0, 5, 8, 6],
+        data: Array(12).fill(0),
         borderColor: "#10b981",
         fill: false,
       },
       {
         label: "Views",
-        data: [20, 30, 25, 35, 28, 45, 38],
+        data: Array(12).fill(0),
         borderColor: "#f59e0b",
         fill: false,
       },
     ],
   });
 
-  const fetchLikesGroupedByMonth = async (startupId) => {
+  const fetchStartupIds = async () => {
     try {
+      setError(null);
       const response = await fetch(
-        `http://localhost:8080/api/likes/grouped-by-month/startup/${startupId}`,
+        "http://localhost:8080/startups/my-startups",
         {
           credentials: "include",
         }
       );
+
+      if (!response.ok) {
+        throw new Error(`Error fetching startup IDs: ${response.status}`);
+      }
+
       const data = await response.json();
+      console.log("Startup IDs fetched successfully: ", data);
 
-      if (response.ok) {
-        console.log("Likes grouped by month fetched successfully: ", data);
-
-        // Map the response to the chart data
-        const months = [
-          "January",
-          "February",
-          "March",
-          "April",
-          "May",
-          "June",
-          "July",
-          "August",
-          "September",
-          "October",
-          "November",
-          "December",
-        ];
-        const likesData = months.map((month) => data[month] || 0);
-
-        setEngagementData((prevData) => ({
-          ...prevData,
-          datasets: [
-            {
-              ...prevData.datasets[0],
-              data: likesData,
-            },
-          ],
-        }));
+      if (Array.isArray(data)) {
+        setStartupIds(data);
+        return data; 
       } else {
-        console.log("Error fetching likes grouped by month: ", data);
+        console.error("Expected array of startup IDs but got:", data);
+        setStartupIds([]);
+        return [];
       }
     } catch (error) {
-      console.log("Error fetching likes grouped by month: ", error);
+      console.error("Error fetching startup IDs:", error);
+      setError("Failed to load startup IDs. Please try again later.");
+      setStartupIds([]);
+      return [];
     }
   };
 
+  const fetchStartups = async () => {
+    try {
+      setError(null);
+      const response = await fetch(
+        "http://localhost:8080/startups/my-startups/details",
+        {
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Error fetching startups: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Startups fetched successfully: ", data);
+
+      if (Array.isArray(data)) {
+        setStartups(data);
+        return data; 
+      } else {
+        console.error("Expected array of startups but got:", data);
+        setStartups([]);
+        return [];
+      }
+    } catch (error) {
+      console.error("Error fetching startups:", error);
+      setError("Failed to load startup details. Please try again later.");
+      setStartups([]);
+      return [];
+    }
+  };
+
+  const fetchTotalMetrics = async (ids) => {
+    if (!ids || ids.length === 0) {
+      console.log("No startup IDs to fetch metrics for");
+      setMetrics({ views: 0, likes: 0, bookmarks: 0 });
+      return;
+    }
+
+    try {
+      setError(null);
+      let totalLikes = 0;
+      let totalBookmarks = 0;
+      let totalViews = 0;
+
+      const promises = [];
+
+      for (const id of ids) {
+        promises.push(
+          fetch(`http://localhost:8080/api/likes/count/startup/${id}`, {
+            credentials: "include",
+          })
+            .then((response) => {
+              if (response.ok) return response.json();
+              return 0;
+            })
+            .then((data) => {
+              totalLikes += data;
+            })
+            .catch((err) => {
+              console.error(`Error fetching likes for startup ${id}:`, err);
+            })
+        );
+      }
+
+      for (const id of ids) {
+        promises.push(
+          fetch(`http://localhost:8080/api/bookmarks/count/startup/${id}`, {
+            credentials: "include",
+          })
+            .then((response) => {
+              if (response.ok) return response.json();
+              return 0;
+            })
+            .then((data) => {
+              totalBookmarks += data;
+            })
+            .catch((err) => {
+              console.error(`Error fetching bookmarks for startup ${id}:`, err);
+            })
+        );
+      }
+
+      for (const id of ids) {
+        promises.push(
+          fetch(`http://localhost:8080/startups/${id}/view-count`, {
+            credentials: "include",
+          })
+            .then((response) => {
+              if (response.ok) return response.json();
+              return 0;
+            })
+            .then((data) => {
+              totalViews += data;
+            })
+            .catch((err) => {
+              console.error(`Error fetching views for startup ${id}:`, err);
+            })
+        );
+      }
+
+      await Promise.all(promises);
+
+      const newMetrics = {
+        likes: totalLikes,
+        bookmarks: totalBookmarks,
+        views: totalViews,
+      };
+
+      setMetrics(newMetrics);
+
+      console.log("Total metrics:", newMetrics);
+
+      updateDonutChart("all", totalLikes, totalBookmarks, totalViews);
+
+      return newMetrics;
+    } catch (error) {
+      console.error("Error fetching total metrics:", error);
+      setError("Failed to load metrics. Please try again later.");
+      return null;
+    }
+  };
+
+  const handleChange = async (e) => {
+    const selectedId = e.target.value;
+    setSelectedStartup(selectedId);
+    setLoading(true);
+
+    try {
+      setError(null);
+      if (selectedId === "all") {
+        await fetchAllStartupsData();
+      } else {
+        await fetchSingleStartupData(selectedId);
+      }
+    } catch (error) {
+      console.error("Error handling startup selection change:", error);
+      setError("Failed to load selected startup data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAllStartupsData = async () => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      let ids = startupIds;
+      if (ids.length === 0) {
+        ids = await fetchStartupIds();
+      }
+
+      const totalMetrics = await fetchTotalMetrics(ids);
+
+      if (totalMetrics) {
+        updateDonutChart(
+          "all",
+          totalMetrics.likes,
+          totalMetrics.bookmarks,
+          totalMetrics.views
+        );
+      }
+
+      await fetchAllStartupsEngagementData();
+
+      await fetchStartupMetrics();
+    } catch (error) {
+      console.error("Error fetching all startups data:", error);
+      setError("Failed to load startup metrics.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStartupMetrics = async () => {
+    if (startups.length === 0) {
+      console.log("No startups to fetch metrics for");
+      return;
+    }
+
+    try {
+      setError(null);
+      const updatedStartups = [...startups];
+
+      await Promise.all(
+        updatedStartups.map(async (startup, index) => {
+          try {
+            const [likesResponse, bookmarksResponse, viewsResponse] =
+              await Promise.all([
+                fetch(
+                  `http://localhost:8080/api/likes/count/startup/${startup.id}`,
+                  {
+                    credentials: "include",
+                  }
+                ),
+                fetch(
+                  `http://localhost:8080/api/bookmarks/count/startup/${startup.id}`,
+                  {
+                    credentials: "include",
+                  }
+                ),
+                fetch(
+                  `http://localhost:8080/startups/${startup.id}/view-count`,
+                  {
+                    credentials: "include",
+                  }
+                ),
+              ]);
+
+            const likesData = likesResponse.ok ? await likesResponse.json() : 0;
+            const bookmarksData = bookmarksResponse.ok
+              ? await bookmarksResponse.json()
+              : 0;
+            const viewsData = viewsResponse.ok ? await viewsResponse.json() : 0;
+
+            // Update the startup object with metrics
+            updatedStartups[index] = {
+              ...startup,
+              likes: likesData,
+              bookmarks: bookmarksData,
+              views: viewsData,
+            };
+          } catch (error) {
+            console.error(
+              `Error fetching metrics for startup ${startup.id}:`,
+              error
+            );
+            updatedStartups[index] = {
+              ...startup,
+              error: true,
+            };
+          }
+        })
+      );
+
+      setStartups(updatedStartups);
+    } catch (error) {
+      console.error("Error fetching individual startup metrics:", error);
+    }
+  };
+
+  const fetchSingleStartupData = async (startupId) => {
+    try {
+      setError(null);
+      const [viewsResponse, likesResponse, bookmarksResponse] =
+        await Promise.all([
+          fetch(`http://localhost:8080/startups/${startupId}/view-count`, {
+            credentials: "include",
+          }),
+          fetch(`http://localhost:8080/api/likes/count/startup/${startupId}`, {
+            credentials: "include",
+          }),
+          fetch(
+            `http://localhost:8080/api/bookmarks/count/startup/${startupId}`,
+            {
+              credentials: "include",
+            }
+          ),
+        ]);
+
+      const viewsData = viewsResponse.ok ? await viewsResponse.json() : 0;
+      const likesData = likesResponse.ok ? await likesResponse.json() : 0;
+      const bookmarksData = bookmarksResponse.ok
+        ? await bookmarksResponse.json()
+        : 0;
+
+      setMetrics({
+        views: viewsData,
+        likes: likesData,
+        bookmarks: bookmarksData,
+      });
+
+      const selectedStartupObj = startups.find((s) => s.id === startupId);
+      if (selectedStartupObj) {
+        updateDonutChart(startupId, likesData, bookmarksData, viewsData);
+      }
+
+      await fetchSingleStartupEngagementData(startupId);
+    } catch (error) {
+      console.error(`Error fetching data for startup ID ${startupId}:`, error);
+      setError("Failed to load startup data.");
+    }
+  };
+
+  const updateDonutChart = (
+    startupId,
+    likesValue,
+    bookmarksValue,
+    viewsValue
+  ) => {
+    if (startupId === "all") {
+      if (startups.length === 0) {
+        setDonutData({
+          labels: ["No Data"],
+          datasets: [
+            {
+              data: [1],
+              backgroundColor: ["#cccccc"],
+              borderWidth: 0,
+            },
+          ],
+        });
+        return;
+      }
+
+      const colors = startups.map(
+        (_, index) => `hsl(${(index * 360) / startups.length}, 70%, 50%)`
+      );
+
+      const startupMetrics = startups.map((startup) => {
+        const startupLikes = startup.likes || 1;
+        return startupLikes;
+      });
+
+      setDonutData({
+        labels: startups.map((startup) => startup.companyName),
+        datasets: [
+          {
+            data: startupMetrics,
+            backgroundColor: colors,
+            borderWidth: 0,
+          },
+        ],
+      });
+    } else {
+      setDonutData({
+        labels: ["Likes", "Bookmarks", "Views"],
+        datasets: [
+          {
+            data: [likesValue, bookmarksValue, viewsValue],
+            backgroundColor: ["#3b82f6", "#10b981", "#f59e0b"],
+            borderWidth: 0,
+          },
+        ],
+      });
+    }
+  };
+
+  const fetchAllStartupsEngagementData = async () => {
+    try {
+      setError(null);
+      const [viewsResponse, bookmarksResponse, likesResponse] =
+        await Promise.all([
+          fetch(
+            "http://localhost:8080/api/views/grouped-by-month/logged-in-user-startups",
+            {
+              credentials: "include",
+            }
+          ),
+          fetch(
+            "http://localhost:8080/api/bookmarks/grouped-by-month/logged-in-user-startups",
+            {
+              credentials: "include",
+            }
+          ),
+          fetch(
+            "http://localhost:8080/api/likes/grouped-by-month/logged-in-user-startups",
+            {
+              credentials: "include",
+            }
+          ),
+        ]);
+
+      const viewsData = viewsResponse.ok ? await viewsResponse.json() : {};
+      const bookmarksData = bookmarksResponse.ok
+        ? await bookmarksResponse.json()
+        : {};
+      const likesData = likesResponse.ok ? await likesResponse.json() : {};
+
+      console.log("All startups engagement data:", {
+        views: viewsData,
+        bookmarks: bookmarksData,
+        likes: likesData,
+      });
+
+      updateEngagementChart(viewsData, bookmarksData, likesData);
+    } catch (error) {
+      console.error("Error fetching engagement data for all startups:", error);
+    }
+  };
+
+  const fetchSingleStartupEngagementData = async (startupId) => {
+    try {
+      setError(null);
+      const [viewsResponse, bookmarksResponse, likesResponse] =
+        await Promise.all([
+          fetch(`http://localhost:8080/api/views/count-by-month/${startupId}`, {
+            credentials: "include",
+          }),
+          fetch(
+            `http://localhost:8080/api/bookmarks/grouped-by-month/startup/${startupId}`,
+            {
+              credentials: "include",
+            }
+          ),
+          fetch(
+            `http://localhost:8080/api/likes/grouped-by-month/startup/${startupId}`,
+            {
+              credentials: "include",
+            }
+          ),
+        ]);
+
+      const viewsData = viewsResponse.ok ? await viewsResponse.json() : {};
+      const bookmarksData = bookmarksResponse.ok
+        ? await bookmarksResponse.json()
+        : {};
+      const likesData = likesResponse.ok ? await likesResponse.json() : {};
+
+      console.log("Single startup engagement data:", {
+        views: viewsData,
+        bookmarks: bookmarksData,
+        likes: likesData,
+      });
+
+      updateEngagementChart(viewsData, bookmarksData, likesData);
+    } catch (error) {
+      console.error(
+        `Error fetching engagement data for startup ID ${startupId}:`,
+        error
+      );
+    }
+  };
+
+  const updateEngagementChart = (viewsData, bookmarksData, likesData) => {
+    const normalizedViewsData = typeof viewsData === "object" ? viewsData : {};
+    const normalizedBookmarksData =
+      typeof bookmarksData === "object" ? bookmarksData : {};
+    const normalizedLikesData = typeof likesData === "object" ? likesData : {};
+
+    const viewsValues = months.map((month) => normalizedViewsData[month] || 0);
+    const bookmarksValues = months.map(
+      (month) => normalizedBookmarksData[month] || 0
+    );
+    const likesValues = months.map((month) => normalizedLikesData[month] || 0);
+
+    setEngagementData({
+      labels: months,
+      datasets: [
+        {
+          label: "Views",
+          data: viewsValues,
+          borderColor: "#f59e0b", 
+          fill: false,
+          tension: 0.1, 
+        },
+        {
+          label: "Bookmarks",
+          data: bookmarksValues,
+          borderColor: "#10b981",
+          fill: false,
+          tension: 0.1,
+        },
+        {
+          label: "Likes",
+          data: likesValues,
+          borderColor: "#3b82f6", 
+          fill: false,
+          tension: 0.1,
+        },
+      ],
+    });
+  };
+
+  const filteredStartups = startups.filter((startup) => {
+    const query = searchQuery.toLowerCase();
+    return (
+      startup.companyName?.toLowerCase().includes(query) ||
+      startup.industry?.toLowerCase().includes(query) ||
+      startup.locationName?.toLowerCase().includes(query)
+    );
+  });
+
+  const handleFilterClick = (filter) => {
+    setActiveFilter(filter);
+
+    if (selectedStartup === "all") {
+      fetchAllStartupsData();
+    } else {
+      fetchSingleStartupData(selectedStartup);
+    }
+  };
+
+  const centerTextPlugin = {
+    id: "centerText",
+    beforeDraw(chart) {
+      const { width, height, ctx } = chart;
+      ctx.save();
+
+      let text, subText;
+      if (selectedStartup === "all") {
+        text = "All Startups";
+        subText = `${startups.length} Companies`;
+      } else {
+        const selectedStartupObj = startups.find(
+          (s) => s.id === selectedStartup
+        );
+        text = selectedStartupObj?.companyName || "Startup";
+        subText = selectedStartupObj?.industry || "";
+      }
+
+      const mainFontSize = Math.min(width, height) * 0.1;
+      const subFontSize = mainFontSize * 0.5;
+
+      const centerX = width / 2;
+      const centerY = height / 2;
+
+      ctx.font = `bold ${mainFontSize}px sans-serif`;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#3b82f6";
+
+      if (text.length > 10) {
+        const words = text.split(" ");
+        let line = "";
+        let lines = [];
+
+        for (let i = 0; i < words.length; i++) {
+          const testLine = line + words[i] + " ";
+          if (testLine.length > 10 && i > 0) {
+            lines.push(line);
+            line = words[i] + " ";
+          } else {
+            line = testLine;
+          }
+        }
+        lines.push(line);
+
+        const totalHeight = lines.length * mainFontSize * 1.2;
+        let startY = centerY - totalHeight / 2 + mainFontSize / 2;
+
+        lines.forEach((line, index) => {
+          ctx.fillText(
+            line.trim(),
+            centerX,
+            startY + index * mainFontSize * 1.2
+          );
+        });
+
+        if (subText) {
+          ctx.font = `${subFontSize}px sans-serif`;
+          ctx.fillStyle = "#64748b"; 
+          ctx.fillText(subText, centerX, startY + totalHeight + subFontSize);
+        }
+      } else {
+        ctx.fillText(text, centerX, centerY - (subText ? subFontSize : 0));
+
+        if (subText) {
+          ctx.font = `${subFontSize}px sans-serif`;
+          ctx.fillStyle = "#64748b"; 
+          ctx.fillText(subText, centerX, centerY + mainFontSize * 0.7);
+        }
+      }
+
+      ctx.restore();
+    },
+  };
+
+  useEffect(() => {
+    const initializeData = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const ids = await fetchStartupIds();
+
+        await fetchStartups();
+
+        if (ids && ids.length > 0) {
+          await fetchAllStartupsData();
+        } else {
+          console.log("No startup IDs found, skipping metrics fetch");
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error during initialization:", error);
+        setError("Failed to initialize dashboard. Please try again later.");
+        setLoading(false);
+      }
+    };
+
+    initializeData();
+  }, []);
+
   return (
-    <div className="p-18 px-42 space-y-6 border-amber-300 bg-white text-black">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-6 md:p-8 lg:p-10 space-y-6 bg-white text-black">
+      {error && (
+        <div className="alert alert-error">
+          <div className="flex-1">
+            <label>{error}</label>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
         <input
           type="text"
           placeholder="Search Startups"
-          className="input input-bordered w-full max-w-xs bg-white border-gray-300 border-2"
+          className="input input-bordered w-full md:max-w-xs bg-white border-gray-300 border-2"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
         />
-        <div className="space-x-2">
-          <button className="btn btn-primary btn-sm">All</button>
-          <button className="btn btn-outline btn-sm">Likes</button>
-          <button className="btn btn-outline btn-sm">Bookmarks</button>
-          <button className="btn btn-outline btn-sm">Views</button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            className={`btn ${
+              activeFilter === "All" ? "btn-primary" : "btn-outline"
+            } btn-sm`}
+            onClick={() => handleFilterClick("All")}
+          >
+            All
+          </button>
+          <button
+            className={`btn ${
+              activeFilter === "Likes" ? "btn-primary" : "btn-outline"
+            } btn-sm`}
+            onClick={() => handleFilterClick("Likes")}
+          >
+            Likes
+          </button>
+          <button
+            className={`btn ${
+              activeFilter === "Bookmarks" ? "btn-primary" : "btn-outline"
+            } btn-sm`}
+            onClick={() => handleFilterClick("Bookmarks")}
+          >
+            Bookmarks
+          </button>
+          <button
+            className={`btn ${
+              activeFilter === "Views" ? "btn-primary" : "btn-outline"
+            } btn-sm`}
+            onClick={() => handleFilterClick("Views")}
+          >
+            Views
+          </button>
         </div>
       </div>
 
       <div className="stats shadow w-full text-black">
         <div className="stat place-items-center">
           <div className="stat-title text-black">Views</div>
-          <div className="stat-value">{views}</div>
+          <div className="stat-value">{loading ? "..." : metrics.views}</div>
         </div>
 
         <div className="stat place-items-center">
           <div className="stat-title text-black">Bookmarks</div>
-          <div className="stat-value text-secondary ">{bookmarks}</div>
+          <div className="stat-value text-secondary">
+            {loading ? "..." : metrics.bookmarks}
+          </div>
         </div>
 
         <div className="stat place-items-center">
           <div className="stat-title text-black">Likes</div>
-          <div className="stat-value">{likes}</div>
+          <div className="stat-value">{loading ? "..." : metrics.likes}</div>
         </div>
       </div>
-      <div className="flex">
-        <div className="card w-full p-4 bg-white shadow-md rounded-md">
-          <div className="flex items-center">
-            <h3 className="text-lg font-bold text-blue-900 w-full">
+
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="card w-full lg:w-1/2 p-4 bg-white shadow-md rounded-md">
+          <div className="flex flex-col md:flex-row md:items-center gap-4">
+            <h3 className="text-lg font-bold text-blue-900">
               {startupIds.length} Total Startups
             </h3>
-            <form className="max-w-sm mx-auto flex w-full">
+            <div className="w-full max-w-sm">
               <label
-                htmlFor="countries"
-                className="block mb-2 text-sm font-medium text-gray-900 dark:text-white"
+                htmlFor="startup-select"
+                className="block mb-2 text-sm font-medium text-gray-900"
               >
-                Select an option
+                Select a startup
               </label>
               <select
-                value={selectedStartup} // Bind the state to the select element
+                id="startup-select"
+                value={selectedStartup}
                 onChange={handleChange}
                 className="bg-gray-50 border border-gray-300 text-black text-sm rounded-lg 
-           focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 
-           dark:bg-white dark:border-gray-600 dark:placeholder-gray-400 
-           dark:text-black dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
+                disabled={loading}
               >
-                <option value="">Select a startup</option>
+                <option value="all">All Startups</option>
                 {startups.map((st) => (
                   <option value={st.id} key={st.id}>
                     {st.companyName}
                   </option>
                 ))}
               </select>
-            </form>
+            </div>
           </div>
 
-          {selectedStartup ? (
+          {loading ? (
+            <div className="flex justify-center items-center h-48">
+              <div className="loading loading-spinner loading-lg text-blue-900"></div>
+            </div>
+          ) : (
             <>
-              <div className="text-center flex items-center justify-evenly text-sm font-semibold text-gray-400">
-                <div className="mx-4">
+              <div className="text-center flex flex-wrap items-center justify-evenly text-sm font-semibold text-gray-400 mt-4">
+                <div className="mx-4 my-2">
                   <p>Views</p>
-                  <p className="text-2xl">{view} 👁️</p>
+                  <p className="text-2xl flex items-center">
+                    {metrics.views} <FaEye className="ml-2 text-blue-900" />
+                  </p>
                 </div>
-                <div className="mx-4">
+                <div className="mx-4 my-2">
                   <p>Likes</p>
-                  <p className="text-2xl">{like} 👍</p>
+                  <p className="text-2xl flex items-center">
+                    {metrics.likes} <BiLike className="ml-2 text-blue-900" />
+                  </p>
                 </div>
-                <div className="mx-4">
+                <div className="mx-4 my-2">
                   <p>Bookmarks</p>
-                  <p className="text-2xl">{bookmark} 📘</p>
+                  <p className="text-2xl flex items-center">
+                    {metrics.bookmarks}{" "}
+                    <FaBookBookmark className="ml-2 text-blue-900" />
+                  </p>
                 </div>
               </div>
-              <div className="w-40 h-40 mx-auto p-1 border-4 border-blue-900 mt-2 rounded-full flex items-center justify-center">
+              <div className="w-40 h-40 mx-auto p-1 border-4 border-blue-900 mt-4 rounded-full flex items-center justify-center">
                 <Doughnut
                   data={donutData}
                   options={{
                     plugins: {
                       legend: {
-                        display: false, // Hide the default legend
+                        display: false,
+                      },
+                      tooltip: {
+                        enabled: true,
+                        callbacks: {
+                          title: (tooltipItems) => {
+                            return donutData.labels[tooltipItems[0].dataIndex];
+                          },
+                          label: (context) => {
+                            const label = donutData.labels[context.dataIndex];
+                            const value =
+                              donutData.datasets[0].data[context.dataIndex];
+
+                            if (selectedStartup === "all") {
+                              return `${label}: ${value} likes`;
+                            } else {
+                              const metrics = ["Likes", "Bookmarks", "Views"];
+                              return `${metrics[context.dataIndex]}: ${value}`;
+                            }
+                          },
+                        },
                       },
                     },
+                    cutout: "70%",
+                    animation: {
+                      animateRotate: true,
+                      animateScale: true,
+                    },
                   }}
-                  plugins={[centerTextPlugin]} // Add the custom plugin
+                  plugins={[centerTextPlugin]}
                 />
               </div>
             </>
-          ) : (
-            <div className="text-xl h-full content-center text-center text-gray-500 text-sm font-semibold">
-              No selected startup
-            </div>
           )}
         </div>
 
-        <Card className="w-full">
+        <Card className="w-full lg:w-1/2">
           <CardContent>
             <h2 className="text-xl text-blue-900 font-semibold mb-2">
               Engagement Over Time
             </h2>
-            <div className="w-full h-64">
-              <Line
-                data={engagementData}
-                options={{
-                  maintainAspectRatio: false, // Disable aspect ratio to allow custom sizing
-                  responsive: true,
-                  plugins: {
-                    legend: {
-                      position: "top",
-                    },
-                  },
-                  scales: {
-                    x: {
-                      title: {
-                        display: true,
-                        text: "Months in a year",
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="loading loading-spinner loading-lg text-blue-900"></div>
+              </div>
+            ) : (
+              <div className="w-full h-64">
+                <Line
+                  data={engagementData}
+                  options={{
+                    maintainAspectRatio: false,
+                    responsive: true,
+                    plugins: {
+                      legend: {
+                        position: "top",
+                      },
+                      tooltip: {
+                        mode: "index",
+                        intersect: false,
                       },
                     },
-                    y: {
-                      title: {
-                        display: true,
-                        text: "Engagement Metrics",
+                    scales: {
+                      x: {
+                        title: {
+                          display: true,
+                          text: "Months",
+                        },
+                      },
+                      y: {
+                        title: {
+                          display: true,
+                          text: "Engagement Count",
+                        },
+                        beginAtZero: true,
                       },
                     },
-                  },
-                }}
-              />
-            </div>
+                    interaction: {
+                      mode: "nearest",
+                      axis: "x",
+                      intersect: false,
+                    },
+                  }}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="table">
-          {/* head */}
+        <table className="table w-full">
           <thead className="text-white bg-blue-900">
             <tr>
               <th>Startup Name</th>
@@ -523,44 +953,72 @@ export default function StartupDashboard() {
             </tr>
           </thead>
           <tbody>
-            {startups.map((st) => (
+            {loading ? (
               <tr>
-                <td>
-                  <div className="flex items-center gap-3">
-                    <div className="avatar">
-                      <div className="mask mask-squircle h-12 w-12">
-                        <img
-                          src="https://img.daisyui.com/images/profile/demo/2@94.webp"
-                          alt="Avatar Tailwind CSS Component"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <div className="font-bold">{st.companyName}</div>
-                      <div className="text-sm opacity-50">
-                        {st.locationName}
-                      </div>
-                    </div>
-                  </div>
+                <td colSpan={5} className="text-center py-4">
+                  Loading...
                 </td>
-                <td>
-                  {st.industry}
-                  <br />
-                  <span className="badge badge-ghost badge-sm">
-                    {st.website}
-                  </span>
-                </td>
-                <td>{st.foundedDate}</td>
-                <td>{st.contactEmail}</td>
-                <td>{st.phoneNumber}</td>
               </tr>
-            ))}
+            ) : filteredStartups.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="text-center py-4">
+                  No startups found
+                </td>
+              </tr>
+            ) : (
+              filteredStartups.map((st) => {
+                const formattedDate = st.foundedDate
+                  ? new Date(st.foundedDate).toLocaleDateString("en-US", {
+                      month: "numeric",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "N/A";
+
+                return (
+                  <tr key={st.id} className="hover">
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <div className="avatar">
+                          <div className="mask mask-squircle h-12 w-12">
+                            <img
+                              src="https://img.daisyui.com/images/profile/demo/2@94.webp"
+                              alt="Company Logo"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-bold">{st.companyName}</div>
+                          <div className="text-sm opacity-50">
+                            {st.locationName || "Location not specified"}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      {st.industry || "N/A"}
+                      <br />
+                      <span className="badge badge-ghost badge-sm">
+                        {st.website || "No website"}
+                      </span>
+                    </td>
+                    <td>{formattedDate}</td>
+                    <td>{st.contactEmail || "N/A"}</td>
+                    <td>{st.phoneNumber || "N/A"}</td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
-        <div className="text-right">
-          <button 
-          onClick={()=>navigate("/add-startup")}
-          className="btn btn-primary">Add Startup</button>
+        <div className="text-right mt-4">
+          <button
+            onClick={() => navigate("/add-startup")}
+            className="btn btn-primary"
+            disabled={loading}
+          >
+            Add Startup
+          </button>
         </div>
       </div>
     </div>
