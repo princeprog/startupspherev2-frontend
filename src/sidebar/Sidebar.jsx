@@ -15,7 +15,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function Sidebar({ mapInstanceRef }) {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   const [openLogin, setOpenLogin] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -62,7 +62,6 @@ export default function Sidebar({ mapInstanceRef }) {
 
     fetchCurrentUser();
   }, []);
-
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -236,8 +235,10 @@ export default function Sidebar({ mapInstanceRef }) {
 
   // Fetch the bookmarked items from localStorage
   useEffect(() => {
-    const storedBookmarkedStartups = JSON.parse(localStorage.getItem("bookmarkedStartups")) || [];
-    const storedBookmarkedInvestors = JSON.parse(localStorage.getItem("bookmarkedInvestors")) || [];
+    const storedBookmarkedStartups =
+      JSON.parse(localStorage.getItem("bookmarkedStartups")) || [];
+    const storedBookmarkedInvestors =
+      JSON.parse(localStorage.getItem("bookmarkedInvestors")) || [];
     setBookmarkedStartups(storedBookmarkedStartups);
     setBookmarkedInvestors(storedBookmarkedInvestors);
   }, []);
@@ -258,29 +259,60 @@ export default function Sidebar({ mapInstanceRef }) {
     setShowTooltip((prev) => !prev);
   };
 
+  const addView = async (id) => {
+    try {
+      const response = await fetch("http://localhost:8080/api/views", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: id }),
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        console.log("View added successfully");
+      } else if (response.status === 400) {
+        // Handle 400 Bad Request
+        const contentType = response.headers.get("Content-Type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          console.log("Bad Request (JSON): ", errorData.message);
+        } else {
+          const errorText = await response.text();
+          console.log("Bad Request (Text): ", errorText); 
+        }
+      } else {
+        const errorData = await response.json().catch(() => null); // Handle non-JSON responses
+        console.log("Error adding view: ", errorData || response.statusText);
+      }
+    } catch (error) {
+      console.log("Error: ", error);
+    }
+  };
+
   const handleStartupClick = (startup) => {
-    // Close other sidebars
     setInvestor(null);
     setViewingStartup(null);
     setViewingInvestor(null);
     setContainerMode(null);
-
+    addView(startup.id);
     fetch(`http://localhost:8080/startups/${startup.id}/increment-views`, {
-      method: 'PUT',
-      credentials: 'include', // Include credentials to support session cookies
+      method: "PUT",
+      credentials: "include", // Include credentials to support session cookies
     })
       .then((response) => {
         if (response.ok) {
-          console.log('Views incremented successfully');
+          console.log("Views incremented successfully");
 
           // After incrementing views, fetch the updated view count
           fetch(`http://localhost:8080/startups/${startup.id}/views`, {
-            method: 'GET',
-            credentials: 'include', // Include credentials to support session cookies
+            method: "GET",
+            credentials: "include", // Include credentials to support session cookies
           })
             .then((response) => response.json())
             .then((views) => {
-              console.log('Updated views count:', views);
+              console.log("Updated views count:", views);
 
               // Optionally, update the UI with the new view count
               setStartup((prevStartup) => ({
@@ -289,14 +321,14 @@ export default function Sidebar({ mapInstanceRef }) {
               }));
             })
             .catch((error) => {
-              console.error('Error fetching updated view count:', error);
+              console.error("Error fetching updated view count:", error);
             });
         } else {
-          console.error('Failed to increment views');
+          console.error("Failed to increment views");
         }
       })
       .catch((error) => {
-        console.error('Error incrementing views:', error);
+        console.error("Error incrementing views:", error);
       });
 
     // Zoom into the startup's location on the map if valid location data exists
@@ -312,7 +344,7 @@ export default function Sidebar({ mapInstanceRef }) {
     }
 
     // Add the startup to recents and update the UI
-    addToRecents(startup, 'startups'); // Add to recents
+    addToRecents(startup, "startups"); // Add to recents
     setStartup(startup); // Set the startup object
     setShowSearchContainer(false); // Close the search container
   };
@@ -331,21 +363,21 @@ export default function Sidebar({ mapInstanceRef }) {
 
     // Increment views on the backend by sending a PUT request
     fetch(`http://localhost:8080/investors/${investor.id}/increment-views`, {
-      method: 'PUT',
-      credentials: 'include', // Include credentials to support session cookies
+      method: "PUT",
+      credentials: "include", // Include credentials to support session cookies
     })
       .then((response) => {
         if (response.ok) {
-          console.log('Views incremented successfully');
+          console.log("Views incremented successfully");
 
           // After incrementing views, fetch the updated view count
           fetch(`http://localhost:8080/investors/${investor.id}/views`, {
-            method: 'GET',
-            credentials: 'include', // Include credentials to support session cookies
+            method: "GET",
+            credentials: "include", // Include credentials to support session cookies
           })
             .then((response) => response.json())
             .then((views) => {
-              console.log('Updated views count:', views);
+              console.log("Updated views count:", views);
               // Optionally, update the UI with the new view count
               setInvestor((prevInvestor) => ({
                 ...prevInvestor,
@@ -353,14 +385,14 @@ export default function Sidebar({ mapInstanceRef }) {
               }));
             })
             .catch((error) => {
-              console.error('Error fetching updated view count:', error);
+              console.error("Error fetching updated view count:", error);
             });
         } else {
-          console.error('Failed to increment views');
+          console.error("Failed to increment views");
         }
       })
       .catch((error) => {
-        console.error('Error incrementing views:', error);
+        console.error("Error incrementing views:", error);
       });
 
     // Zoom into the investor's location on the map if valid location data exists
@@ -380,8 +412,6 @@ export default function Sidebar({ mapInstanceRef }) {
     setInvestor(investor); // Set the investor object
     setShowSearchContainer(false); // Close the search container
   };
-
-
 
   useEffect(() => {
     if (containerMode === "recents") {
@@ -498,9 +528,10 @@ export default function Sidebar({ mapInstanceRef }) {
 
       if (response.ok) {
         const bookmarks = await response.json();
-        const isBookmarked = bookmarks.some(bookmark => 
-          (startup && bookmark.startup?.id === startup.id) || 
-          (investor && bookmark.investor?.id === investor.id)
+        const isBookmarked = bookmarks.some(
+          (bookmark) =>
+            (startup && bookmark.startup?.id === startup.id) ||
+            (investor && bookmark.investor?.id === investor.id)
         );
         setIsCurrentItemBookmarked(isBookmarked);
       }
@@ -521,38 +552,49 @@ export default function Sidebar({ mapInstanceRef }) {
 
     const payload = {
       startupId: startup ? startup.id : null,
-      investorId: investor ? investor.id : null
+      investorId: investor ? investor.id : null,
     };
 
     try {
       if (isCurrentItemBookmarked) {
         // If already bookmarked, remove it
-        const checkResponse = await fetch("http://localhost:8080/api/bookmarks", {
-          method: "GET",
-          credentials: "include",
-        });
+        const checkResponse = await fetch(
+          "http://localhost:8080/api/bookmarks",
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
 
         if (checkResponse.ok) {
           const bookmarks = await checkResponse.json();
-          const existingBookmark = bookmarks.find(bookmark => 
-            (startup && bookmark.startup?.id === startup.id) || 
-            (investor && bookmark.investor?.id === investor.id)
+          const existingBookmark = bookmarks.find(
+            (bookmark) =>
+              (startup && bookmark.startup?.id === startup.id) ||
+              (investor && bookmark.investor?.id === investor.id)
           );
 
           if (existingBookmark) {
-            const deleteResponse = await fetch(`http://localhost:8080/api/bookmarks/${existingBookmark.id}`, {
-              method: "DELETE",
-              credentials: "include",
-              headers: {
-                "Content-Type": "application/json"
+            const deleteResponse = await fetch(
+              `http://localhost:8080/api/bookmarks/${existingBookmark.id}`,
+              {
+                method: "DELETE",
+                credentials: "include",
+                headers: {
+                  "Content-Type": "application/json",
+                },
               }
-            });
+            );
 
             if (deleteResponse.ok) {
               if (startup) {
-                setBookmarkedStartups(prev => prev.filter(id => id !== startup.id));
+                setBookmarkedStartups((prev) =>
+                  prev.filter((id) => id !== startup.id)
+                );
               } else if (investor) {
-                setBookmarkedInvestors(prev => prev.filter(id => id !== investor.id));
+                setBookmarkedInvestors((prev) =>
+                  prev.filter((id) => id !== investor.id)
+                );
               }
               setIsCurrentItemBookmarked(false);
               toast.success("Bookmark removed successfully!");
@@ -565,19 +607,19 @@ export default function Sidebar({ mapInstanceRef }) {
         // If not bookmarked, add it
         const addResponse = await fetch("http://localhost:8080/api/bookmarks", {
           method: "POST",
-          headers: { 
-            "Content-Type": "application/json"
+          headers: {
+            "Content-Type": "application/json",
           },
           credentials: "include",
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
         });
 
         if (addResponse.ok) {
           const result = await addResponse.json();
           if (startup) {
-            setBookmarkedStartups(prev => [...prev, startup.id]);
+            setBookmarkedStartups((prev) => [...prev, startup.id]);
           } else if (investor) {
-            setBookmarkedInvestors(prev => [...prev, investor.id]);
+            setBookmarkedInvestors((prev) => [...prev, investor.id]);
           }
           setIsCurrentItemBookmarked(true);
           toast.success("Bookmark added successfully!");
@@ -591,10 +633,8 @@ export default function Sidebar({ mapInstanceRef }) {
     }
   };
 
-
   const [startupLikeCounts, setStartupLikeCounts] = useState({});
   const [investorLikeCounts, setInvestorLikeCounts] = useState({});
-
 
   useEffect(() => {
     fetch("http://localhost:8080/api/likes", {
@@ -607,10 +647,12 @@ export default function Sidebar({ mapInstanceRef }) {
 
         likes.forEach((like) => {
           if (like.startupId !== null) {
-            startupCounts[like.startupId] = (startupCounts[like.startupId] || 0) + 1;
+            startupCounts[like.startupId] =
+              (startupCounts[like.startupId] || 0) + 1;
           }
           if (like.investorId !== null) {
-            investorCounts[like.investorId] = (investorCounts[like.investorId] || 0) + 1;
+            investorCounts[like.investorId] =
+              (investorCounts[like.investorId] || 0) + 1;
           }
         });
 
@@ -619,7 +661,6 @@ export default function Sidebar({ mapInstanceRef }) {
       })
       .catch((err) => console.error("Failed to fetch likes:", err));
   }, []);
-
 
   return (
     <div className="relative flex h-screen w-screen overflow-hidden">
@@ -720,8 +761,8 @@ export default function Sidebar({ mapInstanceRef }) {
                         onClick={() => {
                           setContainerMode("recents");
                           setShowSearchContainer(false); // Close the search container
-                          setStartup(null)
-                          setInvestor(null)
+                          setStartup(null);
+                          setInvestor(null);
                           setViewingStartup(null);
                           setViewingInvestor(null);
                         }}
@@ -758,18 +799,30 @@ export default function Sidebar({ mapInstanceRef }) {
                           setViewingInvestor(null);
                         }}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-7 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18l7-5 7 5V3H5z" />
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-7 opacity-80"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 3v18l7-5 7 5V3H5z"
+                          />
                         </svg>
-                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">Bookmarks</span>
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                          Bookmarks
+                        </span>
                       </button>
                     </li>
                     <li>
-                      <button 
-                      onClick={()=>navigate("/startup-dashboard")}
-
-                      className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition">
-
+                      <button
+                        onClick={() => navigate("/startup-dashboard")}
+                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                      >
                         <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
                           Dashboard
                         </span>
@@ -805,7 +858,6 @@ export default function Sidebar({ mapInstanceRef }) {
               <span className="invisible absolute start-full top-1/3 ms-4 -translate-y-1/2 rounded-sm bg-gray-900 px-2 py-1.5 text-xs font-medium text-white group-hover:visible">
                 Login
               </span>
-
             </button>
           </div>
         )}
@@ -823,11 +875,12 @@ export default function Sidebar({ mapInstanceRef }) {
                 {isAuthenticated === null
                   ? "?"
                   : isAuthenticated && currentUser
-                    ? `${currentUser.firstname?.[0] ?? ""}${currentUser.lastname?.[0] ?? ""}`.toUpperCase()
-                    : "G"}
+                  ? `${currentUser.firstname?.[0] ?? ""}${
+                      currentUser.lastname?.[0] ?? ""
+                    }`.toUpperCase()
+                  : "G"}
               </span>
             </div>
-
           </div>
 
           {showTooltip && (
@@ -878,7 +931,6 @@ export default function Sidebar({ mapInstanceRef }) {
           )}
         </div>
       </div>
-
 
       {containerMode === "recents" && (
         <div className="absolute left-19 top-0 h-screen w-90 bg-gray-100 shadow-lg z-5 search-container-animate">
@@ -1199,7 +1251,11 @@ export default function Sidebar({ mapInstanceRef }) {
                 <div className="flex items-center">
                   <button
                     onClick={() => toggleLike(user.id, null, investor.id)}
-                    className={`cursor-pointer text-2xl ${likedInvestors.includes(investor.id) ? "text-red-500" : "text-gray-500"}`}
+                    className={`cursor-pointer text-2xl ${
+                      likedInvestors.includes(investor.id)
+                        ? "text-red-500"
+                        : "text-gray-500"
+                    }`}
                   >
                     <FaHeart />
                   </button>
@@ -1209,7 +1265,9 @@ export default function Sidebar({ mapInstanceRef }) {
                 </div>
                 <button
                   onClick={toggleBookmark}
-                  className={`cursor-pointer text-2xl ${isCurrentItemBookmarked ? "text-blue-500" : "text-gray-500"}`}
+                  className={`cursor-pointer text-2xl ${
+                    isCurrentItemBookmarked ? "text-blue-500" : "text-gray-500"
+                  }`}
                 >
                   <FaBookmark />
                 </button>
@@ -1285,7 +1343,11 @@ export default function Sidebar({ mapInstanceRef }) {
                 <div className="flex items-center">
                   <button
                     onClick={() => toggleLike(user.id, startup.id, null)}
-                    className={`cursor-pointer text-2xl ${likedStartups.includes(startup.id) ? "text-red-500" : "text-gray-500"}`}
+                    className={`cursor-pointer text-2xl ${
+                      likedStartups.includes(startup.id)
+                        ? "text-red-500"
+                        : "text-gray-500"
+                    }`}
                   >
                     <FaHeart />
                   </button>
@@ -1295,7 +1357,9 @@ export default function Sidebar({ mapInstanceRef }) {
                 </div>
                 <button
                   onClick={toggleBookmark}
-                  className={`cursor-pointer text-2xl ${isCurrentItemBookmarked ? "text-blue-500" : "text-gray-500"}`}
+                  className={`cursor-pointer text-2xl ${
+                    isCurrentItemBookmarked ? "text-blue-500" : "text-gray-500"
+                  }`}
                 >
                   <FaBookmark />
                 </button>
