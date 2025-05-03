@@ -11,9 +11,10 @@ import Verification from "../modals/Verification";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
+
 export default function Startupadd() {
-  const [selectedTab, setSelectedTab] = useState("Company Information"); // State to track the selected tab
-  const [startupId, setStartupId] = useState(null); // State to store the startup ID
+  const [selectedTab, setSelectedTab] = useState("Company Information");
+  const [startupId, setStartupId] = useState(null);
   const [formData, setFormData] = useState({
     companyName: "",
     companyDescription: "",
@@ -41,10 +42,8 @@ export default function Startupadd() {
     businessActivity: "",
   });
 
-  const [verificationModal, setVerificationMOdal] = useState(false);
-
+  const [verificationModal, setVerificationModal] = useState(false);
   const [error, setError] = useState("");
-
   const tabs = [
     "Company Information",
     "Contact Information",
@@ -52,25 +51,22 @@ export default function Startupadd() {
     "Social Media Links",
     "Additional Information",
     "Location Info",
-    "Upload Data", // New tab for file upload
+    "Upload Data",
   ];
 
   const mapContainerRef = useRef(null);
   const markerRef = useRef(null);
   const geocoderContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
-
   const [uploadedFile, setUploadedFile] = useState(null);
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Check if the file is a CSV
       if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
         toast.error("Invalid file type. Please upload a .csv file.");
         return;
       }
-
       setUploadedFile(file);
       toast.success("CSV file selected successfully!");
     } else {
@@ -83,21 +79,18 @@ export default function Startupadd() {
       toast.error("Please select a file before uploading.");
       return;
     }
-  
     if (!startupId) {
       toast.error("Startup ID is missing. Please add a startup first.");
       return;
     }
-  
     const formData = new FormData();
     formData.append("file", uploadedFile);
-  
     try {
       const response = await fetch(`http://localhost:8080/startups/${startupId}/upload-csv`, {
         method: "PUT",
         body: formData,
+        credentials: "include",
       });
-  
       if (response.ok) {
         toast.success("File uploaded successfully!");
       } else {
@@ -121,7 +114,7 @@ export default function Startupadd() {
   const handleDateChange = (date) => {
     setFormData((prev) => ({
       ...prev,
-      foundedDate: date,
+      foundedDate: date ? date.toISOString().split("T")[0] : null,
     }));
   };
 
@@ -136,29 +129,25 @@ export default function Startupadd() {
 
   const initializeMap = () => {
     if (!mapContainerRef.current || mapInstanceRef.current) {
-      return; // Prevent re-initialization
+      return;
     }
-
     const map = new mapboxgl.Map({
-      container: mapContainerRef.current, // Ensure this is a valid DOM element
+      container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v11",
-      center: [120.9842, 14.5995], // Default center (Manila, Philippines)
+      center: [120.9842, 14.5995],
       zoom: 12,
     });
     mapInstanceRef.current = map;
-
     const geocoder = new MapboxGeocoder({
       accessToken: mapboxgl.accessToken,
       mapboxgl: mapboxgl,
       marker: false,
       placeholder: "Search for places...",
     });
-
     if (geocoderContainerRef.current) {
       geocoderContainerRef.current.innerHTML = "";
       geocoderContainerRef.current.appendChild(geocoder.onAdd(map));
     }
-
     geocoder.on("result", (event) => {
       const { center, place_name } = event.result;
       map.flyTo({ center, zoom: 14 });
@@ -168,14 +157,12 @@ export default function Startupadd() {
         .addTo(map);
       handleMapClick(center[1], center[0], place_name);
     });
-
     map.on("click", (e) => {
       const { lng, lat } = e.lngLat;
       if (markerRef.current) markerRef.current.remove();
       markerRef.current = new mapboxgl.Marker({ color: "red" })
         .setLngLat([lng, lat])
         .addTo(map);
-
       fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}`
       )
@@ -189,7 +176,6 @@ export default function Startupadd() {
           console.error("Failed to fetch location name:", error)
         );
     });
-
     return map;
   };
 
@@ -209,7 +195,7 @@ export default function Startupadd() {
     if (!formData.typeOfCompany)
       return toast.error("Type of Company is required.");
     if (!formData.industry) return toast.error("Industry is required.");
-    return ""; // No errors
+    return "";
   };
 
   const validateContactInformation = () => {
@@ -217,7 +203,7 @@ export default function Startupadd() {
     if (!formData.contactEmail)
       return toast.error("Contact Email is required.");
     if (!formData.website) return toast.error("Website is required.");
-    return ""; // No errors
+    return "";
   };
 
   const validateAddressInformation = () => {
@@ -227,7 +213,7 @@ export default function Startupadd() {
     if (!formData.province) return toast.error("Province is required.");
     if (!formData.country) return toast.error("Country is required.");
     if (!formData.postalCode) return toast.error("Postal Code is required.");
-    return ""; // No errors
+    return "";
   };
 
   const validateSocialMediaLinks = () => {
@@ -238,7 +224,6 @@ export default function Startupadd() {
 
   const handleNext = () => {
     let errorMessage = "";
-
     if (selectedTab === "Company Information") {
       errorMessage = validateCompanyInformation();
     } else if (selectedTab === "Contact Information") {
@@ -248,12 +233,10 @@ export default function Startupadd() {
     } else if (selectedTab === "Social Media Links") {
       errorMessage = validateSocialMediaLinks();
     }
-
     if (errorMessage) {
       setError(errorMessage);
       return;
     }
-
     setError("");
     const currentIndex = tabs.indexOf(selectedTab);
     if (currentIndex < tabs.length - 1) {
@@ -283,14 +266,33 @@ export default function Startupadd() {
       const data = await response.json();
       if (response.ok) {
         console.log("Startup added successfully: ", data);
-        const startupId = data.id; // Fetch the startup ID from the response
-        toast.success("Startup added successfully!");
-        setUploadedFile(null); // Reset the uploaded file state
-        setStartupId(startupId); // Store the startup ID for the upload
-        setVerificationMOdal(true)
+        const startupId = data.id;
+        setStartupId(startupId);
+        setUploadedFile(null);
+
+        // Send verification email
+        const emailResponse = await fetch("http://localhost:8080/startups/send-verification-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startupId,
+            email: formData.contactEmail,
+          }),
+          credentials: "include",
+        });
+
+        if (emailResponse.ok) {
+          toast.success("Startup added successfully! Verification email sent.");
+          setVerificationModal(true);
+        } else {
+          const emailErrorData = await emailResponse.json();
+          toast.error(`Failed to send verification email: ${emailErrorData.message || "Unknown error"}`);
+        }
       } else {
         console.error("Error adding a startup: ", data);
-        toast.error("Failed to add startup.");
+        toast.error(`Failed to add startup: ${data.message || "Unknown error"}`);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -355,7 +357,7 @@ export default function Startupadd() {
                 Founded Date
               </label>
               <DatePicker
-                selected={formData.foundedDate}
+                selected={formData.foundedDate ? new Date(formData.foundedDate) : null}
                 onChange={handleDateChange}
                 placeholderText="Select founded date"
                 className="w-full border border-gray-300 rounded-md px-4 py-2"
@@ -471,7 +473,7 @@ export default function Startupadd() {
                 type="url"
                 name="website"
                 placeholder="Website link"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
+                class    className="w-full border border-gray-300 rounded-md px-4 py-2"
                 value={formData.website}
                 onChange={handleChange}
               />
@@ -613,7 +615,6 @@ export default function Startupadd() {
                 onChange={handleChange}
               />
             </div>
-
             <div>
               <label className="block mb-1 text-sm font-medium">LinkedIn</label>
               <input
@@ -643,36 +644,6 @@ export default function Startupadd() {
             </div>
           </form>
         )}
-        {selectedTab === "Location Info" && (
-          <div className="grid gap-4">
-            <div ref={geocoderContainerRef} className="mb-4" />
-            <div
-              ref={mapContainerRef}
-              className="w-full h-96 rounded-md border border-gray-300"
-            />
-            {formData.locationName && (
-              <p className="text-sm text-gray-600">
-                Selected Location: {formData.locationName}
-              </p>
-            )}
-            <div className="flex justify-between mt-4">
-              <button
-                type="button"
-                className="bg-gray-300 px-6 py-2 rounded-md"
-                onClick={handleBack}
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                className="bg-green-500 text-white px-6 py-2 rounded-md"
-                onClick={handleSubmit}
-              >
-                Submit
-              </button>
-            </div>
-          </div>
-        )}
         {selectedTab === "Additional Information" && (
           <form className="grid grid-cols-2 gap-6">
             <div>
@@ -691,24 +662,9 @@ export default function Startupadd() {
                 <option value="series_a">Series A</option>
                 <option value="series_b">Series B</option>
                 <option value="series_c">Series C</option>
-                <option value="ipo">IPO</option>
+                <option value="public">Public</option>
               </select>
             </div>
-
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Business Activity
-              </label>
-              <input
-                type="text"
-                name="businessActivity"
-                placeholder="Describe your business activity"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.businessActivity}
-                onChange={handleChange}
-              />
-            </div>
-
             <div>
               <label className="block mb-1 text-sm font-medium">
                 Operating Hours
@@ -716,14 +672,59 @@ export default function Startupadd() {
               <input
                 type="text"
                 name="operatingHours"
-                placeholder="e.g., 9 AM - 5 PM"
+                placeholder="Operating hours"
                 className="w-full border border-gray-300 rounded-md px-4 py-2"
                 value={formData.operatingHours}
                 onChange={handleChange}
               />
             </div>
-
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Business Activity
+              </label>
+              <input
+                type="text"
+                name="businessActivity"
+                placeholder="Business activity"
+                className="w-full border border-gray-300 rounded-md px-4 py-2"
+                value={formData.businessActivity}
+                onChange={handleChange}
+              />
+            </div>
             <div className="col-span-2 flex justify-between mt-4">
+              <button
+                type="button"
+                className="bg-gray-300 px-6 py-2 rounded-md"
+                onClick={handleBack}
+              >
+                Back
+              </button>
+              <button
+                type="button"
+                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
+                onClick={handleSubmit}
+              >
+                Submit
+              </button>
+            </div>
+          </form>
+        )}
+        {selectedTab === "Location Info" && (
+          <div>
+            <div ref={geocoderContainerRef} className="mb-4" />
+            <div
+              ref={mapContainerRef}
+              className="w-full h-96 rounded-md"
+            />
+            <div className="mt-4">
+              <p>
+                Selected Location: {formData.locationName || "None"}
+              </p>
+              <p>
+                Latitude: {formData.locationLat || "N/A"}, Longitude: {formData.locationLng || "N/A"}
+              </p>
+            </div>
+            <div className="flex justify-between mt-4">
               <button
                 type="button"
                 className="bg-gray-300 px-6 py-2 rounded-md"
@@ -739,23 +740,27 @@ export default function Startupadd() {
                 Next
               </button>
             </div>
-          </form>
+          </div>
         )}
         {selectedTab === "Upload Data" && (
-          <form className="grid grid-cols-1 gap-6">
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Upload Confidential Data (CSV)
-              </label>
-              <input
-                type="file"
-                accept=".csv" // Restrict file selection to CSV files
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                onChange={(e) => handleFileUpload(e)}
-              />
-            </div>
-
-            <div className="col-span-1 flex justify-between mt-4">
+          <div>
+            <h2 className="text-lg font-semibold mb-4">
+              Upload Startup Data (CSV)
+            </h2>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="mb-4"
+            />
+            <button
+              type="button"
+              className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
+              onClick={handleFileSubmit}
+            >
+              Upload CSV
+            </button>
+            <div className="flex justify-between mt-4">
               <button
                 type="button"
                 className="bg-gray-300 px-6 py-2 rounded-md"
@@ -763,35 +768,21 @@ export default function Startupadd() {
               >
                 Back
               </button>
-              <button
-                type="button"
-                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
-                onClick={handleFileSubmit}
-              >
-                Upload
-              </button>
             </div>
-          </form>
+          </div>
         )}
       </div>
-      <ToastContainer
-        position="top-right"
-        autoClose={3000} // 3 seconds
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="colored"
-      />
 
       {verificationModal && (
         <Verification
-          setVerificationMOdal={setVerificationMOdal}
+          setVerificationModal={setVerificationModal}
           setSelectedTab={setSelectedTab}
+          startupId={startupId}
+          contactEmail={formData.contactEmail}
         />
       )}
+
+      <ToastContainer />
     </div>
   );
 }
