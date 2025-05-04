@@ -37,6 +37,7 @@ export default function Sidebar({ mapInstanceRef }) {
   const [likedStartups, setLikedStartups] = useState([]); // For liked startups
   const [user, setUser] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [loadingImage, setLoadingImage] = useState(false); // New state for image loading
   const [isCurrentItemBookmarked, setIsCurrentItemBookmarked] = useState(false);
 
   // Fetch user on mount
@@ -280,7 +281,7 @@ export default function Sidebar({ mapInstanceRef }) {
           console.log("Bad Request (JSON): ", errorData.message);
         } else {
           const errorText = await response.text();
-          console.log("Bad Request (Text): ", errorText); 
+          console.log("Bad Request (Text): ", errorText);
         }
       } else {
         const errorData = await response.json().catch(() => null); // Handle non-JSON responses
@@ -297,32 +298,55 @@ export default function Sidebar({ mapInstanceRef }) {
     setViewingInvestor(null);
     setContainerMode(null);
     addView(startup.id);
+
+    setLoadingImage(true); // Start loading animation
+
+    // Fetch the startup image
+    fetch(`http://localhost:8080/startups/${startup.id}/photo`, {
+      method: "GET",
+      credentials: "include",
+    })
+      .then((response) => {
+        if (response.ok) {
+          return response.blob(); // Convert the response to a Blob
+        } else {
+          console.error("Failed to fetch startup image");
+          return null;
+        }
+      })
+      .then((blob) => {
+        if (blob) {
+          const imageUrl = URL.createObjectURL(blob); // Create a URL for the image
+          setStartup((prevStartup) => ({
+            ...prevStartup,
+            imageUrl, // Add the image URL to the startup object
+          }));
+        } else {
+          setStartup((prevStartup) => ({
+            ...prevStartup,
+            imageUrl: null, // Set to null if no image is available
+          }));
+        }
+      })
+      .catch((error) => {
+        console.error("Error fetching startup image:", error);
+        setStartup((prevStartup) => ({
+          ...prevStartup,
+          imageUrl: null, // Set to null if an error occurs
+        }));
+      })
+      .finally(() => {
+        setLoadingImage(false); // Stop loading animation
+      });
+
+    // Increment views and other logic
     fetch(`http://localhost:8080/startups/${startup.id}/increment-views`, {
       method: "PUT",
-      credentials: "include", // Include credentials to support session cookies
+      credentials: "include",
     })
       .then((response) => {
         if (response.ok) {
           console.log("Views incremented successfully");
-
-          // After incrementing views, fetch the updated view count
-          fetch(`http://localhost:8080/startups/${startup.id}/views`, {
-            method: "GET",
-            credentials: "include", // Include credentials to support session cookies
-          })
-            .then((response) => response.json())
-            .then((views) => {
-              console.log("Updated views count:", views);
-
-              // Optionally, update the UI with the new view count
-              setStartup((prevStartup) => ({
-                ...prevStartup,
-                viewsCount: views, // Assuming views is the response object
-              }));
-            })
-            .catch((error) => {
-              console.error("Error fetching updated view count:", error);
-            });
         } else {
           console.error("Failed to increment views");
         }
@@ -344,9 +368,9 @@ export default function Sidebar({ mapInstanceRef }) {
     }
 
     // Add the startup to recents and update the UI
-    addToRecents(startup, "startups"); // Add to recents
-    setStartup(startup); // Set the startup object
-    setShowSearchContainer(false); // Close the search container
+    addToRecents(startup, "startups");
+    setStartup(startup);
+    setShowSearchContainer(false);
   };
 
   const handleInvestorClick = (investor) => {
@@ -1322,7 +1346,21 @@ export default function Sidebar({ mapInstanceRef }) {
             />
           </div>
 
-          <div className="image bg-gray-400 h-[13rem]"></div>
+          {/* Display the startup image or loading animation */}
+          <div className="image bg-gray-400 h-[13rem] flex items-center justify-center">
+            {loadingImage ? (
+              <span className="loading loading-spinner text-primary"></span> // Loading animation
+            ) : (
+              <img
+                src={
+                  startup.imageUrl ||
+                  "https://via.placeholder.com/300x200?text=No+Image"
+                } // Use the fetched image or a default placeholder
+                alt={startup.companyName}
+                className="w-full h-full object-cover"
+              />
+            )}
+          </div>
 
           <div className="flex justify-between p-4">
             <div>
@@ -1366,35 +1404,7 @@ export default function Sidebar({ mapInstanceRef }) {
               </div>
             </div>
           </div>
-          {/* View count area */}
-          <div className="flex justify-between p-4 gap-4">
-            <div className="flex-1 min-w-0">
-              <p className="text-black text-1xl font-semibold flex items-center">
-                <FaRegEye className="mr-1 text-2xl text-gray-700" />
-                {startup.viewsCount || 0} {/* Displaying views count here */}
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4">
-            <button
-              className="btn btn-outline btn-warning text-black mr-2"
-              onClick={() => {
-                if (startup && startup.locationLng && startup.locationLat) {
-                  mapInstanceRef.current.flyTo({
-                    center: [startup.locationLng, startup.locationLat],
-                    zoom: 14,
-                    essential: true,
-                  });
-                  setViewingStartup(startup);
-                  setStartup(null);
-                }
-              }}
-            >
-              Preview
-            </button>
-            <button className="btn btn-warning">Update location</button>
-          </div>
+          {/* Other startup details */}
           <div className="p-4">
             <h1 className="text-black font-semibold">{startup.foundedDate}</h1>
             <p className="text-gray-400 font-semibold">Established</p>
@@ -1410,7 +1420,6 @@ export default function Sidebar({ mapInstanceRef }) {
           </div>
         </div>
       )}
-
       <div className={`flex-1 overflow-auto`}>
         <Outlet />
       </div>
