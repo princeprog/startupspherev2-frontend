@@ -329,120 +329,134 @@ export default function Startupadd() {
     }
   };
 
-  const handleSubmit = async () => {
-    // Validate all fields before submission
-    let errorMessage = validateCompanyInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      return;
-    }
-    errorMessage = validateContactInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      return;
-    }
-    errorMessage = validateAddressInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      return;
-    }
-    errorMessage = validateSocialMediaLinks();
-    if (errorMessage) {
-      setError(errorMessage);
-      return;
-    }
-    errorMessage = validateAdditionalInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      return;
-    }
-    errorMessage = validateLocationInfo();
-    if (errorMessage) {
-      setError(errorMessage);
-      return;
-    }
+// ... (other imports and code remain unchanged)
 
-    try {
-      const response = await fetch("http://localhost:8080/startups", {
+const handleSubmit = async () => {
+  // Validate all fields before submission
+  let errorMessage = validateCompanyInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    return;
+  }
+  errorMessage = validateContactInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    return;
+  }
+  errorMessage = validateAddressInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    return;
+  }
+  errorMessage = validateSocialMediaLinks();
+  if (errorMessage) {
+    setError(errorMessage);
+    return;
+  }
+  errorMessage = validateAdditionalInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    return;
+  }
+  errorMessage = validateLocationInfo();
+  if (errorMessage) {
+    setError(errorMessage);
+    return;
+  }
+
+  try {
+    const response = await fetch("http://localhost:8080/startups", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(formData),
+      credentials: "include",
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      console.log("Startup added successfully: ", data);
+      const startupId = data.id;
+      setStartupId(startupId);
+      setUploadedFile(null);
+
+      // Upload image if selected
+      if (uploadedImage) {
+        const imageFormData = new FormData();
+        imageFormData.append("photo", uploadedImage);
+        try {
+          const imageResponse = await fetch(`http://localhost:8080/startups/${startupId}/upload-photo`, {
+            method: "PUT",
+            body: imageFormData,
+            credentials: "include",
+          });
+
+          let imageErrorMessage = "Failed to upload image.";
+          if (!imageResponse.ok) {
+            try {
+              const imageErrorData = await imageResponse.json();
+              imageErrorMessage = imageErrorData.error || imageErrorMessage;
+            } catch (jsonError) {
+              // Handle non-JSON response
+              const text = await imageResponse.text();
+              imageErrorMessage = text || "Failed to upload image: Invalid server response.";
+            }
+            toast.error(imageErrorMessage);
+          } else {
+            const imageSuccessData = await imageResponse.json();
+            toast.success(imageSuccessData.message || "Image uploaded successfully!");
+          }
+        } catch (imageError) {
+          console.error("Error uploading image:", imageError);
+          toast.error("An error occurred while uploading the image.");
+        }
+      }
+
+      // Send verification email
+      const emailResponse = await fetch("http://localhost:8080/startups/send-verification-email", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          startupId,
+          email: formData.contactEmail,
+        }),
         credentials: "include",
       });
 
-      const data = await response.json();
-      if (response.ok) {
-        console.log("Startup added successfully: ", data);
-        const startupId = data.id;
-        setStartupId(startupId);
-        setUploadedFile(null);
-
-        // Upload image if selected
-        if (uploadedImage) {
-          const imageFormData = new FormData();
-          imageFormData.append("photo", uploadedImage);
-          try {
-            const imageResponse = await fetch(`http://localhost:8080/startups/${startupId}/upload-photo`, {
-              method: "PUT",
-              body: imageFormData,
-              credentials: "include",
-            });
-            if (imageResponse.ok) {
-              toast.success("Image uploaded successfully!");
-            } else {
-              const imageErrorData = await imageResponse.json();
-              toast.error(`Failed to upload image: ${imageErrorData.message || "Unknown error"}`);
-            }
-          } catch (imageError) {
-            console.error("Error uploading image:", imageError);
-            toast.error("An error occurred while uploading the image.");
-          }
-        }
-
-        // Send verification email
-        const emailResponse = await fetch("http://localhost:8080/startups/send-verification-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            startupId,
-            email: formData.contactEmail,
-          }),
-          credentials: "include",
-        });
-
-        let emailResponseData;
-        try {
-          emailResponseData = await emailResponse.json();
-        } catch (jsonError) {
-          console.error("Failed to parse email response:", jsonError);
-          toast.error("Failed to send verification email: Invalid server response.");
-          return;
-        }
-
-        if (emailResponse.ok) {
-          toast.success("Startup added successfully! Verification email sent.");
-          setVerificationModal(true);
-        } else {
-          if (emailResponseData.error.includes("Email is already verified")) {
-            toast.info("Email is already verified. Proceeding to upload data.");
-            setSelectedTab("Upload Data");
-          } else {
-            toast.error(`Failed to send verification email: ${emailResponseData.error || "Unknown error"}`);
-          }
-        }
-      } else {
-        console.error("Error adding a startup: ", data);
-        toast.error(`Failed to add startup: ${data.message || "Unknown error"}`);
+      let emailResponseData;
+      try {
+        emailResponseData = await emailResponse.json();
+      } catch (jsonError) {
+        console.error("Failed to parse email response:", jsonError);
+        toast.error("Failed to send verification email: Invalid server response.");
+        return;
       }
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("An error occurred while adding the startup.");
+
+      if (emailResponse.ok) {
+        toast.success("Startup added successfully! Verification email sent.");
+        setVerificationModal(true);
+      } else {
+        if (emailResponseData.error.includes("Email is already verified")) {
+          toast.info("Email is already verified. Proceeding to upload data.");
+          setSelectedTab("Upload Data");
+        } else {
+          toast.error(`Failed to send verification email: ${emailResponseData.error || "Unknown error"}`);
+        }
+      }
+    } else {
+      console.error("Error adding a startup: ", data);
+      toast.error(`Failed to add startup: ${data.message || data.error || "Unknown error"}`);
     }
-  };
+  } catch (error) {
+    console.error("Error:", error);
+    toast.error("An error occurred while adding the startup.");
+  }
+};
+
+// ... (rest of the component remains unchanged)
 
   return (
     <div className="bg-gray-100 min-h-screen text-gray-800 relative">
