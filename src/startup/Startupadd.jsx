@@ -44,6 +44,7 @@ export default function Startupadd() {
 
   const [verificationModal, setVerificationModal] = useState(false);
   const [error, setError] = useState("");
+  const [uploadedImage, setUploadedImage] = useState(null);
   const tabs = [
     "Company Information",
     "Contact Information",
@@ -60,9 +61,55 @@ export default function Startupadd() {
   const mapInstanceRef = useRef(null);
   const [uploadedFile, setUploadedFile] = useState(null);
 
-  const handleFileUpload = (e) => {
+  const resetForm = () => {
+    setFormData({
+      companyName: "",
+      companyDescription: "",
+      foundedDate: null,
+      typeOfCompany: "",
+      numberOfEmployees: "",
+      industry: "",
+      phoneNumber: "",
+      contactEmail: "",
+      website: "",
+      streetAddress: "",
+      city: "",
+      province: "",
+      country: "",
+      postalCode: "",
+      facebook: "",
+      twitter: "",
+      instagram: "",
+      linkedIn: "",
+      locationLat: null,
+      locationLng: null,
+      locationName: "",
+      fundingStage: "",
+      operatingHours: "",
+      businessActivity: "",
+    });
+    setStartupId(null);
+    setUploadedFile(null);
+    setUploadedImage(null);
+  };
+
+  const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!file.type.startsWith("image/")) {
+        toast.error("Invalid file type. Please upload an image file (e.g., JPEG, PNG).");
+        return;
+      }
+      setUploadedImage(file);
+      toast.success("Image selected successfully!");
+    } else {
+      toast.error("No image selected.");
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (　　　file) {
       if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
         toast.error("Invalid file type. Please upload a .csv file.");
         return;
@@ -222,6 +269,34 @@ export default function Startupadd() {
     return "";
   };
 
+  const validateAdditionalInformation = () => {
+    if (!formData.fundingStage)
+      return toast.error("Funding Stage is required.");
+    if (!formData.operatingHours)
+      return toast.error("Operating Hours is required.");
+    if (!formData.businessActivity)
+      return toast.error("Business Activity is required.");
+    return "";
+  };
+
+  const validateLocationInfo = () => {
+    if (!formData.locationLat || !formData.locationLng)
+      return toast.error("Please select a location on the map.");
+    if (!formData.locationName)
+      return toast.error("Location name is required.");
+    return "";
+  };
+
+  const Pieces = [
+    "Company Information",
+    "Contact Information",
+    "Address Information",
+    "Social Media Links",
+    "Additional Information",
+    "Location Info",
+    "Upload Data",
+  ];
+  
   const handleNext = () => {
     let errorMessage = "";
     if (selectedTab === "Company Information") {
@@ -232,6 +307,8 @@ export default function Startupadd() {
       errorMessage = validateAddressInformation();
     } else if (selectedTab === "Social Media Links") {
       errorMessage = validateSocialMediaLinks();
+    } else if (selectedTab === "Additional Information") {
+      errorMessage = validateAdditionalInformation();
     }
     if (errorMessage) {
       setError(errorMessage);
@@ -253,6 +330,38 @@ export default function Startupadd() {
   };
 
   const handleSubmit = async () => {
+    // Validate all fields before submission
+    let errorMessage = validateCompanyInformation();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
+    errorMessage = validateContactInformation();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
+    errorMessage = validateAddressInformation();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
+    errorMessage = validateSocialMediaLinks();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
+    errorMessage = validateAdditionalInformation();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
+    errorMessage = validateLocationInfo();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
+
     try {
       const response = await fetch("http://localhost:8080/startups", {
         method: "POST",
@@ -270,6 +379,28 @@ export default function Startupadd() {
         setStartupId(startupId);
         setUploadedFile(null);
 
+        // Upload image if selected
+        if (uploadedImage) {
+          const imageFormData = new FormData();
+          imageFormData.append("photo", uploadedImage);
+          try {
+            const imageResponse = await fetch(`http://localhost:8080/startups/${startupId}/upload-photo`, {
+              method: "PUT",
+              body: imageFormData,
+              credentials: "include",
+            });
+            if (imageResponse.ok) {
+              toast.success("Image uploaded successfully!");
+            } else {
+              const imageErrorData = await imageResponse.json();
+              toast.error(`Failed to upload image: ${imageErrorData.message || "Unknown error"}`);
+            }
+          } catch (imageError) {
+            console.error("Error uploading image:", imageError);
+            toast.error("An error occurred while uploading the image.");
+          }
+        }
+
         // Send verification email
         const emailResponse = await fetch("http://localhost:8080/startups/send-verification-email", {
           method: "POST",
@@ -283,12 +414,25 @@ export default function Startupadd() {
           credentials: "include",
         });
 
+        let emailResponseData;
+        try {
+          emailResponseData = await emailResponse.json();
+        } catch (jsonError) {
+          console.error("Failed to parse email response:", jsonError);
+          toast.error("Failed to send verification email: Invalid server response.");
+          return;
+        }
+
         if (emailResponse.ok) {
           toast.success("Startup added successfully! Verification email sent.");
           setVerificationModal(true);
         } else {
-          const emailErrorData = await emailResponse.json();
-          toast.error(`Failed to send verification email: ${emailErrorData.message || "Unknown error"}`);
+          if (emailResponseData.error.includes("Email is already verified")) {
+            toast.info("Email is already verified. Proceeding to upload data.");
+            setSelectedTab("Upload Data");
+          } else {
+            toast.error(`Failed to send verification email: ${emailResponseData.error || "Unknown error"}`);
+          }
         }
       } else {
         console.error("Error adding a startup: ", data);
@@ -427,6 +571,18 @@ export default function Startupadd() {
               </select>
             </div>
 
+            <div className="col-span-2">
+              <label className="block mb-1 text-sm font-medium">
+                Company Logo (Optional)
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                className="w-full border border-gray-300 rounded-md px-4 py-2"
+              />
+            </div>
+
             <div className="col-span-2 text-center mt-4">
               <button
                 type="button"
@@ -473,7 +629,7 @@ export default function Startupadd() {
                 type="url"
                 name="website"
                 placeholder="Website link"
-                class    className="w-full border border-gray-300 rounded-md px-4 py-2"
+                className="w-full border border-gray-300 rounded-md px-4 py-2"
                 value={formData.website}
                 onChange={handleChange}
               />
@@ -702,9 +858,9 @@ export default function Startupadd() {
               <button
                 type="button"
                 className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
-                onClick={handleSubmit}
+                onClick={handleNext}
               >
-                Submit
+                Next
               </button>
             </div>
           </form>
@@ -735,9 +891,9 @@ export default function Startupadd() {
               <button
                 type="button"
                 className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
-                onClick={handleNext}
+                onClick={handleSubmit}
               >
-                Next
+                Submit
               </button>
             </div>
           </div>
@@ -779,6 +935,7 @@ export default function Startupadd() {
           setSelectedTab={setSelectedTab}
           startupId={startupId}
           contactEmail={formData.contactEmail}
+          resetForm={resetForm}
         />
       )}
 

@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-export default function Verification({ setVerificationModal, setSelectedTab, startupId, contactEmail }) {
+export default function Verification({ setVerificationModal, setSelectedTab, startupId, contactEmail, resetForm }) {
   const [verificationCode, setVerificationCode] = useState("");
   const [error, setError] = useState("");
 
   const handleVerify = async () => {
     if (!verificationCode) {
       toast.error("Please enter the verification code.");
+      setError("Please enter the verification code.");
       return;
     }
 
@@ -41,9 +42,30 @@ export default function Verification({ setVerificationModal, setSelectedTab, sta
     }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
+    try {
+      const response = await fetch(`http://localhost:8080/startups/${startupId}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        toast.success("Startup verification process incomplete.");
+      } else {
+        const errorData = await response.json();
+        toast.error(`Failed to delete startup: ${errorData.message || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Error deleting startup:", error);
+      toast.error("An error occurred while deleting the startup.");
+    }
+
     setVerificationModal(false);
-    setSelectedTab("Additional Information"); // Go back to form if canceled
+    setSelectedTab("Company Information");
+    resetForm(); // Reset the form in Startupadd.jsx
   };
 
   return (
@@ -78,14 +100,6 @@ export default function Verification({ setVerificationModal, setSelectedTab, sta
             onClick={handleVerify}
           >
             Verify
-          </button>
-          <button
-            id="closeButton"
-            type="button"
-            onClick={handleClose}
-            className="px-5 py-2.5 w-full rounded-lg text-white text-sm font-medium border-none outline-none bg-gray-800 hover:bg-gray-700"
-          >
-            Got it
           </button>
         </div>
       </div>
