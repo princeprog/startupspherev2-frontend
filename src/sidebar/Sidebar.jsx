@@ -13,6 +13,7 @@ import { LuLayoutDashboard } from "react-icons/lu";
 import { FaRegEye } from "react-icons/fa";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { Award } from "lucide-react";
 
 export default function Sidebar({ mapInstanceRef }) {
   const navigate = useNavigate();
@@ -853,6 +854,17 @@ export default function Sidebar({ mapInstanceRef }) {
                         <LuLayoutDashboard className="text-2xl" />
                       </button>
                     </li>
+                    <li>
+                      <button
+                        onClick={() => navigate("/all-startup-dashboard")}
+                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                      >
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                          All Startups
+                        </span>
+                        <Award className="text-2xl" />
+                      </button>
+                    </li>
                   </>
                 )}
               </ul>
@@ -959,6 +971,26 @@ export default function Sidebar({ mapInstanceRef }) {
       {containerMode === "recents" && (
         <div className="absolute left-19 top-0 h-screen w-90 bg-gray-100 shadow-lg z-5 search-container-animate">
           <div className="p-4 bg-gradient-to-b from-blue-500 to-white relative">
+            <button
+              className="absolute top-2 right-2 text-gray-700 hover:text-gray-900"
+              onClick={() => setContainerMode(null)}
+              aria-label="Close"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
             <h2 className="text-lg text-black font-semibold">Recents</h2>
             <div className="join join-vertical lg:join-horizontal w-full mt-4">
               <button

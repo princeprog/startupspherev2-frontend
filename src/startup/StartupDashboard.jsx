@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FaEye } from "react-icons/fa";
 import { BiLike } from "react-icons/bi";
 import { FaBookBookmark } from "react-icons/fa6";
+import { ArrowLeft } from "lucide-react";
 
 import {
   Chart as ChartJS,
@@ -717,6 +718,15 @@ export default function StartupDashboard() {
 
   return (
     <div className="p-6 md:p-8 lg:p-10 space-y-6 bg-white text-black">
+      {/* Back Button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center text-black mb-6 transition-colors hover:text-white hover:bg-indigo-500 rounded-md p-1.5"
+      >
+        <ArrowLeft className="h-5 w-5 mr-2" />
+        <span>Back</span>
+      </button>
+
       {error && (
         <div className="alert alert-error">
           <div className="flex-1">
@@ -725,7 +735,7 @@ export default function StartupDashboard() {
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 pr-10">
         <input
           type="text"
           placeholder="Search Startups"
