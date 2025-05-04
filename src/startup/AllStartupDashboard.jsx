@@ -27,9 +27,16 @@ import {
   Calendar,
   Zap,
   BarChart2,
+  ArrowLeft,
 } from "lucide-react";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { useNavigate } from 'react-router-dom';
 
 export default function AllStartupDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedIndustry, setSelectedIndustry] = useState("All");
   const [rankingMetric, setRankingMetric] = useState("overall");
@@ -179,11 +186,8 @@ export default function AllStartupDashboard() {
 
   const fetchAvailableReports = async () => {
     setReportsLoading(true);
-    // In a real application, you would fetch reports from the server
-    // Here we'll generate reports based on the data we already have
-    
     try {
-      // Create mock reports based on actual data we have
+      // Create reports based on actual data we have
       const reports = [
         {
           id: 1,
@@ -195,9 +199,9 @@ export default function AllStartupDashboard() {
         {
           id: 2,
           title: "Funding Landscape",
-          description: `Analysis of funding distribution across startup stages`,
+          description: `Analysis of funding distribution across ${fundingData.length} startup stages`,
           date: "April 2025",
-          type: "xlsx"
+          type: "pdf"
         },
         {
           id: 3,
@@ -209,7 +213,7 @@ export default function AllStartupDashboard() {
         {
           id: 4,
           title: "Regional Performance",
-          description: `Startup distribution and performance across major regions`,
+          description: `Startup distribution and performance across ${locationData.length} major regions`,
           date: "February 2025",
           type: "pdf"
         },
@@ -218,7 +222,7 @@ export default function AllStartupDashboard() {
           title: "Top Performers Spotlight",
           description: `Detailed analysis of top ${topStartups.length} performing startups`,
           date: "January 2025", 
-          type: "pptx"
+          type: "pdf"
         },
         {
           id: 6,
@@ -262,17 +266,189 @@ export default function AllStartupDashboard() {
     });
   };
 
+  const downloadReport = (report) => {
+    try {
+      // Create PDF
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(20);
+      doc.text(report.title, 14, 20);
+      
+      // Add generation date
+      doc.setFontSize(12);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+
+      // Add description with proper wrapping
+      doc.setFontSize(12);
+      const splitDescription = doc.splitTextToSize(report.description, 180);
+      doc.text(splitDescription, 14, 40);
+
+      // Calculate starting Y position for summary statistics
+      const descriptionHeight = splitDescription.length * 7; // 7 is approximate line height
+      const summaryStartY = 40 + descriptionHeight + 10;
+
+      // Add summary statistics
+      doc.setFontSize(14);
+      doc.text("Summary Statistics", 14, summaryStartY);
+      doc.setFontSize(12);
+      doc.text(`Total Startups: ${totalStartups || 0}`, 20, summaryStartY + 10);
+      
+      // Calculate average score safely
+      const avgScore = rankedStartups && rankedStartups.length > 0
+        ? (rankedStartups.reduce((sum, s) => sum + (s.overallScore || 0), 0) / rankedStartups.length).toFixed(2)
+        : "0.00";
+      doc.text(`Average Score: ${avgScore}`, 20, summaryStartY + 20);
+      
+      // Calculate total funding safely
+      const totalFunding = rankedStartups && rankedStartups.length > 0
+        ? (rankedStartups.reduce((sum, s) => sum + (s.metrics?.fundingReceived || 0), 0) / 1000000).toFixed(2)
+        : "0.00";
+      doc.text(`Total Funding: ₱${totalFunding}M`, 20, summaryStartY + 30);
+
+      // Add industry breakdown
+      doc.setFontSize(14);
+      doc.text("Industry Breakdown", 14, summaryStartY + 50);
+      
+      const industryTableData = (industryData || []).map(industry => [
+        industry.name || 'Unknown',
+        (industry.value || 0).toString(),
+        totalStartups ? ((industry.value || 0) / totalStartups * 100).toFixed(1) + '%' : '0%'
+      ]);
+
+      autoTable(doc, {
+        startY: summaryStartY + 60,
+        head: [['Industry', 'Count', 'Percentage']],
+        body: industryTableData,
+        theme: 'grid',
+        headStyles: { fillColor: [79, 70, 229] },
+        margin: { top: 10, right: 14, bottom: 10, left: 14 }
+      });
+
+      // Add geographical distribution
+      doc.setFontSize(14);
+      doc.text("Geographical Distribution", 14, doc.lastAutoTable.finalY + 20);
+      
+      const geoTableData = (locationData || []).map(item => [
+        item.name || 'Unknown',
+        (item.value || 0).toString(),
+        totalStartups ? ((item.value || 0) / totalStartups * 100).toFixed(1) + '%' : '0%'
+      ]);
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 30,
+        head: [['Region', 'Count', 'Percentage']],
+        body: geoTableData,
+        theme: 'grid',
+        headStyles: { fillColor: [79, 70, 229] },
+        margin: { top: 10, right: 14, bottom: 10, left: 14 }
+      });
+
+      // Add top startups
+      doc.setFontSize(14);
+      doc.text("Top Performing Startups", 14, doc.lastAutoTable.finalY + 20);
+      
+      const startupTableData = (topStartups || []).map(startup => [
+        startup.companyName || 'Unknown',
+        startup.industry || 'Unknown',
+        (startup.overallScore || 0).toFixed(2),
+        (startup.growthScore || 0).toFixed(2),
+        (startup.investmentScore || 0).toFixed(2),
+        (startup.ecosystemScore || 0).toFixed(2)
+      ]);
+
+      autoTable(doc, {
+        startY: doc.lastAutoTable.finalY + 30,
+        head: [['Company', 'Industry', 'Overall', 'Growth', 'Investment', 'Ecosystem']],
+        body: startupTableData,
+        theme: 'grid',
+        headStyles: { fillColor: [79, 70, 229] },
+        margin: { top: 10, right: 14, bottom: 10, left: 14 },
+        columnStyles: {
+          0: { cellWidth: 40 }, // Company name
+          1: { cellWidth: 30 }, // Industry
+          2: { cellWidth: 20 }, // Overall
+          3: { cellWidth: 20 }, // Growth
+          4: { cellWidth: 25 }, // Investment
+          5: { cellWidth: 25 }  // Ecosystem
+        }
+      });
+
+      // Save the PDF
+      const fileName = `${report.title.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      toast.success('Report downloaded successfully!');
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF. Please try again.");
+    }
+  };
+
   const generateCustomReport = async () => {
     setReportsLoading(true);
     
     try {
-      // In a real application, you would send this data to the server
-      // and receive a generated report back
-      console.log("Generating custom report with data:", reportFormData);
+      // Create PDF
+      const doc = new jsPDF();
       
-      // Mock report generation delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Add title
+      doc.setFontSize(20);
+      doc.text("Custom Startup Report", 14, 20);
       
+      // Add generation date
+      doc.setFontSize(12);
+      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+
+      // Add filters
+      doc.setFontSize(14);
+      doc.text("Report Filters:", 14, 40);
+      doc.setFontSize(12);
+      doc.text(`Industry: ${reportFormData.industry}`, 20, 50);
+      doc.text(`Region: ${reportFormData.region}`, 20, 60);
+      doc.text(`Time Period: ${reportFormData.timePeriod}`, 20, 70);
+
+      // Add selected metrics
+      if (reportFormData.metrics.length > 0) {
+        doc.setFontSize(14);
+        doc.text("Selected Metrics", 14, 90);
+        doc.setFontSize(12);
+        reportFormData.metrics.forEach((metric, index) => {
+          const value = rankedStartups.reduce((sum, s) => sum + (s[metric.toLowerCase().replace(/\s+/g, '') + 'Score'] || 0), 0) / rankedStartups.length;
+          doc.text(`${metric}: ${value.toFixed(2)}`, 20, 100 + (index * 10));
+        });
+      }
+
+      // Add filtered startups
+      const filteredStartups = rankedStartups.filter(startup => {
+        const industryMatch = reportFormData.industry === "All Industries" || startup.industry === reportFormData.industry;
+        const regionMatch = reportFormData.region === "All Regions" || startup.locationName === reportFormData.region;
+        return industryMatch && regionMatch;
+      });
+
+      doc.setFontSize(14);
+      doc.text("Startup Details", 14, 150);
+      
+      const startupTableData = filteredStartups.map(startup => [
+        startup.companyName,
+        startup.industry,
+        startup.overallScore.toFixed(2),
+        startup.growthScore.toFixed(2),
+        startup.investmentScore.toFixed(2),
+        startup.ecosystemScore.toFixed(2)
+      ]);
+
+      autoTable(doc, {
+        startY: 160,
+        head: [['Company', 'Industry', 'Overall', 'Growth', 'Investment', 'Ecosystem']],
+        body: startupTableData,
+        theme: 'grid',
+        headStyles: { fillColor: [79, 70, 229] }
+      });
+
+      // Save the PDF
+      const fileName = `custom-report-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+
       // Add new report to list
       const newReport = {
         id: generatedReports.length + 1,
@@ -298,22 +474,26 @@ export default function AllStartupDashboard() {
       setReportsLoading(false);
       
       // Show success message
-      alert("Custom report generated successfully!");
+      toast.success("Custom report generated successfully!");
     } catch (error) {
       console.error("Error generating custom report:", error);
       setReportsLoading(false);
-      alert("Failed to generate report. Please try again.");
+      toast.error("Failed to generate report. Please try again.");
     }
-  };
-
-  const downloadReport = (report) => {
-    // In a real application, this would initiate a download
-    alert(`Downloading ${report.title} (${report.type.toUpperCase()})`);
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <main className="flex-grow p-6">
+        {/* Back Button */}
+        <button
+          onClick={() => navigate(-1)}
+          className="flex items-center text-black mb-6 transition-colors hover:text-white hover:bg-indigo-500 rounded-md p-2"
+        >
+          <ArrowLeft className="h-5 w-5 mr-2" />
+          <span>Back</span>
+        </button>
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <div className="bg-white p-4 rounded-lg shadow flex items-center">
             <div className="p-3 bg-indigo-100 rounded-full mr-4">
@@ -934,7 +1114,7 @@ export default function AllStartupDashboard() {
                       key={report.id}
                       className={`border rounded-lg p-4 ${
                         report.isCustom ? "bg-indigo-50 border-indigo-200" : "hover:bg-indigo-50"
-                      } cursor-pointer transition-colors duration-150`}
+                      }  transition-colors duration-150`}
                     >
                       <div className="flex justify-between items-start">
                         <h3 className="font-medium mb-2 text-blue-900">{report.title}</h3>
@@ -949,7 +1129,7 @@ export default function AllStartupDashboard() {
                           {report.date}
                         </p>
                         <button 
-                          className="flex items-center text-indigo-600 text-sm font-medium hover:text-indigo-800" 
+                          className=" rounded-md p-2 flex items-center text-indigo-600 text-sm font-medium hover:text-indigo-800 hover:bg-indigo-200 cursor-pointer" 
                           onClick={() => downloadReport(report)}
                         >
                           <Download className="h-4 w-4 mr-1" />
@@ -1220,6 +1400,18 @@ export default function AllStartupDashboard() {
           © 2025 StartupSphere Philippines | Supporting DTI, DICT, and DOST
         </div>
       </footer>
+
+      <ToastContainer
+        position="bottom-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
     </div>
   );
 }
