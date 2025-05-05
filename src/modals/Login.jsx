@@ -31,7 +31,6 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
         const data = await response.json();
         console.log("Login successful:", data);
 
-        // Notify parent component of successful login
         onLoginSuccess();
       }
     } catch (err) {

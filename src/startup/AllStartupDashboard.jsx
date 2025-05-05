@@ -29,11 +29,12 @@ import {
   BarChart2,
   ArrowLeft,
 } from "lucide-react";
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { useNavigate } from 'react-router-dom';
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { useNavigate } from "react-router-dom";
+import StartupReviewSection from "./StartupReviewSelection";
 
 export default function AllStartupDashboard() {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ export default function AllStartupDashboard() {
   const [loading, setLoading] = useState(true);
   const [industries, setIndustries] = useState([]);
   const [industryData, setIndustryData] = useState([]);
-  
+
   // New state for dashboard analytics data
   const [growthData, setGrowthData] = useState([]);
   const [fundingData, setFundingData] = useState([]);
@@ -61,13 +62,32 @@ export default function AllStartupDashboard() {
     industry: "All Industries",
     region: "All Regions",
     timePeriod: "2025 (YTD)",
-    metrics: []
+    metrics: [],
   });
   const [availableRegions, setAvailableRegions] = useState([]);
-  
+
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
-  // Fetch dashboard analytics data
+  const [role, setRole] = useState(null);
+
+  const fetchRole = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/users/me/role", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.text();
+        console.log("Role:", data);
+        setRole(data);
+      } else {
+        console.log("Error fetching role:", response.statusText);
+      }
+    } catch (error) {
+      console.error("Error fetching role:", error);
+    }
+  };
+
   useEffect(() => {
     const fetchDashboardAnalytics = async () => {
       setDashboardLoading(true);
@@ -78,22 +98,21 @@ export default function AllStartupDashboard() {
             credentials: "include",
           }
         );
-        
+
         if (!response.ok) {
           throw new Error("Failed to fetch dashboard analytics");
         }
-        
+
         const data = await response.json();
         setGrowthData(data.growthData);
         setFundingData(data.fundingData);
         setLocationData(data.locationData);
-        
-        // Extract regions from location data
+
         if (data.locationData && data.locationData.length) {
-          const regions = data.locationData.map(item => item.name);
+          const regions = data.locationData.map((item) => item.name);
           setAvailableRegions(regions);
         }
-        
+
         setDashboardLoading(false);
       } catch (error) {
         console.error("Error fetching dashboard analytics:", error);
@@ -102,6 +121,7 @@ export default function AllStartupDashboard() {
     };
 
     fetchDashboardAnalytics();
+    fetchRole();
   }, []);
 
   useEffect(() => {
@@ -187,52 +207,54 @@ export default function AllStartupDashboard() {
   const fetchAvailableReports = async () => {
     setReportsLoading(true);
     try {
-      // Create reports based on actual data we have
       const reports = [
         {
           id: 1,
           title: "Annual Ecosystem Report",
           description: `Comprehensive analysis of all ${totalStartups} startups across ${industries.length} industries`,
           date: "May 2025",
-          type: "pdf"
+          type: "pdf",
         },
         {
           id: 2,
           title: "Funding Landscape",
           description: `Analysis of funding distribution across ${fundingData.length} startup stages`,
           date: "April 2025",
-          type: "pdf"
+          type: "pdf",
         },
         {
           id: 3,
           title: "Industry Analysis",
-          description: `Performance comparison of ${industries.slice(0, 3).join(", ")} and other industries`,
+          description: `Performance comparison of ${industries
+            .slice(0, 3)
+            .join(", ")} and other industries`,
           date: "March 2025",
-          type: "pdf"
+          type: "pdf",
         },
         {
           id: 4,
           title: "Regional Performance",
           description: `Startup distribution and performance across ${locationData.length} major regions`,
           date: "February 2025",
-          type: "pdf"
+          type: "pdf",
         },
         {
           id: 5,
           title: "Top Performers Spotlight",
           description: `Detailed analysis of top ${topStartups.length} performing startups`,
-          date: "January 2025", 
-          type: "pdf"
+          date: "January 2025",
+          type: "pdf",
         },
         {
           id: 6,
           title: "Government Support Analysis",
-          description: "Impact of government programs on startup growth and survival",
+          description:
+            "Impact of government programs on startup growth and survival",
           date: "December 2024",
-          type: "pdf"
-        }
+          type: "pdf",
+        },
       ];
-      
+
       setGeneratedReports(reports);
       setReportsLoading(false);
     } catch (error) {
@@ -243,24 +265,24 @@ export default function AllStartupDashboard() {
 
   const handleReportFormChange = (e) => {
     const { name, value } = e.target;
-    setReportFormData(prev => ({
+    setReportFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleMetricChange = (metric) => {
-    setReportFormData(prev => {
+    setReportFormData((prev) => {
       const metrics = [...prev.metrics];
       if (metrics.includes(metric)) {
         return {
           ...prev,
-          metrics: metrics.filter(m => m !== metric)
+          metrics: metrics.filter((m) => m !== metric),
         };
       } else {
         return {
           ...prev,
-          metrics: [...metrics, metric]
+          metrics: [...metrics, metric],
         };
       }
     });
@@ -268,18 +290,14 @@ export default function AllStartupDashboard() {
 
   const downloadReport = (report) => {
     try {
-      // Create PDF
       const doc = new jsPDF();
-      
-      // Add title
+
       doc.setFontSize(20);
       doc.text(report.title, 14, 20);
-      
-      // Add generation date
+
       doc.setFontSize(12);
       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
 
-      // Add description with proper wrapping
       doc.setFontSize(12);
       const splitDescription = doc.splitTextToSize(report.description, 180);
       doc.text(splitDescription, 14, 40);
@@ -293,75 +311,100 @@ export default function AllStartupDashboard() {
       doc.text("Summary Statistics", 14, summaryStartY);
       doc.setFontSize(12);
       doc.text(`Total Startups: ${totalStartups || 0}`, 20, summaryStartY + 10);
-      
+
       // Calculate average score safely
-      const avgScore = rankedStartups && rankedStartups.length > 0
-        ? (rankedStartups.reduce((sum, s) => sum + (s.overallScore || 0), 0) / rankedStartups.length).toFixed(2)
-        : "0.00";
+      const avgScore =
+        rankedStartups && rankedStartups.length > 0
+          ? (
+              rankedStartups.reduce(
+                (sum, s) => sum + (s.overallScore || 0),
+                0
+              ) / rankedStartups.length
+            ).toFixed(2)
+          : "0.00";
       doc.text(`Average Score: ${avgScore}`, 20, summaryStartY + 20);
-      
+
       // Calculate total funding safely
-      const totalFunding = rankedStartups && rankedStartups.length > 0
-        ? (rankedStartups.reduce((sum, s) => sum + (s.metrics?.fundingReceived || 0), 0) / 1000000).toFixed(2)
-        : "0.00";
+      const totalFunding =
+        rankedStartups && rankedStartups.length > 0
+          ? (
+              rankedStartups.reduce(
+                (sum, s) => sum + (s.metrics?.fundingReceived || 0),
+                0
+              ) / 1000000
+            ).toFixed(2)
+          : "0.00";
       doc.text(`Total Funding: ₱${totalFunding}M`, 20, summaryStartY + 30);
 
       // Add industry breakdown
       doc.setFontSize(14);
       doc.text("Industry Breakdown", 14, summaryStartY + 50);
-      
-      const industryTableData = (industryData || []).map(industry => [
-        industry.name || 'Unknown',
+
+      const industryTableData = (industryData || []).map((industry) => [
+        industry.name || "Unknown",
         (industry.value || 0).toString(),
-        totalStartups ? ((industry.value || 0) / totalStartups * 100).toFixed(1) + '%' : '0%'
+        totalStartups
+          ? (((industry.value || 0) / totalStartups) * 100).toFixed(1) + "%"
+          : "0%",
       ]);
 
       autoTable(doc, {
         startY: summaryStartY + 60,
-        head: [['Industry', 'Count', 'Percentage']],
+        head: [["Industry", "Count", "Percentage"]],
         body: industryTableData,
-        theme: 'grid',
+        theme: "grid",
         headStyles: { fillColor: [79, 70, 229] },
-        margin: { top: 10, right: 14, bottom: 10, left: 14 }
+        margin: { top: 10, right: 14, bottom: 10, left: 14 },
       });
 
       // Add geographical distribution
       doc.setFontSize(14);
       doc.text("Geographical Distribution", 14, doc.lastAutoTable.finalY + 20);
-      
-      const geoTableData = (locationData || []).map(item => [
-        item.name || 'Unknown',
+
+      const geoTableData = (locationData || []).map((item) => [
+        item.name || "Unknown",
         (item.value || 0).toString(),
-        totalStartups ? ((item.value || 0) / totalStartups * 100).toFixed(1) + '%' : '0%'
+        totalStartups
+          ? (((item.value || 0) / totalStartups) * 100).toFixed(1) + "%"
+          : "0%",
       ]);
 
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 30,
-        head: [['Region', 'Count', 'Percentage']],
+        head: [["Region", "Count", "Percentage"]],
         body: geoTableData,
-        theme: 'grid',
+        theme: "grid",
         headStyles: { fillColor: [79, 70, 229] },
-        margin: { top: 10, right: 14, bottom: 10, left: 14 }
+        margin: { top: 10, right: 14, bottom: 10, left: 14 },
       });
 
       // Add top startups
       doc.setFontSize(14);
       doc.text("Top Performing Startups", 14, doc.lastAutoTable.finalY + 20);
-      
-      const startupTableData = (topStartups || []).map(startup => [
-        startup.companyName || 'Unknown',
-        startup.industry || 'Unknown',
+
+      const startupTableData = (topStartups || []).map((startup) => [
+        startup.companyName || "Unknown",
+        startup.industry || "Unknown",
         (startup.overallScore || 0).toFixed(2),
         (startup.growthScore || 0).toFixed(2),
         (startup.investmentScore || 0).toFixed(2),
-        (startup.ecosystemScore || 0).toFixed(2)
+        (startup.ecosystemScore || 0).toFixed(2),
       ]);
 
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 30,
-        head: [['Company', 'Industry', 'Overall', 'Growth', 'Investment', 'Ecosystem']],
+        head: [
+          [
+            "Company",
+            "Industry",
+            "Overall",
+            "Growth",
+            "Investment",
+            "Ecosystem",
+          ],
+        ],
         body: startupTableData,
-        theme: 'grid',
+        theme: "grid",
         headStyles: { fillColor: [79, 70, 229] },
         margin: { top: 10, right: 14, bottom: 10, left: 14 },
         columnStyles: {
@@ -370,14 +413,16 @@ export default function AllStartupDashboard() {
           2: { cellWidth: 20 }, // Overall
           3: { cellWidth: 20 }, // Growth
           4: { cellWidth: 25 }, // Investment
-          5: { cellWidth: 25 }  // Ecosystem
-        }
+          5: { cellWidth: 25 }, // Ecosystem
+        },
       });
 
       // Save the PDF
-      const fileName = `${report.title.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `${report.title.toLowerCase().replace(/\s+/g, "-")}-${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
       doc.save(fileName);
-      toast.success('Report downloaded successfully!');
+      toast.success("Report downloaded successfully!");
     } catch (error) {
       console.error("Error generating PDF:", error);
       toast.error("Failed to generate PDF. Please try again.");
@@ -386,15 +431,15 @@ export default function AllStartupDashboard() {
 
   const generateCustomReport = async () => {
     setReportsLoading(true);
-    
+
     try {
       // Create PDF
       const doc = new jsPDF();
-      
+
       // Add title
       doc.setFontSize(20);
       doc.text("Custom Startup Report", 14, 20);
-      
+
       // Add generation date
       doc.setFontSize(12);
       doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
@@ -413,40 +458,61 @@ export default function AllStartupDashboard() {
         doc.text("Selected Metrics", 14, 90);
         doc.setFontSize(12);
         reportFormData.metrics.forEach((metric, index) => {
-          const value = rankedStartups.reduce((sum, s) => sum + (s[metric.toLowerCase().replace(/\s+/g, '') + 'Score'] || 0), 0) / rankedStartups.length;
-          doc.text(`${metric}: ${value.toFixed(2)}`, 20, 100 + (index * 10));
+          const value =
+            rankedStartups.reduce(
+              (sum, s) =>
+                sum +
+                (s[metric.toLowerCase().replace(/\s+/g, "") + "Score"] || 0),
+              0
+            ) / rankedStartups.length;
+          doc.text(`${metric}: ${value.toFixed(2)}`, 20, 100 + index * 10);
         });
       }
 
       // Add filtered startups
-      const filteredStartups = rankedStartups.filter(startup => {
-        const industryMatch = reportFormData.industry === "All Industries" || startup.industry === reportFormData.industry;
-        const regionMatch = reportFormData.region === "All Regions" || startup.locationName === reportFormData.region;
+      const filteredStartups = rankedStartups.filter((startup) => {
+        const industryMatch =
+          reportFormData.industry === "All Industries" ||
+          startup.industry === reportFormData.industry;
+        const regionMatch =
+          reportFormData.region === "All Regions" ||
+          startup.locationName === reportFormData.region;
         return industryMatch && regionMatch;
       });
 
       doc.setFontSize(14);
       doc.text("Startup Details", 14, 150);
-      
-      const startupTableData = filteredStartups.map(startup => [
+
+      const startupTableData = filteredStartups.map((startup) => [
         startup.companyName,
         startup.industry,
         startup.overallScore.toFixed(2),
         startup.growthScore.toFixed(2),
         startup.investmentScore.toFixed(2),
-        startup.ecosystemScore.toFixed(2)
+        startup.ecosystemScore.toFixed(2),
       ]);
 
       autoTable(doc, {
         startY: 160,
-        head: [['Company', 'Industry', 'Overall', 'Growth', 'Investment', 'Ecosystem']],
+        head: [
+          [
+            "Company",
+            "Industry",
+            "Overall",
+            "Growth",
+            "Investment",
+            "Ecosystem",
+          ],
+        ],
         body: startupTableData,
-        theme: 'grid',
-        headStyles: { fillColor: [79, 70, 229] }
+        theme: "grid",
+        headStyles: { fillColor: [79, 70, 229] },
       });
 
       // Save the PDF
-      const fileName = `custom-report-${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `custom-report-${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
       doc.save(fileName);
 
       // Add new report to list
@@ -458,22 +524,23 @@ export default function AllStartupDashboard() {
         } metrics: ${reportFormData.metrics.slice(0, 2).join(", ")}${
           reportFormData.metrics.length > 2 ? "..." : ""
         }`,
-        date: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        date: new Date().toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+        }),
         type: "pdf",
-        isCustom: true
+        isCustom: true,
       };
-      
-      setGeneratedReports(prev => [newReport, ...prev]);
-      
-      // Reset form metrics
-      setReportFormData(prev => ({
+
+      setGeneratedReports((prev) => [newReport, ...prev]);
+
+      setReportFormData((prev) => ({
         ...prev,
-        metrics: []
+        metrics: [],
       }));
-      
+
       setReportsLoading(false);
-      
-      // Show success message
+
       toast.success("Custom report generated successfully!");
     } catch (error) {
       console.error("Error generating custom report:", error);
@@ -597,6 +664,18 @@ export default function AllStartupDashboard() {
             >
               Reports
             </button>
+            {role === "ROLE_ADMIN" && (
+              <button
+                onClick={() => setActiveTab("review")}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === "review"
+                    ? "border-indigo-500 text-indigo-600"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                Startup Review
+              </button>
+            )}
           </nav>
         </div>
 
@@ -742,9 +821,9 @@ export default function AllStartupDashboard() {
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      {growthData.length > 0 && 
+                      {growthData.length > 0 &&
                         Object.keys(growthData[0])
-                          .filter(key => key !== 'name')
+                          .filter((key) => key !== "name")
                           .map((industry, index) => (
                             <Line
                               key={industry}
@@ -753,8 +832,7 @@ export default function AllStartupDashboard() {
                               stroke={COLORS[index % COLORS.length]}
                               activeDot={{ r: 8 }}
                             />
-                          ))
-                      }
+                          ))}
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -767,7 +845,9 @@ export default function AllStartupDashboard() {
               </h2>
               <div className="h-64">
                 {dashboardLoading ? (
-                  <div className="text-center py-6">Loading funding data...</div>
+                  <div className="text-center py-6">
+                    Loading funding data...
+                  </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -943,7 +1023,9 @@ export default function AllStartupDashboard() {
               </h2>
               <div className="h-64">
                 {dashboardLoading ? (
-                  <div className="text-center py-6">Loading location data...</div>
+                  <div className="text-center py-6">
+                    Loading location data...
+                  </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -1098,7 +1180,7 @@ export default function AllStartupDashboard() {
           </div>
         )}
 
-{activeTab === "reports" && (
+        {activeTab === "reports" && (
           <div className="grid grid-cols-1 gap-6">
             {/* Available Reports Section - Enhanced with real data */}
             <div className="bg-white p-6 rounded-lg shadow">
@@ -1113,23 +1195,29 @@ export default function AllStartupDashboard() {
                     <div
                       key={report.id}
                       className={`border rounded-lg p-4 ${
-                        report.isCustom ? "bg-indigo-50 border-indigo-200" : "hover:bg-indigo-50"
+                        report.isCustom
+                          ? "bg-indigo-50 border-indigo-200"
+                          : "hover:bg-indigo-50"
                       }  transition-colors duration-150`}
                     >
                       <div className="flex justify-between items-start">
-                        <h3 className="font-medium mb-2 text-blue-900">{report.title}</h3>
+                        <h3 className="font-medium mb-2 text-blue-900">
+                          {report.title}
+                        </h3>
                         <div className="p-2 bg-blue-100 rounded text-xs font-bold text-blue-800">
                           {report.type.toUpperCase()}
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600 mb-3">{report.description}</p>
+                      <p className="text-sm text-gray-600 mb-3">
+                        {report.description}
+                      </p>
                       <div className="flex justify-between items-center">
                         <p className="text-sm text-gray-500 flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
                           {report.date}
                         </p>
-                        <button 
-                          className=" rounded-md p-2 flex items-center text-indigo-600 text-sm font-medium hover:text-indigo-800 hover:bg-indigo-200 cursor-pointer" 
+                        <button
+                          className=" rounded-md p-2 flex items-center text-indigo-600 text-sm font-medium hover:text-indigo-800 hover:bg-indigo-200 cursor-pointer"
                           onClick={() => downloadReport(report)}
                         >
                           <Download className="h-4 w-4 mr-1" />
@@ -1148,13 +1236,13 @@ export default function AllStartupDashboard() {
                 <FileText className="h-6 w-6 mr-2" />
                 <h2 className="text-xl font-bold">Custom Report Builder</h2>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Industry
                   </label>
-                  <select 
+                  <select
                     className="w-full border rounded p-2 text-blue-900"
                     name="industry"
                     value={reportFormData.industry}
@@ -1173,7 +1261,7 @@ export default function AllStartupDashboard() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Region
                   </label>
-                  <select 
+                  <select
                     className="w-full border rounded p-2 text-blue-900"
                     name="region"
                     value={reportFormData.region}
@@ -1192,7 +1280,7 @@ export default function AllStartupDashboard() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Time Period
                   </label>
-                  <select 
+                  <select
                     className="w-full border rounded p-2 text-blue-900"
                     name="timePeriod"
                     value={reportFormData.timePeriod}
@@ -1254,8 +1342,10 @@ export default function AllStartupDashboard() {
                         Your custom report will include data for{" "}
                         <strong>{reportFormData.industry}</strong> in{" "}
                         <strong>{reportFormData.region}</strong> during{" "}
-                        <strong>{reportFormData.timePeriod}</strong> with analysis of{" "}
-                        <strong>{reportFormData.metrics.length} metrics</strong>.
+                        <strong>{reportFormData.timePeriod}</strong> with
+                        analysis of{" "}
+                        <strong>{reportFormData.metrics.length} metrics</strong>
+                        .
                       </p>
                     )}
                   </div>
@@ -1263,13 +1353,15 @@ export default function AllStartupDashboard() {
               </div>
 
               <div className="mt-6 flex justify-end">
-                <button 
+                <button
                   className={`flex items-center px-4 py-2 rounded text-white ${
                     reportFormData.metrics.length === 0 || reportsLoading
                       ? "bg-gray-400 cursor-not-allowed"
                       : "bg-indigo-600 hover:bg-indigo-500"
                   }`}
-                  disabled={reportFormData.metrics.length === 0 || reportsLoading}
+                  disabled={
+                    reportFormData.metrics.length === 0 || reportsLoading
+                  }
                   onClick={generateCustomReport}
                 >
                   {reportsLoading ? (
@@ -1286,14 +1378,17 @@ export default function AllStartupDashboard() {
                 </button>
               </div>
             </div>
-            
-            {/* Report Analysis Dashboard */}
+
             <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-xl font-bold mb-4 text-blue-900">Report Analytics</h2>
-              
+              <h2 className="text-xl font-bold mb-4 text-blue-900">
+                Report Analytics
+              </h2>
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="text-md font-semibold mb-3 text-blue-900">Industry Distribution in Reports</h3>
+                  <h3 className="text-md font-semibold mb-3 text-blue-900">
+                    Industry Distribution in Reports
+                  </h3>
                   <div className="h-64">
                     {reportsLoading ? (
                       <div className="text-center py-6">Loading data...</div>
@@ -1320,12 +1415,16 @@ export default function AllStartupDashboard() {
                     )}
                   </div>
                 </div>
-                
+
                 <div>
-                  <h3 className="text-md font-semibold mb-3 text-blue-900">Growth Trends</h3>
+                  <h3 className="text-md font-semibold mb-3 text-blue-900">
+                    Growth Trends
+                  </h3>
                   <div className="h-64">
                     {dashboardLoading ? (
-                      <div className="text-center py-6">Loading growth data...</div>
+                      <div className="text-center py-6">
+                        Loading growth data...
+                      </div>
                     ) : (
                       <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={growthData}>
@@ -1334,9 +1433,9 @@ export default function AllStartupDashboard() {
                           <YAxis />
                           <Tooltip />
                           <Legend />
-                          {growthData.length > 0 && 
+                          {growthData.length > 0 &&
                             Object.keys(growthData[0])
-                              .filter(key => key !== 'name')
+                              .filter((key) => key !== "name")
                               .slice(0, 3) // Limit to first 3 industries for clarity
                               .map((industry, index) => (
                                 <Line
@@ -1346,35 +1445,48 @@ export default function AllStartupDashboard() {
                                   stroke={COLORS[index % COLORS.length]}
                                   activeDot={{ r: 8 }}
                                 />
-                              ))
-                          }
+                              ))}
                         </LineChart>
                       </ResponsiveContainer>
                     )}
                   </div>
                 </div>
               </div>
-              
+
               <div className="mt-6">
-                <h3 className="text-md font-semibold mb-3 text-blue-900">Recent Report Activity</h3>
+                <h3 className="text-md font-semibold mb-3 text-blue-900">
+                  Recent Report Activity
+                </h3>
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Downloads</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Report Name
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Generated
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Type
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Downloads
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {generatedReports.slice(0, 5).map((report) => (
                         <tr key={report.id}>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">{report.title}</div>
+                            <div className="text-sm font-medium text-gray-900">
+                              {report.title}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-500">{report.date}</div>
+                            <div className="text-sm text-gray-500">
+                              {report.date}
+                            </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -1382,7 +1494,9 @@ export default function AllStartupDashboard() {
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">{Math.floor(Math.random() * 50) + 1}</div>
+                            <div className="text-sm text-gray-900">
+                              {Math.floor(Math.random() * 50) + 1}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1390,6 +1504,17 @@ export default function AllStartupDashboard() {
                   </table>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "review" && (
+          <div className="p-4">
+            <h2 className="text-xl font-semibold mb-4 text-blue-900">
+              Startup Review
+            </h2>
+            <div className="bg-white rounded-lg shadow">
+              <StartupReviewSection />
             </div>
           </div>
         )}

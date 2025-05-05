@@ -11,20 +11,18 @@ mapboxgl.accessToken =
 export default function Startupmap({ mapInstanceRef, onMapClick }) {
   const [openLogin, setOpenLogin] = useState(false);
   const mapContainerRef = useRef(null);
-  const [userMarker, setUserMarker] = useState(null); // State to manage the single marker
+  const [userMarker, setUserMarker] = useState(null); 
   const markerRef = useRef(null);
   const geocoderContainerRef = useRef(null);
 
-  // Fetch startups and place markers
   const loadStartupMarkers = async (map) => {
     try {
-      const response = await fetch("http://localhost:8080/startups", {
+      const response = await fetch("http://localhost:8080/startups/approved", {
         credentials: "include",
       });
       const startups = await response.json();
 
       startups.forEach((startup) => {
-        // Validate latitude and longitude
         if (
           typeof startup.locationLng === "number" &&
           typeof startup.locationLat === "number" &&
@@ -33,13 +31,11 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
           startup.locationLng >= -180 &&
           startup.locationLng <= 180
         ) {
-          // Create a custom marker element
           const markerElement = document.createElement("div");
           markerElement.style.display = "flex";
           markerElement.style.flexDirection = "column";
           markerElement.style.alignItems = "center";
 
-          // Add the marker icon (red dot)
           const markerIcon = document.createElement("div");
           markerIcon.style.width = "20px";
           markerIcon.style.height = "20px";
@@ -48,7 +44,6 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
           markerIcon.style.cursor = "pointer";
           markerElement.appendChild(markerIcon);
 
-          // Add the company name below the marker
           const markerLabel = document.createElement("div");
           markerLabel.textContent = startup.companyName;
           markerLabel.style.marginTop = "2px";
@@ -214,7 +209,7 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
   }, []); // Empty dependency array ensures this runs only once // Removed userMarker from dependencies
 
   return (
-    <div className="relative w-screen h-screen">
+    <div className="relative w-full h-full overflow-hidden">
       <div
         ref={mapContainerRef}
         className="fixed top-0 left-0 w-full h-full z-0"

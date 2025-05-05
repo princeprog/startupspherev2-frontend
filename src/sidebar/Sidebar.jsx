@@ -165,7 +165,7 @@ export default function Sidebar({ mapInstanceRef }) {
   const fetchStartups = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8080/startups", {
+      const response = await fetch("http://localhost:8080/startups/approved", {
         credentials: "include",
       });
       const data = await response.json();
@@ -899,7 +899,6 @@ export default function Sidebar({ mapInstanceRef }) {
         )}
       </div>
 
-      {/* Avatar */}
       <div className="absolute top-4 right-4 z-50">
         <div className="relative">
           <div
@@ -1378,7 +1377,6 @@ export default function Sidebar({ mapInstanceRef }) {
             />
           </div>
 
-          {/* Display the startup image or loading animation */}
           <div className="image bg-gray-400 h-[13rem] flex items-center justify-center">
             {loadingImage ? (
               <span className="loading loading-spinner text-primary"></span> // Loading animation
@@ -1407,7 +1405,6 @@ export default function Sidebar({ mapInstanceRef }) {
               </p>
             </div>
 
-            {/* Like button area */}
             <div className="flex flex-col items-center space-y-1">
               <div className="flex items-center space-x-2">
                 <div className="flex items-center">
@@ -1436,7 +1433,6 @@ export default function Sidebar({ mapInstanceRef }) {
               </div>
             </div>
           </div>
-          {/* Other startup details */}
           <div className="p-4">
             <h1 className="text-black font-semibold">{startup.foundedDate}</h1>
             <p className="text-gray-400 font-semibold">Established</p>
@@ -1478,7 +1474,6 @@ export default function Sidebar({ mapInstanceRef }) {
                 setUser(userDetails);
                 localStorage.setItem("user", JSON.stringify(userDetails));
 
-                // Fetch user likes
                 await fetchUserLikes();
               }
             } catch (error) {
