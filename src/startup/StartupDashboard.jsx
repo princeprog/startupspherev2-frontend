@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FaEye } from "react-icons/fa";
 import { BiLike } from "react-icons/bi";
 import { FaBookBookmark } from "react-icons/fa6";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Save, X, ExternalLink } from "lucide-react";
 
 import {
   Chart as ChartJS,
@@ -33,7 +33,7 @@ ChartJS.register(
 export default function StartupDashboard() {
   const [startupIds, setStartupIds] = useState([]);
   const [startups, setStartups] = useState([]);
-  const [selectedStartup, setSelectedStartup] = useState("all"); 
+  const [selectedStartup, setSelectedStartup] = useState("all");
 
   const [metrics, setMetrics] = useState({
     views: 0,
@@ -41,11 +41,17 @@ export default function StartupDashboard() {
     bookmarks: 0,
   });
 
-  const [loading, setLoading] = useState(true); 
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState("All");
-  const [error, setError] = useState(null); 
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
+
+  // State for editing
+  const [editingId, setEditingId] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [actionSuccess, setActionSuccess] = useState(null);
 
   const months = [
     "January",
@@ -116,7 +122,7 @@ export default function StartupDashboard() {
 
       if (Array.isArray(data)) {
         setStartupIds(data);
-        return data; 
+        return data;
       } else {
         console.error("Expected array of startup IDs but got:", data);
         setStartupIds([]);
@@ -149,7 +155,7 @@ export default function StartupDashboard() {
 
       if (Array.isArray(data)) {
         setStartups(data);
-        return data; 
+        return data;
       } else {
         console.error("Expected array of startups but got:", data);
         setStartups([]);
@@ -574,9 +580,9 @@ export default function StartupDashboard() {
         {
           label: "Views",
           data: viewsValues,
-          borderColor: "#f59e0b", 
+          borderColor: "#f59e0b",
           fill: false,
-          tension: 0.1, 
+          tension: 0.1,
         },
         {
           label: "Bookmarks",
@@ -588,13 +594,81 @@ export default function StartupDashboard() {
         {
           label: "Likes",
           data: likesValues,
-          borderColor: "#3b82f6", 
+          borderColor: "#3b82f6",
           fill: false,
           tension: 0.1,
         },
       ],
     });
   };
+
+  // START NEW EDITING FUNCTIONS
+  const handleEditStartup = (startup) => {
+    setEditingId(startup.id);
+    setEditFormData({
+      companyName: startup.companyName || "",
+      industry: startup.industry || "",
+      foundedDate: startup.foundedDate
+        ? new Date(startup.foundedDate).toISOString().split("T")[0]
+        : "",
+      contactEmail: startup.contactEmail || "",
+      phoneNumber: startup.phoneNumber || "",
+      website: startup.website || "",
+      locationName: startup.locationName || "",
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditFormData({});
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData({
+      ...editFormData,
+      [name]: value,
+    });
+  };
+
+  const handleUpdateStartup = async (id) => {
+    setSubmitting(true);
+    try {
+      const response = await fetch(`http://localhost:8080/startups/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(editFormData),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error updating startup: ${response.status}`);
+      }
+
+      // Update local state
+      const updatedStartups = startups.map((startup) =>
+        startup.id === id ? { ...startup, ...editFormData } : startup
+      );
+      setStartups(updatedStartups);
+
+      // Show success message
+      setActionSuccess("Startup updated successfully");
+      setTimeout(() => setActionSuccess(null), 3000);
+
+      // Exit edit mode
+      setEditingId(null);
+      setEditFormData({});
+    } catch (error) {
+      console.error("Error updating startup:", error);
+      setError("Failed to update startup. Please try again.");
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+  // END NEW EDITING FUNCTIONS
 
   const filteredStartups = startups.filter((startup) => {
     const query = searchQuery.toLowerCase();
@@ -673,7 +747,7 @@ export default function StartupDashboard() {
 
         if (subText) {
           ctx.font = `${subFontSize}px sans-serif`;
-          ctx.fillStyle = "#64748b"; 
+          ctx.fillStyle = "#64748b";
           ctx.fillText(subText, centerX, startY + totalHeight + subFontSize);
         }
       } else {
@@ -681,7 +755,7 @@ export default function StartupDashboard() {
 
         if (subText) {
           ctx.font = `${subFontSize}px sans-serif`;
-          ctx.fillStyle = "#64748b"; 
+          ctx.fillStyle = "#64748b";
           ctx.fillText(subText, centerX, centerY + mainFontSize * 0.7);
         }
       }
@@ -728,9 +802,55 @@ export default function StartupDashboard() {
       </button>
 
       {error && (
-        <div className="alert alert-error">
-          <div className="flex-1">
-            <label>{error}</label>
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-md">
+          <div className="flex items-center">
+            <div className="py-1">
+              <svg
+                className="h-6 w-6 mr-4 text-red-500"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="font-bold">Error</p>
+              <p className="text-sm">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {actionSuccess && (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded shadow-md">
+          <div className="flex items-center">
+            <div className="py-1">
+              <svg
+                className="h-6 w-6 mr-4 text-green-500"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <div>
+              <p className="font-bold">Success</p>
+              <p className="text-sm">{actionSuccess}</p>
+            </div>
           </div>
         </div>
       )}
