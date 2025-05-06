@@ -7,15 +7,15 @@ import Startupadd from "./startup/Startupadd";
 import StartupDashboard from "./startup/StartupDashboard";
 import AllStartupDashboard from "./startup/AllStartupDashboard";
 import UpdateStartup from "./startup/UpdateStartup";
+import ProtectedRoute from "./security/ProtectedRoute";
 import { SidebarProvider } from './context/SidebarContext';
 
 function App() {
   const mapInstanceRef = useRef(null);
-  const [user, setUser] = useState(null); // State to store authenticated user details
+  const [user, setUser] = useState(null); 
 
-  // Callback to handle successful login and update user state
   const handleLoginSuccess = (userData) => {
-    setUser(userData); // Update user state with fetched user details
+    setUser(userData); 
   };
 
   return (
@@ -23,7 +23,9 @@ function App() {
       <Routes>
         <Route
           path="/"
-          element={<Sidebar mapInstanceRef={mapInstanceRef} setUserDetails={setUser} />}
+          element={
+          <Sidebar mapInstanceRef={mapInstanceRef} setUserDetails={setUser} />
+        }
         >
           <Route
             index
@@ -34,10 +36,15 @@ function App() {
               />
             }
           />
-          <Route path="dashboard" element={<Startup />} />
-          <Route path="/startup-dashboard" element={<StartupDashboard />} />
-          <Route path="/all-startup-dashboard" element={<AllStartupDashboard />} />
-          <Route path="/update-startup/:id" element={<UpdateStartup />} />
+        <Route element={<ProtectedRoute />}>
+            <Route path="dashboard" element={<Startup />} />
+            <Route path="/startup-dashboard" element={<StartupDashboard />} />
+            <Route
+            path="/all-startup-dashboard"
+            element={<AllStartupDashboard />}
+          />
+            <Route path="/update-startup/:id" element={<UpdateStartup />} />
+        </Route>
         </Route>
         <Route path="/add-startup" element={<Startupadd />} />
       </Routes>

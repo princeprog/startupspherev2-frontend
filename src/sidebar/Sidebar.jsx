@@ -365,7 +365,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           parseFloat(startup.locationLng),
           parseFloat(startup.locationLat),
         ],
-        zoom: 14,
+        zoom: 18,
         essential: true,
       });
     }
@@ -722,8 +722,29 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           </button>
           <span className="text-gray-700 text-sm flex items-center">
             Viewing{" "}
-            <p className="font-semibold ml-2 text-gray-900">{viewingStartup.companyName}</p>
+            <p className="font-semibold ml-2 text-gray-900">
+              {viewingStartup.companyName}
+            </p>
           </span>
+        </div>
+      )}
+
+      {location.pathname === "/" && (
+        <div className="absolute p-4 rounded bg-white bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4 z-50 shadow-lg">
+          <div className="flex items-center">
+            <div
+              aria-label="status"
+              className="mr-2 status status-lg bg-red-600"
+            ></div>
+            <h1 className="text-black">Startups</h1>
+          </div>
+          <div className="flex items-center">
+            <div
+              aria-label="status"
+              className="mr-2 status status-lg bg-blue-600"
+            ></div>
+            <h1 className="text-black">Investors</h1>
+          </div>
         </div>
       )}
 
@@ -753,7 +774,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           {/* Logo */}
           <div className="flex justify-center items-center py-6 border-b border-gray-200">
             <button
-              onClick={() => window.location.href = "http://localhost:5173/"}
+              onClick={() => (window.location.href = "http://localhost:5173/")}
               className="group relative flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
             >
               <img
@@ -949,84 +970,85 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         )}
       </div>
 
-      {/* User Profile Menu */}
-      <div className="absolute top-4 right-4 z-50">
-        <div className="relative">
-          <div
-            className="avatar avatar-placeholder cursor-pointer rounded-full hover:ring-2 hover:ring-blue-900 transition-all duration-200"
-            onClick={() => setShowTooltip((prev) => !prev)}
-          >
-            <div className="bg-gradient-to-br from-blue-400 to-blue-700 text-white w-12 rounded-full flex items-center justify-center shadow-md">
-              <span className="text-lg font-semibold">
-                {isAuthenticated === null
-                  ? "?"
-                  : isAuthenticated && currentUser
-                    ? `${currentUser.firstname?.[0] ?? ""}${currentUser.lastname?.[0] ?? ""
+      {location.pathname === "/" && (
+        <div className="absolute top-4 right-4 z-50">
+          <div className="relative">
+            <div
+              className="avatar avatar-placeholder cursor-pointer rounded-full hover:ring-2 hover:ring-blue-900 transition-all duration-200"
+              onClick={() => setShowTooltip((prev) => !prev)}
+            >
+              <div className="bg-gradient-to-br from-blue-400 to-blue-700 text-white w-12 rounded-full flex items-center justify-center shadow-md">
+                <span className="text-lg font-semibold">
+                  {isAuthenticated === null
+                    ? "?"
+                    : isAuthenticated && currentUser
+                    ? `${currentUser.firstname?.[0] ?? ""}${
+                        currentUser.lastname?.[0] ?? ""
                       }`.toUpperCase()
                     : "G"}
-              </span>
+                </span>
+              </div>
             </div>
+
+            {showTooltip && (
+              <div className="cursor-pointer absolute top-14 right-0 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+                {isAuthenticated ? (
+                  <>
+                    <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+                      <div className="text-sm font-semibold text-gray-900">
+                        {currentUser?.firstname} {currentUser?.lastname}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {currentUser?.email}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        logout();
+                        setShowTooltip(false);
+                      }}
+                      className="cursor-pointer block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowTooltip(false);
+                        setOpenLogin(true);
+                      }}
+                      className="cursor-pointer block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                    >
+                      Login
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowTooltip(false);
+                        setOpenRegister(true);
+                      }}
+                      className="cursor-pointer block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                    >
+                      Register
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
-
-          {showTooltip && (
-            <div className="cursor-pointer absolute top-14 right-0 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
-              {isAuthenticated ? (
-                <>
-                  <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
-                    <div className="text-sm font-semibold text-gray-900">
-                      {currentUser?.firstname} {currentUser?.lastname}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {currentUser?.email}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      logout();
-                      setShowTooltip(false);
-                    }}
-                    className="cursor-pointer block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => {
-                      setShowTooltip(false);
-                      setOpenLogin(true);
-                    }}
-                    className="cursor-pointer block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  >
-                    Login
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowTooltip(false);
-                      setOpenRegister(true);
-                    }}
-                    className="cursor-pointer block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                  >
-                    Register
-                  </button>
-                </>
-              )}
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
-      {/* Search Container */}
       {showSearchContainer && (
         <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-5 transform transition-all duration-300 ease-in-out animate-slide-in">
           <div className="p-4 bg-gradient-to-b from-blue-600 to-blue-500 relative">
             <button
               className="cursor-pointer absolute top-2 right-2 text-white hover:text-gray-200 transition-colors"
               onClick={() => {
-                const container = document.querySelector('.animate-slide-in');
+                const container = document.querySelector(".animate-slide-in");
                 if (container) {
-                  container.classList.add('animate-slide-out');
+                  container.classList.add("animate-slide-out");
                   setTimeout(() => {
                     setShowSearchContainer(false);
                   }, 300);
@@ -1114,19 +1136,21 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => setViewingType("startups")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "startups"
-                  ? "bg-white text-blue-600"
-                  : "bg-white/20 text-white hover:bg-white/30"
-                  }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  viewingType === "startups"
+                    ? "bg-white text-blue-600"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
               >
                 Startups
               </button>
               <button
                 onClick={() => setViewingType("investors")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "investors"
-                  ? "bg-white text-blue-600"
-                  : "bg-white/20 text-white hover:bg-white/30"
-                  }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  viewingType === "investors"
+                    ? "bg-white text-blue-600"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
               >
                 Investors
               </button>
@@ -1147,7 +1171,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-500">{startup.locationName}</span>
+                      <span className="text-sm text-gray-500">
+                        {startup.locationName}
+                      </span>
                       <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
                         {startup.industry}
                       </span>
@@ -1173,7 +1199,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-500">{investor.locationName}</span>
+                    <span className="text-sm text-gray-500">
+                      {investor.locationName}
+                    </span>
                     <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
                       {investor.gender}
                     </span>
@@ -1202,9 +1230,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <button
               className="absolute top-2 right-2 text-white hover:text-gray-200 transition-colors"
               onClick={() => {
-                const container = document.querySelector('.animate-slide-in');
+                const container = document.querySelector(".animate-slide-in");
                 if (container) {
-                  container.classList.add('animate-slide-out');
+                  container.classList.add("animate-slide-out");
                   setTimeout(() => {
                     setContainerMode(null);
                   }, 300);
@@ -1230,24 +1258,28 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </svg>
             </button>
 
-            <h2 className="text-lg text-white font-semibold mb-4">Recent Activity</h2>
+            <h2 className="text-lg text-white font-semibold mb-4">
+              Recent Activity
+            </h2>
 
             <div className="flex gap-2">
               <button
                 onClick={() => setViewingType("startups")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "startups"
-                  ? "bg-white text-blue-600"
-                  : "bg-white/20 text-white hover:bg-white/30"
-                  }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  viewingType === "startups"
+                    ? "bg-white text-blue-600"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
               >
                 Startups
               </button>
               <button
                 onClick={() => setViewingType("investors")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "investors"
-                  ? "bg-white text-blue-600"
-                  : "bg-white/20 text-white hover:bg-white/30"
-                  }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  viewingType === "investors"
+                    ? "bg-white text-blue-600"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
               >
                 Investors
               </button>
@@ -1264,7 +1296,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-500">{startup.locationName}</span>
+                      <span className="text-sm text-gray-500">
+                        {startup.locationName}
+                      </span>
                       <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
                         {startup.industry}
                       </span>
@@ -1290,7 +1324,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-500">{investor.locationName}</span>
+                    <span className="text-sm text-gray-500">
+                      {investor.locationName}
+                    </span>
                     <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
                       {investor.gender}
                     </span>
@@ -1330,9 +1366,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <button
               className="cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
               onClick={() => {
-                const container = document.querySelector('.animate-slide-in');
+                const container = document.querySelector(".animate-slide-in");
                 if (container) {
-                  container.classList.add('animate-slide-out');
+                  container.classList.add("animate-slide-out");
                   setTimeout(() => {
                     setInvestor(null);
                     setShowSearchContainer(true);
@@ -1372,10 +1408,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => toggleLike(user.id, null, investor.id)}
-                className={`text-2xl transition cursor-pointer ${likedInvestors.includes(investor.id)
-                  ? "text-red-500"
-                  : "text-gray-400 hover:text-red-400"
-                  }`}
+                className={`text-2xl transition cursor-pointer ${
+                  likedInvestors.includes(investor.id)
+                    ? "text-red-500"
+                    : "text-gray-400 hover:text-red-400"
+                }`}
               >
                 <FaHeart />
               </button>
@@ -1384,10 +1421,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </span>
               <button
                 onClick={toggleBookmark}
-                className={`text-2xl transition cursor-pointer ${isCurrentItemBookmarked
-                  ? "text-blue-500"
-                  : "text-gray-400 hover:text-blue-400"
-                  }`}
+                className={`text-2xl transition cursor-pointer ${
+                  isCurrentItemBookmarked
+                    ? "text-blue-500"
+                    : "text-gray-400 hover:text-blue-400"
+                }`}
               >
                 <FaBookmark />
               </button>
@@ -1401,14 +1439,20 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <div className="pt-4 space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-gray-900">About</h3>
-                <p className="mt-1 text-sm text-gray-600">{investor.biography}</p>
+                <p className="mt-1 text-sm text-gray-600">
+                  {investor.biography}
+                </p>
               </div>
 
               <div className="flex gap-4">
                 <button
                   className="cursor-pointer flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   onClick={() => {
-                    if (investor && investor.locationLang && investor.locationLat) {
+                    if (
+                      investor &&
+                      investor.locationLang &&
+                      investor.locationLat
+                    ) {
                       mapInstanceRef.current.flyTo({
                         center: [
                           parseFloat(investor.locationLang),
@@ -1440,9 +1484,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <button
               className="text-gray-500 hover:text-gray-700 transition-colors"
               onClick={() => {
-                const container = document.querySelector('.animate-slide-in');
+                const container = document.querySelector(".animate-slide-in");
                 if (container) {
-                  container.classList.add('animate-slide-out');
+                  container.classList.add("animate-slide-out");
                   setTimeout(() => {
                     setStartup(null);
                     setShowSearchContainer(true);
@@ -1495,10 +1539,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => toggleLike(user.id, startup.id, null)}
-                className={`text-2xl transition cursor-pointer ${likedStartups.includes(startup.id)
-                  ? "text-red-500"
-                  : "text-gray-400 hover:text-red-400"
-                  }`}
+                className={`text-2xl transition cursor-pointer ${
+                  likedStartups.includes(startup.id)
+                    ? "text-red-500"
+                    : "text-gray-400 hover:text-red-400"
+                }`}
               >
                 <FaHeart />
               </button>
@@ -1507,10 +1552,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </span>
               <button
                 onClick={toggleBookmark}
-                className={`text-2xl transition cursor-pointer ${isCurrentItemBookmarked
-                  ? "text-blue-500"
-                  : "text-gray-400 hover:text-blue-400"
-                  }`}
+                className={`text-2xl transition cursor-pointer ${
+                  isCurrentItemBookmarked
+                    ? "text-blue-500"
+                    : "text-gray-400 hover:text-blue-400"
+                }`}
               >
                 <FaBookmark />
               </button>
