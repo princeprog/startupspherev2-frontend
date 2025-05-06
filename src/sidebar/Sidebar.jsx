@@ -14,6 +14,10 @@ import { FaRegEye } from "react-icons/fa";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Award } from "lucide-react";
+import { MdClose, MdOutlineLink, MdLocationOn } from "react-icons/md";
+import { FaRegHeart, FaRegBookmark } from "react-icons/fa";
+import { BsCalendarEvent, BsPeople, BsBriefcase } from "react-icons/bs";
+import { HiOutlineMail } from "react-icons/hi";
 
 export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const navigate = useNavigate();
@@ -1363,10 +1367,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
       )}
 
       {startup && !viewingStartup && (
-        <div className="absolute left-16 top-0 h-screen overflow-y-auto w-90 bg-gray-100 shadow-lg z-20">
-          <div className="absolute left-0 flex justify-end p-2">
+        <div className="absolute left-16 top-0 h-screen w-[24rem] bg-white shadow-2xl z-20 overflow-y-auto">
+          {/* Header Bar with Return Icon */}
+          <div className="flex justify-end p-4 border-b">
             <MdKeyboardReturn
-              className="text-black text-2xl cursor-pointer"
+              className="text-gray-700 text-2xl cursor-pointer hover:text-black transition"
               onClick={() => {
                 setStartup(null);
                 setShowSearchContainer(true);
@@ -1374,77 +1379,115 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             />
           </div>
 
-          <div className="image bg-gray-400 h-[13rem] flex items-center justify-center">
+          {/* Startup Image Section */}
+          <div className="h-52 bg-gray-200 flex items-center justify-center">
             {loadingImage ? (
-              <span className="loading loading-spinner text-primary"></span> // Loading animation
+              <span className="loading loading-spinner text-primary" />
             ) : (
               <img
                 src={
                   startup.imageUrl ||
                   "https://via.placeholder.com/300x200?text=No+Image"
-                } // Use the fetched image or a default placeholder
+                }
                 alt={startup.companyName}
                 className="w-full h-full object-cover"
               />
             )}
           </div>
 
-          <div className="flex justify-between p-4">
-            <div>
-              <h1 className="text-black">{startup.companyName}</h1>
-              <p className="text-black flex items-center">
-                <CiLocationOn />
+          {/* Info & Actions */}
+          <div className="p-4 space-y-3">
+            <div className="space-y-1">
+              <h1 className="text-xl font-semibold text-gray-900">
+                {startup.companyName}
+              </h1>
+              <p className="flex items-center text-gray-600 text-sm">
+                <CiLocationOn className="mr-1" />
                 {startup.locationName}
               </p>
-              <p className="text-blue-700 flex items-center">
-                <CiGlobe className="text-black" />
+              <a
+                href={startup.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center text-blue-600 text-sm hover:underline"
+              >
+                <CiGlobe className="mr-1 text-gray-700" />
                 {startup.website}
-              </p>
+              </a>
             </div>
 
-            <div className="flex flex-col items-center space-y-1">
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => toggleLike(user.id, startup.id, null)}
-                    className={`cursor-pointer text-2xl ${
-                      likedStartups.includes(startup.id)
-                        ? "text-red-500"
-                        : "text-gray-500"
-                    }`}
-                  >
-                    <FaHeart />
-                  </button>
-                  <p className="text-sm text-black ml-1">
-                    {startupLikeCounts[startup.id] || 0}
-                  </p>
-                </div>
-                <button
-                  onClick={toggleBookmark}
-                  className={`cursor-pointer text-2xl ${
-                    isCurrentItemBookmarked ? "text-blue-500" : "text-gray-500"
-                  }`}
-                >
-                  <FaBookmark />
-                </button>
+            {/* Like & Bookmark Actions */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => toggleLike(user.id, startup.id, null)}
+                className={`text-2xl transition ${
+                  likedStartups.includes(startup.id)
+                    ? "text-red-500"
+                    : "text-gray-400 hover:text-red-400"
+                }`}
+              >
+                <FaHeart />
+              </button>
+              <span className="text-sm text-gray-700">
+                {startupLikeCounts[startup.id] || 0}
+              </span>
+              <button
+                onClick={toggleBookmark}
+                className={`text-2xl transition ${
+                  isCurrentItemBookmarked
+                    ? "text-blue-500"
+                    : "text-gray-400 hover:text-blue-400"
+                }`}
+              >
+                <FaBookmark />
+              </button>
+            </div>
+          </div>
+
+          {/* Details Section */}
+          <div className="px-4 pb-8 space-y-4 text-sm text-gray-800">
+            <div>
+              <p className="font-semibold">{startup.foundedDate}</p>
+              <p className="text-gray-500">Established</p>
+            </div>
+
+            <div>
+              <p className="font-medium">About:</p>
+              <p>{startup.companyDescription}</p>
+            </div>
+
+            <div>
+              <p className="font-medium">Industry:</p>
+              <p>{startup.industry}</p>
+            </div>
+
+            <div>
+              <p className="font-medium">Contact Info:</p>
+              <p>{startup.contactEmail}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+              <div>
+                <p className="font-medium">Funds Raised:</p>
+                <p>None</p>
+              </div>
+              <div>
+                <p className="font-medium">Funding Rounds:</p>
+                <p>0</p>
+              </div>
+              <div>
+                <p className="font-medium">Investors:</p>
+                <p>0</p>
+              </div>
+              <div>
+                <p className="font-medium">Team Size:</p>
+                <p>{startup.numberOfEmployees}</p>
               </div>
             </div>
           </div>
-          <div className="p-4">
-            <h1 className="text-black font-semibold">{startup.foundedDate}</h1>
-            <p className="text-gray-400 font-semibold">Established</p>
-            <p className="text-black">{startup.companyDescription}</p>
-            <p className="text-black">Categories: </p>
-            <p className="text-black">{startup.industry}</p>
-            <p className="text-black">ContactInfo: </p>
-            <p className="text-black">{startup.contactEmail}</p>
-            <p className="text-black">Funds Raised: None</p>
-            <p className="text-black">Funding Rounds: 0</p>
-            <p className="text-black">Total Investors: 0</p>
-            <p className="text-black">Team size: {startup.numberOfEmployees}</p>
-          </div>
         </div>
       )}
+
       <div className={`flex-1 overflow-auto`}>
         <Outlet />
       </div>
