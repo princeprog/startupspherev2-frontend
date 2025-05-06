@@ -9,8 +9,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Verification from "../modals/Verification";
 
-mapboxgl.accessToken =
-  "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
 
 export default function Startupadd() {
   const [selectedTab, setSelectedTab] = useState("Company Information");
@@ -109,7 +108,7 @@ export default function Startupadd() {
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
-    if (　　　file) {
+    if (file) {
       if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
         toast.error("Invalid file type. Please upload a .csv file.");
         return;
@@ -123,11 +122,11 @@ export default function Startupadd() {
 
   const handleFileSubmit = async () => {
     if (!uploadedFile) {
-      toast.error("Please select a file before uploading.");
+      toast.error("Please select a CSV file.");
       return;
     }
     if (!startupId) {
-      toast.error("Startup ID is missing. Please add a startup first.");
+      toast.error("Please complete the startup form and submit it first.");
       return;
     }
     const formData = new FormData();
@@ -287,16 +286,6 @@ export default function Startupadd() {
     return "";
   };
 
-  const Pieces = [
-    "Company Information",
-    "Contact Information",
-    "Address Information",
-    "Social Media Links",
-    "Additional Information",
-    "Location Info",
-    "Upload Data",
-  ];
-  
   const handleNext = () => {
     let errorMessage = "";
     if (selectedTab === "Company Information") {
@@ -329,134 +318,136 @@ export default function Startupadd() {
     }
   };
 
-// ... (other imports and code remain unchanged)
+  const handleSubmit = async () => {
+    let errorMessage = validateCompanyInformation();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
+    errorMessage = validateContactInformation();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
+    errorMessage = validateAddressInformation();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
+    errorMessage = validateSocialMediaLinks();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
+    errorMessage = validateAdditionalInformation();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
+    errorMessage = validateLocationInfo();
+    if (errorMessage) {
+      setError(errorMessage);
+      return;
+    }
 
-const handleSubmit = async () => {
-  // Validate all fields before submission
-  let errorMessage = validateCompanyInformation();
-  if (errorMessage) {
-    setError(errorMessage);
-    return;
-  }
-  errorMessage = validateContactInformation();
-  if (errorMessage) {
-    setError(errorMessage);
-    return;
-  }
-  errorMessage = validateAddressInformation();
-  if (errorMessage) {
-    setError(errorMessage);
-    return;
-  }
-  errorMessage = validateSocialMediaLinks();
-  if (errorMessage) {
-    setError(errorMessage);
-    return;
-  }
-  errorMessage = validateAdditionalInformation();
-  if (errorMessage) {
-    setError(errorMessage);
-    return;
-  }
-  errorMessage = validateLocationInfo();
-  if (errorMessage) {
-    setError(errorMessage);
-    return;
-  }
-
-  try {
-    const response = await fetch("http://localhost:8080/startups", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(formData),
-      credentials: "include",
-    });
-
-    const data = await response.json();
-    if (response.ok) {
-      console.log("Startup added successfully: ", data);
-      const startupId = data.id;
-      setStartupId(startupId);
-      setUploadedFile(null);
-
-      // Upload image if selected
-      if (uploadedImage) {
-        const imageFormData = new FormData();
-        imageFormData.append("photo", uploadedImage);
-        try {
-          const imageResponse = await fetch(`http://localhost:8080/startups/${startupId}/upload-photo`, {
-            method: "PUT",
-            body: imageFormData,
-            credentials: "include",
-          });
-
-          let imageErrorMessage = "Failed to upload image.";
-          if (!imageResponse.ok) {
-            try {
-              const imageErrorData = await imageResponse.json();
-              imageErrorMessage = imageErrorData.error || imageErrorMessage;
-            } catch (jsonError) {
-              // Handle non-JSON response
-              const text = await imageResponse.text();
-              imageErrorMessage = text || "Failed to upload image: Invalid server response.";
-            }
-            toast.error(imageErrorMessage);
-          } else {
-            const imageSuccessData = await imageResponse.json();
-            toast.success(imageSuccessData.message || "Image uploaded successfully!");
-          }
-        } catch (imageError) {
-          console.error("Error uploading image:", imageError);
-          toast.error("An error occurred while uploading the image.");
-        }
-      }
-
-      // Send verification email
-      const emailResponse = await fetch("http://localhost:8080/startups/send-verification-email", {
+    try {
+      const response = await fetch("http://localhost:8080/startups", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          startupId,
-          email: formData.contactEmail,
-        }),
+        body: JSON.stringify(formData),
         credentials: "include",
       });
 
-      let emailResponseData;
-      try {
-        emailResponseData = await emailResponse.json();
-      } catch (jsonError) {
-        console.error("Failed to parse email response:", jsonError);
-        toast.error("Failed to send verification email: Invalid server response.");
-        return;
-      }
+      const data = await response.json();
+      if (response.ok) {
+        console.log("Startup added successfully: ", data);
+        const startupId = data.id;
+        setStartupId(startupId);
+        setUploadedFile(null);
 
-      if (emailResponse.ok) {
-        toast.success("Startup added successfully! Verification email sent.");
-        setVerificationModal(true);
-      } else {
-        if (emailResponseData.error.includes("Email is already verified")) {
-          toast.info("Email is already verified. Proceeding to upload data.");
-          setSelectedTab("Upload Data");
-        } else {
-          toast.error(`Failed to send verification email: ${emailResponseData.error || "Unknown error"}`);
+        if (uploadedImage) {
+          const imageFormData = new FormData();
+          imageFormData.append("photo", uploadedImage);
+          try {
+            const imageResponse = await fetch(`http://localhost:8080/startups/${startupId}/upload-photo`, {
+              method: "PUT",
+              body: imageFormData,
+              credentials: "include",
+            });
+
+            let imageErrorMessage = "Failed to upload image.";
+            if (!imageResponse.ok) {
+              try {
+                const imageErrorData = await imageResponse.json();
+                imageErrorMessage = imageErrorData.error || imageErrorMessage;
+              } catch (jsonError) {
+                const text = await imageResponse.text();
+                imageErrorMessage = text || "Failed to upload image: Invalid server response.";
+              }
+              toast.error(imageErrorMessage);
+            } else {
+              const imageSuccessData = await imageResponse.json();
+              toast.success(imageSuccessData.message || "Image uploaded successfully!");
+            }
+          } catch (imageError) {
+            console.error("Error uploading image:", imageError);
+            toast.error("An error occurred while uploading the image.");
+          }
         }
-      }
-    } else {
-      console.error("Error adding a startup: ", data);
-      toast.error(`Failed to add startup: ${data.message || data.error || "Unknown error"}`);
-    }
-  } catch (error) {
-    console.error("Error:", error);
-    toast.error("An error occurred while adding the startup.");
-  }
-};
 
-// ... (rest of the component remains unchanged)
+        const emailResponse = await fetch("http://localhost:8080/startups/send-verification-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startupId,
+            email: formData.contactEmail,
+          }),
+          credentials: "include",
+        });
+
+        let emailResponseData;
+        try {
+          emailResponseData = await emailResponse.json();
+        } catch (jsonError) {
+          console.error("Failed to parse email response:", jsonError);
+          toast.error("Failed to send verification email: Invalid server response.");
+          return;
+        }
+
+        if (emailResponse.ok) {
+          toast.success("Startup added successfully! Verification email sent.");
+          setVerificationModal(true);
+        } else {
+          if (emailResponseData.error.includes("Email is already verified")) {
+            toast.info("Email is already verified. Proceeding to upload data.");
+            setSelectedTab("Upload Data");
+          } else {
+            toast.error(`Failed to send verification email: ${emailResponseData.error || "Unknown error"}`);
+          }
+        }
+      } else {
+        console.error("Error adding a startup: ", data);
+        toast.error(`Failed to add startup: ${data.message || data.error || "Unknown error"}`);
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      toast.error("An error occurred while adding the startup.");
+    }
+  };
+
+  const downloadCsvTemplate = () => {
+    const csvContent = "revenue,annualRevenue,paidUpCapital,numberOfActiveStartups,numberOfNewStartupsThisYear,averageStartupGrowthRate,startupSurvivalRate,totalStartupFundingReceived,averageFundingPerStartup,numberOfFundingRounds,numberOfStartupsWithForeignInvestment,amountOfGovernmentGrantsOrSubsidiesReceived,numberOfStartupIncubatorsOrAccelerators,numberOfStartupsInIncubationPrograms,numberOfMentorsOrAdvisorsInvolved,publicPrivatePartnershipsInvolvingStartups\n";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "startup_data_template.csv";
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
 
   return (
     <div className="bg-gray-100 min-h-screen text-gray-800 relative">
@@ -917,11 +908,48 @@ const handleSubmit = async () => {
             <h2 className="text-lg font-semibold mb-4">
               Upload Startup Data (CSV)
             </h2>
+            <div className="mb-4">
+              <h3 className="text-md font-medium mb-2">CSV Upload Instructions</h3>
+              <p className="text-sm text-gray-600">
+                Please upload a CSV file containing your startup's data. The file must include the following columns:
+              </p>
+              <ul className="list-disc list-inside text-sm text-gray-600 mb-2">
+                <li><strong>revenue</strong>: Total revenue of the startup.</li>
+                <li><strong>annualRevenue</strong>: Annual revenue of the startup.</li>
+                <li><strong>paidUpCapital</strong>: Paid-up capital of the startup.</li>
+                <li><strong>numberOfActiveStartups</strong>: Number of active startups.</li>
+                <li><strong>numberOfNewStartupsThisYear</strong>: Number of new startups this year.</li>
+                <li><strong>averageStartupGrowthRate</strong>: Average growth rate of startups (as a percentage).</li>
+                <li><strong>startupSurvivalRate</strong>: Survival rate of startups (as a percentage).</li>
+                <li><strong>totalStartupFundingReceived</strong>: Total funding received by startups.</li>
+                <li><strong>averageFundingPerStartup</strong>: Average funding per startup.</li>
+                <li><strong>numberOfFundingRounds</strong>: Number of funding rounds.</li>
+                <li><strong>numberOfStartupsWithForeignInvestment</strong>: Number of startups with foreign investment.</li>
+                <li><strong>amountOfGovernmentGrantsOrSubsidiesReceived</strong>: Amount of government grants or subsidies received.</li>
+                <li><strong>numberOfStartupIncubatorsOrAccelerators</strong>: Number of startup incubators or accelerators.</li>
+                <li><strong>numberOfStartupsInIncubationPrograms</strong>: Number of startups in incubation programs.</li>
+                <li><strong>numberOfMentorsOrAdvisorsInvolved</strong>: Number of mentors or advisors involved.</li>
+                <li><strong>publicPrivatePartnershipsInvolvingStartups</strong>: Number of public-private partnerships involving startups.</li>
+              </ul>
+              <button
+                type="button"
+                className="text-[#1D3557] underline text-sm mt-2"
+                onClick={downloadCsvTemplate}
+              >
+                Download CSV Template
+              </button>
+            </div>
+            <div className="mb-4">
+              <h3 className="text-md font-medium mb-2">Privacy Policy</h3>
+              <p className="text-sm text-gray-600">
+                Your data is important to us. The uploaded CSV file will be securely stored and used solely for the purpose of analyzing and displaying your startup's metrics. We implement industry-standard security measures to protect your data and will not share it with third parties without your consent. For more details, please review our full <a href="/privacy-policy" className="text-[#1D3557] underline">Privacy Policy</a>.
+              </p>
+            </div>
             <input
               type="file"
               accept=".csv"
               onChange={handleFileUpload}
-              className="mb-4"
+              className="mb-4 w-full border border-gray-300 rounded-md px-4 py-2"
             />
             <button
               type="button"
@@ -938,6 +966,7 @@ const handleSubmit = async () => {
               >
                 Back
               </button>
+              
             </div>
           </div>
         )}
