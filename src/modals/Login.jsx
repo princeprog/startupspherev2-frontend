@@ -20,19 +20,30 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
         credentials: "include",
         body: JSON.stringify({ email, password }),
       });
-      
-      if (!response.ok) {
-        const data = await response.json()
-        const errorData = await response.json();
-        console.log(errorData.description);
-        console.log(data)
-        throw new Error(errorData.description || "Failed to login");
-      } else {
-        const data = await response.json();
-        console.log("Login successful:", data);
 
-        onLoginSuccess();
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.description || "Failed to login");
       }
+
+      // Fetch user details after successful login
+      const userResponse = await fetch("http://localhost:8080/users/me", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+      });
+
+      if (!userResponse.ok) {
+        throw new Error("Failed to fetch user details");
+      }
+
+      const userData = await userResponse.json();
+      console.log("Login successful, user data:", userData);
+
+      onLoginSuccess(userData); // Pass user data to parent
+      closeModal(); // Close the login modal
     } catch (err) {
       setError(err.message);
     } finally {

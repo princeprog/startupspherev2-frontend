@@ -2,16 +2,16 @@ import { useState, useEffect, useRef } from "react";
 import Login from "../modals/Login";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css"; // Import Geocoder CSS
+import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
 
-export default function Startupmap({ mapInstanceRef, onMapClick }) {
+export default function Startupmap({ mapInstanceRef, onMapClick, onLoginSuccess }) {
   const [openLogin, setOpenLogin] = useState(false);
+  const [openRegister, setOpenRegister] = useState(false);
   const mapContainerRef = useRef(null);
-  const [userMarker, setUserMarker] = useState(null); 
   const markerRef = useRef(null);
   const geocoderContainerRef = useRef(null);
 
@@ -58,9 +58,9 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
             .setPopup(
               new mapboxgl.Popup({ offset: 25 }).setHTML(
                 `<div style="color: black; font-family: Arial, sans-serif;">
-        <h3 style="margin: 0; color: black;">${startup.companyName}</h3>
-        <p style="margin: 0; color: black;">${startup.locationName}</p>
-      </div>`
+                  <h3 style="margin: 0; color: black;">${startup.companyName}</h3>
+                  <p style="margin: 0; color: black;">${startup.locationName}</p>
+                </div>`
               )
             )
             .addTo(map);
@@ -156,8 +156,8 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
     const geocoder = new MapboxGeocoder({
       accessToken: mapboxgl.accessToken,
       mapboxgl: mapboxgl,
-      marker: false, // Disable default marker
-      placeholder: "Search for places...", // Placeholder text in the search bar
+      marker: false,
+      placeholder: "Search for places...",
     });
 
     if (geocoderContainerRef.current) {
@@ -166,16 +166,15 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
     }
 
     geocoder.on("result", (event) => {
-      const { center } = event.result; // Get the coordinates of the searched location
+      const { center } = event.result;
       map.flyTo({
-        center: center, // Navigate to the searched location
-        zoom: 14, // Set the zoom level
-        essential: true, // This ensures the animation is smooth
+        center: center,
+        zoom: 14,
+        essential: true,
       });
 
-      // Add a marker at the searched location
       if (markerRef.current) {
-        markerRef.current.remove(); // Remove the previous marker if it exists
+        markerRef.current.remove();
       }
       markerRef.current = new mapboxgl.Marker({ color: "green" })
         .setLngLat(center)
@@ -185,7 +184,6 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
     map.on("click", (e) => {
       const { lng, lat } = e.lngLat;
 
-      // Remove the previous marker if it exists
       if (markerRef.current) {
         markerRef.current.remove();
       }
@@ -196,7 +194,6 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
 
       markerRef.current = newMarker;
 
-      // Pass the latitude and longitude to the parent component
       if (onMapClick) {
         onMapClick(lat, lng);
       }
@@ -206,7 +203,7 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
     loadInvestorMarkers(map);
 
     return () => map.remove();
-  }, []); // Empty dependency array ensures this runs only once // Removed userMarker from dependencies
+  }, []);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
@@ -223,13 +220,12 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
           justifyContent: "center",
           alignItems: "center",
           position: "absolute",
-          top: "10px", // Adjust the distance from the top
+          top: "10px",
           left: "50%",
           transform: "translateX(-50%)",
           zIndex: 10,
         }}
       />
-  
       {openLogin && (
         <Login
           closeModal={() => setOpenLogin(false)}
@@ -237,10 +233,7 @@ export default function Startupmap({ mapInstanceRef, onMapClick }) {
             setOpenLogin(false);
             setOpenRegister(true);
           }}
-          onLoginSuccess={() => {
-            setIsAuthenticated(true);
-            setOpenLogin(false);
-          }}
+          onLoginSuccess={onLoginSuccess}
         />
       )}
     </div>

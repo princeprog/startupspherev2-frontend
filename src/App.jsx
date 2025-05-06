@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useState, useRef } from "react";
 import { Routes, Route } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import Startupmap from "./3dmap/Startupmap";
@@ -9,16 +9,33 @@ import AllStartupDashboard from "./startup/AllStartupDashboard";
 
 function App() {
   const mapInstanceRef = useRef(null);
+  const [user, setUser] = useState(null); // State to store authenticated user details
+
+  // Callback to handle successful login and update user state
+  const handleLoginSuccess = (userData) => {
+    setUser(userData); // Update user state with fetched user details
+  };
 
   return (
     <Routes>
-      <Route path="/" element={<Sidebar mapInstanceRef={mapInstanceRef} />}>
-        <Route index element={<Startupmap mapInstanceRef={mapInstanceRef} />} />
-        <Route path="dashboard" element={<Startup/>}/>
-        <Route path="/startup-dashboard" element={<StartupDashboard/>}/>
-        <Route path="/all-startup-dashboard" element={<AllStartupDashboard/>}/>
+      <Route
+        path="/"
+        element={<Sidebar mapInstanceRef={mapInstanceRef} setUserDetails={setUser} />}
+      >
+        <Route
+          index
+          element={
+            <Startupmap
+              mapInstanceRef={mapInstanceRef}
+              onLoginSuccess={handleLoginSuccess}
+            />
+          }
+        />
+        <Route path="dashboard" element={<Startup />} />
+        <Route path="/startup-dashboard" element={<StartupDashboard />} />
+        <Route path="/all-startup-dashboard" element={<AllStartupDashboard />} />
       </Route>
-      <Route path="/add-startup" element={<Startupadd/>}/>
+      <Route path="/add-startup" element={<Startupadd />} />
     </Routes>
   );
 }

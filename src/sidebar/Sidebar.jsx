@@ -15,7 +15,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Award } from "lucide-react";
 
-export default function Sidebar({ mapInstanceRef }) {
+export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const navigate = useNavigate();
   const [openLogin, setOpenLogin] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
@@ -41,7 +41,7 @@ export default function Sidebar({ mapInstanceRef }) {
   const [loadingImage, setLoadingImage] = useState(false); // New state for image loading
   const [isCurrentItemBookmarked, setIsCurrentItemBookmarked] = useState(false);
 
-  // Fetch user on mount
+  // Fetch user on mount or when user details are updated
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
@@ -54,30 +54,24 @@ export default function Sidebar({ mapInstanceRef }) {
           const data = await response.json();
           console.log("Current user:", data);
           setCurrentUser(data);
+          setUserDetails(data); // Update parent state
+          localStorage.setItem("user", JSON.stringify(data)); // Persist user details
+          setIsAuthenticated(true);
         } else {
           console.error("Failed to fetch current user");
+          setCurrentUser(null);
+          setIsAuthenticated(false);
+          localStorage.removeItem("user");
         }
       } catch (error) {
         console.error("Error fetching current user:", error);
+        setCurrentUser(null);
+        setIsAuthenticated(false);
+        localStorage.removeItem("user");
       }
     };
 
     fetchCurrentUser();
-  }, []);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser)); // Restore user details
-        setIsAuthenticated(true); // Set authentication state
-      } catch (error) {
-        console.error("Error parsing user data from localStorage:", error);
-        setIsAuthenticated(false);
-      }
-    } else {
-      setIsAuthenticated(false);
-    }
   }, []);
 
   useEffect(() => {
@@ -124,13 +118,16 @@ export default function Sidebar({ mapInstanceRef }) {
         console.log("Logout successful");
         setIsAuthenticated(false);
         setUser(null); // Clear user state
+        setCurrentUser(null); // Clear current user state
         setLikedStartups([]); // Clear likes
         setLikedInvestors([]); // Clear likes
         localStorage.removeItem("likedStartups");
         localStorage.removeItem("likedInvestors");
         localStorage.removeItem("user");
+        localStorage.removeItem("isAuthenticated");
         document.cookie =
           "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        setUserDetails(null); // Clear parent state
       } else {
         console.error("Failed to logout");
       }
@@ -1459,26 +1456,14 @@ export default function Sidebar({ mapInstanceRef }) {
             setOpenLogin(false);
             setOpenRegister(true);
           }}
-          onLoginSuccess={async () => {
+          onLoginSuccess={async (userData) => {
             setIsAuthenticated(true);
             setOpenLogin(false);
-
-            try {
-              const response = await fetch("http://localhost:8080/users/me", {
-                method: "GET",
-                credentials: "include",
-              });
-
-              if (response.ok) {
-                const userDetails = await response.json();
-                setUser(userDetails);
-                localStorage.setItem("user", JSON.stringify(userDetails));
-
-                await fetchUserLikes();
-              }
-            } catch (error) {
-              console.error("Error during login:", error);
-            }
+            setCurrentUser(userData); // Update currentUser state
+            setUser(userData); // Update user state
+            localStorage.setItem("user", JSON.stringify(userData));
+            setUserDetails(userData); // Update parent state
+            await fetchUserLikes();
           }}
         />
       )}
