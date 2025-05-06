@@ -55,7 +55,6 @@ export default function Addstartup() {
     fetchRegions();
   }, []);
 
-  // Fetch Cities based on selected region
   useEffect(() => {
     const fetchCities = async () => {
       try {
