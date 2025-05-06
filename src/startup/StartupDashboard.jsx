@@ -103,6 +103,48 @@ export default function StartupDashboard() {
     ],
   });
 
+  const handleDeleteStartup = async (id) => {
+    if (window.confirm("Are you sure you want to delete this startup?")) {
+      setSubmitting(true);
+      try {
+        const response = await fetch(`http://localhost:8080/startups/${id}`, {
+          method: "DELETE",
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error deleting startup: ${response.status}`);
+        }
+
+        const updatedStartups = startups.filter((startup) => startup.id !== id);
+        setStartups(updatedStartups);
+
+        const updatedIds = startupIds.filter((startupId) => startupId !== id);
+        setStartupIds(updatedIds);
+
+        setActionSuccess("Startup deleted successfully");
+        setTimeout(() => setActionSuccess(null), 3000);
+
+        if (selectedStartup === id) {
+          setSelectedStartup("all");
+          fetchAllStartupsData();
+        } else if (selectedStartup === "all") {
+          fetchAllStartupsData();
+        }
+      } catch (error) {
+        console.error("Error deleting startup:", error);
+        setError("Failed to delete startup. Please try again.");
+        setTimeout(() => setError(null), 3000);
+      } finally {
+        setSubmitting(false);
+      }
+    }
+  };
+
+  const handleNavigateToUpdate = (startup) => {
+    navigate(`/update-startup/${startup.id}`, { state: { startup } });
+  };
+
   const fetchStartupIds = async () => {
     try {
       setError(null);
@@ -1080,18 +1122,19 @@ export default function StartupDashboard() {
               <th>Founded Date</th>
               <th>Email</th>
               <th>Phone Number</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={5} className="text-center py-4">
+                <td colSpan={6} className="text-center py-4">
                   Loading...
                 </td>
               </tr>
             ) : filteredStartups.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center py-4">
+                <td colSpan={6} className="text-center py-4">
                   No startups found
                 </td>
               </tr>
@@ -1129,12 +1172,45 @@ export default function StartupDashboard() {
                       {st.industry || "N/A"}
                       <br />
                       <span className="badge badge-ghost badge-sm">
-                        {st.website || "No website"}
+                        {st.website ? (
+                          <a
+                            href={
+                              st.website.startsWith("http")
+                                ? st.website
+                                : `https://${st.website}`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1"
+                          >
+                            {st.website} <ExternalLink size={12} />
+                          </a>
+                        ) : (
+                          "No website"
+                        )}
                       </span>
                     </td>
                     <td>{formattedDate}</td>
                     <td>{st.contactEmail || "N/A"}</td>
                     <td>{st.phoneNumber || "N/A"}</td>
+                    <td>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleNavigateToUpdate(st)}
+                          className="btn btn-sm btn-outline btn-info"
+                          disabled={submitting}
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteStartup(st.id)}
+                          className="btn btn-sm btn-outline btn-error"
+                          disabled={submitting}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })

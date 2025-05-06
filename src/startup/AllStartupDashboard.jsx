@@ -197,7 +197,6 @@ export default function AllStartupDashboard() {
     fetchRankedStartups();
   }, [selectedIndustry, rankingMetric]);
 
-  // Fetch available reports based on current selection
   useEffect(() => {
     if (activeTab === "reports") {
       fetchAvailableReports();
