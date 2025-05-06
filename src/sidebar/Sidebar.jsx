@@ -174,10 +174,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         throw new Error("Network response was not ok: ", data);
       }
 
+      console.log("Fetched startups:", data); // Debug log
       setStartups(data);
-      setLoading(false);
     } catch (error) {
       console.error("Fetch error:", error);
+      toast.error("Failed to fetch startups");
     } finally {
       setLoading(false);
     }
@@ -688,8 +689,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
       .catch((err) => console.error("Failed to fetch likes:", err));
   }, []);
 
+  // Add useEffect to fetch startups when component mounts
+  useEffect(() => {
+    fetchStartups();
+  }, []);
+
   return (
-    <div className="relative flex h-screen w-screen overflow-hidden">
+    <div className="relative flex h-screen w-screen overflow-hidden bg-gray-50">
       <ToastContainer
         position="bottom-right"
         autoClose={1000}
@@ -701,10 +707,12 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         pauseOnHover
         theme="colored"
       />
+
+      {/* Viewing Mode Indicators */}
       {viewingStartup && (
-        <div className="absolute w-fit top-4 left-1/2 transform -translate-x-1/2 bg-white shadow-md rounded-lg px-4 py-2 z-50 flex items-center space-x-2">
+        <div className="absolute w-fit top-4 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-lg px-4 py-2 z-50 flex items-center space-x-2 border border-gray-100">
           <button
-            className="text-blue-500 hover:underline flex items-center"
+            className="text-blue-600 hover:text-blue-700 transition-colors flex items-center cursor-pointer"
             onClick={() => {
               setViewingStartup(null);
               setStartup(viewingStartup);
@@ -712,16 +720,17 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           >
             <MdKeyboardReturn className="mr-1 cursor-pointer text-xl" />
           </button>
-          <span className="text-black text-sm flex items-center">
+          <span className="text-gray-700 text-sm flex items-center">
             Viewing{" "}
-            <p className="font-semibold ml-2"> {viewingStartup.companyName}</p>
+            <p className="font-semibold ml-2 text-gray-900">{viewingStartup.companyName}</p>
           </span>
         </div>
       )}
+
       {viewingInvestor && (
-        <div className="absolute w-fit top-4 left-1/2 transform -translate-x-1/2 bg-white shadow-md rounded-lg px-4 py-2 z-50 flex items-center space-x-2">
+        <div className="absolute w-fit top-4 left-1/2 transform -translate-x-1/2 bg-white shadow-lg rounded-lg px-4 py-2 z-50 flex items-center space-x-2 border border-gray-100">
           <button
-            className="text-blue-500 hover:underline flex items-center"
+            className="text-blue-600 hover:text-blue-700 transition-colors flex items-center cursor-pointer"
             onClick={() => {
               setViewingInvestor(null);
               setInvestor(viewingInvestor);
@@ -729,24 +738,41 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           >
             <MdKeyboardReturn className="mr-1 cursor-pointer text-xl" />
           </button>
-          <span className="text-black text-sm flex items-center">
+          <span className="text-gray-700 text-sm flex items-center">
             Viewing{" "}
-            <p className="font-semibold ml-2">
+            <p className="font-semibold ml-2 text-gray-900">
               {viewingInvestor.firstname} {viewingInvestor.lastname}
             </p>
           </span>
         </div>
       )}
+
       {/* Sidebar */}
-      <div className="flex h-screen w-20 flex-col justify-between border-e border-gray-100 bg-white/90 z-10">
+      <div className="flex h-screen w-20 flex-col justify-between border-r border-gray-200 bg-white shadow-sm z-10">
         <div>
-          <div className="border-t border-gray-100">
+          {/* Logo */}
+          <div className="flex justify-center items-center py-6 border-b border-gray-200">
+            <button
+              onClick={() => window.location.href = "http://localhost:5173/"}
+              className="group relative flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              <img
+                src="/src/assets/StartUpSphere_logo.png"
+                alt="StartUpSphere Logo"
+                className="h-6 w-6 object-contain"
+              />
+              <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
+                Home
+              </span>
+            </button>
+          </div>
+          <div className="border-b border-gray-200">
             <div className="px-2">
-              <ul className="space-y-2 border-t border-gray-100 pt-6">
+              <ul className="space-y-1 pt-4">
                 {/* Search Icon */}
-                <li>
+                <li className="flex justify-center">
                   <button
-                    className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                    className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
                     onClick={() => {
                       fetchStartups();
                       fetchInvestors();
@@ -759,7 +785,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-7 opacity-80"
+                      className="h-6 w-6 opacity-80 group-hover:opacity-100"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
@@ -771,7 +797,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                         d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
                       />
                     </svg>
-                    <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                    <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
                       Search
                     </span>
                   </button>
@@ -781,12 +807,12 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 {isAuthenticated && (
                   <>
                     {/* Recents Icon */}
-                    <li>
+                    <li className="flex justify-center">
                       <button
-                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                        className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
                         onClick={() => {
                           setContainerMode("recents");
-                          setShowSearchContainer(false); // Close the search container
+                          setShowSearchContainer(false);
                           setStartup(null);
                           setInvestor(null);
                           setViewingStartup(null);
@@ -795,7 +821,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-7 opacity-80"
+                          className="h-6 w-6 opacity-80 group-hover:opacity-100"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -807,18 +833,19 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                             d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                           />
                         </svg>
-                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
                           Recents
                         </span>
                       </button>
                     </li>
+
                     {/* Bookmarks Icon */}
-                    <li>
+                    <li className="flex justify-center">
                       <button
-                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                        className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
                         onClick={() => {
                           setContainerMode("bookmarks");
-                          setShowSearchContainer(false); // Close the search container
+                          setShowSearchContainer(false);
                           setStartup(null);
                           setInvestor(null);
                           setViewingStartup(null);
@@ -827,7 +854,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-7 opacity-80"
+                          className="h-6 w-6 opacity-80 group-hover:opacity-100"
                           fill="none"
                           viewBox="0 0 24 24"
                           stroke="currentColor"
@@ -839,31 +866,35 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                             d="M5 3v18l7-5 7 5V3H5z"
                           />
                         </svg>
-                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
                           Bookmarks
                         </span>
                       </button>
                     </li>
-                    <li>
+
+                    {/* Dashboard Icon */}
+                    <li className="flex justify-center">
                       <button
                         onClick={() => navigate("/startup-dashboard")}
-                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                        className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
                       >
-                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                        <LuLayoutDashboard className="h-6 w-6 opacity-80 group-hover:opacity-100" />
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
                           Dashboard
                         </span>
-                        <LuLayoutDashboard className="text-2xl" />
                       </button>
                     </li>
-                    <li>
+
+                    {/* All Startups Icon */}
+                    <li className="flex justify-center">
                       <button
                         onClick={() => navigate("/all-startup-dashboard")}
-                        className="group relative flex flex-col items-center justify-center rounded-md p-3 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition"
+                        className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
                       >
-                        <span className="absolute left-full ml-3 whitespace-nowrap rounded bg-gray-900 px-2 py-1.5 text-xs font-semibold text-white opacity-0 group-hover:opacity-100 transition">
+                        <Award className="h-6 w-6 opacity-80 group-hover:opacity-100" />
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
                           All Startups
                         </span>
-                        <Award className="text-2xl" />
                       </button>
                     </li>
                   </>
@@ -873,61 +904,79 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           </div>
         </div>
 
+        {/* Sidebar Footer */}
         {isAuthenticated ? (
-          <div className="sticky inset-x-0 bottom-0 border-t border-gray-100 bg-white p-2">
-            <button
-              className="group relative flex w-full justify-center rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-              onClick={logout}
-            >
-              Logout
-              <span className="invisible absolute start-full top-1/2 ms-4 -translate-y-1/2 rounded-sm bg-gray-900 px-2 py-1.5 text-xs font-medium text-white group-hover:visible">
-                Logout
-              </span>
-            </button>
+          <div className="sticky inset-x-0 bottom-0 border-t border-gray-200 bg-white p-2">
+            <div className="flex justify-center">
+              <button
+                className="group relative flex flex-col items-center justify-center rounded-lg px-2 py-1.5 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 cursor-pointer"
+                onClick={logout}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-6 w-6 opacity-80 group-hover:opacity-100"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
+                <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
+                  Logout
+                </span>
+              </button>
+            </div>
           </div>
         ) : (
-          <div className="sticky inset-x-0 bottom-0 border-t border-gray-100 bg-white p-2">
-            <button
-              className="group relative flex w-full justify-center rounded-lg px-2 py-1.5 text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-700"
-              onClick={() => setOpenLogin(true)}
-            >
-              <RiLoginBoxFill className="text-3xl mb-4 mr-2 ml-2 text-blue-600" />
-              <span className="invisible absolute start-full top-1/3 ms-4 -translate-y-1/2 rounded-sm bg-gray-900 px-2 py-1.5 text-xs font-medium text-white group-hover:visible">
-                Login
-              </span>
-            </button>
+          <div className="sticky inset-x-0 bottom-0 border-t border-gray-200 bg-white p-2">
+            <div className="flex justify-center">
+              <button
+                className="group relative flex flex-col items-center justify-center rounded-lg px-2 py-1.5 text-sm text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
+                onClick={() => setOpenLogin(true)}
+              >
+                <RiLoginBoxFill className="h-6 w-6 opacity-80 group-hover:opacity-100" />
+                <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
+                  Login
+                </span>
+              </button>
+            </div>
           </div>
         )}
       </div>
 
+      {/* User Profile Menu */}
       <div className="absolute top-4 right-4 z-50">
         <div className="relative">
           <div
-            className="avatar avatar-placeholder cursor-pointer"
+            className="avatar avatar-placeholder cursor-pointer rounded-full hover:ring-2 hover:ring-blue-900 transition-all duration-200"
             onClick={() => setShowTooltip((prev) => !prev)}
           >
-            <div className="bg-neutral text-neutral-content w-12 rounded-full flex items-center justify-center">
+            <div className="bg-gradient-to-br from-blue-400 to-blue-700 text-white w-12 rounded-full flex items-center justify-center shadow-md">
               <span className="text-lg font-semibold">
                 {isAuthenticated === null
                   ? "?"
                   : isAuthenticated && currentUser
-                  ? `${currentUser.firstname?.[0] ?? ""}${
-                      currentUser.lastname?.[0] ?? ""
-                    }`.toUpperCase()
-                  : "G"}
+                    ? `${currentUser.firstname?.[0] ?? ""}${currentUser.lastname?.[0] ?? ""
+                      }`.toUpperCase()
+                    : "G"}
               </span>
             </div>
           </div>
 
           {showTooltip && (
-            <div className="absolute top-14 right-0 w-56 bg-white border border-gray-300 rounded-lg shadow-lg z-50">
+            <div className="cursor-pointer absolute top-14 right-0 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
               {isAuthenticated ? (
                 <>
-                  <div className="px-4 py-2 border-b">
-                    <div className="text-sm font-semibold text-gray-800">
+                  <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+                    <div className="text-sm font-semibold text-gray-900">
                       {currentUser?.firstname} {currentUser?.lastname}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-gray-500 mt-1">
                       {currentUser?.email}
                     </div>
                   </div>
@@ -936,7 +985,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       logout();
                       setShowTooltip(false);
                     }}
-                    className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    className="cursor-pointer block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
                   >
                     Logout
                   </button>
@@ -948,7 +997,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       setShowTooltip(false);
                       setOpenLogin(true);
                     }}
-                    className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    className="cursor-pointer block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   >
                     Login
                   </button>
@@ -957,7 +1006,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       setShowTooltip(false);
                       setOpenRegister(true);
                     }}
-                    className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                    className="cursor-pointer block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors"
                   >
                     Register
                   </button>
@@ -968,116 +1017,23 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         </div>
       </div>
 
-      {containerMode === "recents" && (
-        <div className="absolute left-19 top-0 h-screen w-90 bg-gray-100 shadow-lg z-5 search-container-animate">
-          <div className="p-4 bg-gradient-to-b from-blue-500 to-white relative">
-            <button
-              className="absolute top-2 right-2 text-gray-700 hover:text-gray-900"
-              onClick={() => setContainerMode(null)}
-              aria-label="Close"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-            <h2 className="text-lg text-black font-semibold">Recents</h2>
-            <div className="join join-vertical lg:join-horizontal w-full mt-4">
-              <button
-                onClick={() => setViewingType("startups")}
-                className="btn bg-white text-black join-item w-[50%] hover:bg-gray-200"
-              >
-                Startup
-              </button>
-              <button
-                onClick={() => setViewingType("investors")}
-                className="btn join-item w-[50%] bg-white text-black hover:bg-gray-200"
-              >
-                Investor
-              </button>
-            </div>
-          </div>
-          <div>
-            {viewingType === "startups" ? (
-              recentStartups.length > 0 ? (
-                recentStartups.map((startup) => (
-                  <div
-                    key={startup.id}
-                    onClick={() => handleStartupClick(startup)}
-                    className="w-full max-w-sm px-4 py-3 bg-gray-300 shadow-md cursor-pointer hover:bg-gray-200"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-light text-gray-800">
-                        {startup.locationName}
-                      </span>
-                      <span className="px-3 py-1 text-xs text-blue-800 uppercase bg-blue-200 rounded-full dark:bg-blue-300 dark:text-blue-900">
-                        {startup.industry}
-                      </span>
-                    </div>
-                    <div>
-                      <h1 className="mt-2 text-lg font-semibold text-gray-800">
-                        {startup.companyName}
-                      </h1>
-                      <p className="mt-2 text-sm text-gray-600">
-                        {startup.companyDescription}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center text-gray-500 mt-4">
-                  No recent startups found.
-                </div>
-              )
-            ) : recentInvestors.length > 0 ? (
-              recentInvestors.map((investor) => (
-                <div
-                  key={investor.investorId}
-                  onClick={() => handleInvestorClick(investor)}
-                  className="w-full max-w-sm px-4 py-3 bg-gray-300 shadow-md cursor-pointer hover:bg-gray-200"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-light text-gray-800">
-                      {investor.locationName}
-                    </span>
-                    <span className="px-3 py-1 text-xs text-blue-800 uppercase bg-blue-200 rounded-full dark:bg-blue-300 dark:text-blue-900">
-                      {investor.gender}
-                    </span>
-                  </div>
-                  <div>
-                    <h1 className="mt-2 text-lg font-semibold text-gray-800">
-                      {investor.firstname} {investor.lastname}
-                    </h1>
-                    <p className="mt-2 text-sm text-gray-600">
-                      {investor.biography}
-                    </p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center text-gray-500 mt-4">
-                No recent investors found.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Search Container */}
       {showSearchContainer && (
-        <div className="absolute left-19 top-0 h-screen w-90 bg-gray-100 shadow-lg z-5 search-container-animate">
-          <div className="p-4 bg-gradient-to-b from-blue-500 to-white relative">
+        <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-5 transform transition-all duration-300 ease-in-out animate-slide-in">
+          <div className="p-4 bg-gradient-to-b from-blue-600 to-blue-500 relative">
             <button
-              className="absolute top-2 right-2 text-gray-700 hover:text-gray-900"
-              onClick={() => setShowSearchContainer(false)}
+              className="cursor-pointer absolute top-2 right-2 text-white hover:text-gray-200 transition-colors"
+              onClick={() => {
+                const container = document.querySelector('.animate-slide-in');
+                if (container) {
+                  container.classList.add('animate-slide-out');
+                  setTimeout(() => {
+                    setShowSearchContainer(false);
+                  }, 300);
+                } else {
+                  setShowSearchContainer(false);
+                }
+              }}
               aria-label="Close"
             >
               <svg
@@ -1096,7 +1052,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </svg>
             </button>
 
-            <h2 className="text-lg text-black font-semibold">Search</h2>
+            <h2 className="text-lg text-white font-semibold mb-4">Search</h2>
 
             <form
               className="flex items-center max-w-sm mx-auto"
@@ -1105,13 +1061,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 handleSearch();
               }}
             >
-              <label htmlFor="simple-search" className="sr-only">
-                Search
-              </label>
               <div className="relative w-full">
                 <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
                   <svg
-                    className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                    className="w-4 h-4 text-gray-400"
                     aria-hidden="true"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -1128,17 +1081,16 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 </div>
                 <input
                   type="text"
-                  id="simple-search"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-gray-200 border border-gray-300 text-blue-900 text-sm rounded-lg focus:ring-blue-700 focus:border-blue-700 block w-full ps-10 p-2.5"
+                  className="bg-white/90 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5"
                   placeholder={`Search ${viewingType}`}
                   required
                 />
               </div>
               <button
                 type="submit"
-                className="p-2.5 ms-2 text-sm font-medium text-white bg-blue-700 rounded-lg border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800"
+                className="p-2.5 ms-2 text-sm font-medium text-white bg-blue-700 rounded-lg border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 transition-colors"
               >
                 <svg
                   className="w-4 h-4"
@@ -1158,72 +1110,59 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 <span className="sr-only">Search</span>
               </button>
             </form>
-            <div className="join join-vertical lg:join-horizontal w-full mt-4">
+
+            <div className="flex gap-2 mt-4">
               <button
                 onClick={() => setViewingType("startups")}
-                className="btn bg-white text-black join-item w-[50%] hover:bg-gray-200"
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "startups"
+                  ? "bg-white text-blue-600"
+                  : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
               >
-                Startup
+                Startups
               </button>
               <button
                 onClick={() => setViewingType("investors")}
-                className="btn join-item w-[50%] bg-white text-black hover:bg-gray-200"
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "investors"
+                  ? "bg-white text-blue-600"
+                  : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
               >
-                Investor
+                Investors
               </button>
             </div>
           </div>
-          <div>
+
+          <div className="h-[calc(100vh-200px)] overflow-y-auto p-4 space-y-4">
             {loading ? (
-              <div role="status">
-                <svg
-                  aria-hidden="true"
-                  className="w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600"
-                  viewBox="0 0 100 101"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z"
-                    fill="currentColor"
-                  />
-                  <path
-                    d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z"
-                    fill="currentFill"
-                  />
-                </svg>
-                <span className="sr-only">Loading...</span>
+              <div className="flex items-center justify-center h-full">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
             ) : viewingType === "startups" ? (
-              startups.length > 0 ? (
+              startups && startups.length > 0 ? (
                 startups.map((startup) => (
                   <div
                     key={startup.id}
                     onClick={() => handleStartupClick(startup)}
-                    className="w-full max-w-sm px-4 py-3 bg-gray-300 shadow-md cursor-pointer hover:bg-gray-200"
+                    className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-light text-gray-800">
-                        {startup.locationName}
-                      </span>
-                      <span className="px-3 py-1 text-xs text-blue-800 uppercase bg-blue-200 rounded-full dark:bg-blue-300 dark:text-blue-900">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-500">{startup.locationName}</span>
+                      <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
                         {startup.industry}
                       </span>
                     </div>
-
-                    <div>
-                      <h1 className="mt-2 text-lg font-semibold text-gray-800">
-                        {startup.companyName}
-                      </h1>
-                      <p className="mt-2 text-sm text-gray-600">
-                        {startup.companyDescription}
-                      </p>
-                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {startup.companyName}
+                    </h3>
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {startup.companyDescription}
+                    </p>
                   </div>
                 ))
               ) : (
                 <div className="text-center text-gray-500 mt-4">
-                  No startups match your search.
+                  No startups available
                 </div>
               )
             ) : investors.length > 0 ? (
@@ -1231,25 +1170,20 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 <div
                   key={investor.investorId}
                   onClick={() => handleInvestorClick(investor)}
-                  className="w-full max-w-sm px-4 py-3 bg-gray-300 shadow-md cursor-pointer hover:bg-gray-200"
+                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-light text-gray-800">
-                      {investor.locationName}
-                    </span>
-                    <span className="px-3 py-1 text-xs text-blue-800 uppercase bg-blue-200 rounded-full dark:bg-blue-300 dark:text-blue-900">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-500">{investor.locationName}</span>
+                    <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
                       {investor.gender}
                     </span>
                   </div>
-
-                  <div>
-                    <h1 className="mt-2 text-lg font-semibold text-gray-800">
-                      {investor.firstname} {investor.lastname}
-                    </h1>
-                    <p className="mt-2 text-sm text-gray-600">
-                      {investor.biography}
-                    </p>
-                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {investor.firstname} {investor.lastname}
+                  </h3>
+                  <p className="text-sm text-gray-600 line-clamp-2">
+                    {investor.biography}
+                  </p>
                 </div>
               ))
             ) : (
@@ -1261,6 +1195,124 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         </div>
       )}
 
+      {/* Recents Container */}
+      {containerMode === "recents" && (
+        <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-5 transform transition-all duration-300 ease-in-out animate-slide-in">
+          <div className="p-4 bg-gradient-to-b from-blue-600 to-blue-500 relative">
+            <button
+              className="absolute top-2 right-2 text-white hover:text-gray-200 transition-colors"
+              onClick={() => {
+                const container = document.querySelector('.animate-slide-in');
+                if (container) {
+                  container.classList.add('animate-slide-out');
+                  setTimeout(() => {
+                    setContainerMode(null);
+                  }, 300);
+                } else {
+                  setContainerMode(null);
+                }
+              }}
+              aria-label="Close"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+
+            <h2 className="text-lg text-white font-semibold mb-4">Recent Activity</h2>
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewingType("startups")}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "startups"
+                  ? "bg-white text-blue-600"
+                  : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
+              >
+                Startups
+              </button>
+              <button
+                onClick={() => setViewingType("investors")}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "investors"
+                  ? "bg-white text-blue-600"
+                  : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
+              >
+                Investors
+              </button>
+            </div>
+          </div>
+
+          <div className="h-[calc(100vh-200px)] overflow-y-auto p-4 space-y-4">
+            {viewingType === "startups" ? (
+              recentStartups.length > 0 ? (
+                recentStartups.map((startup) => (
+                  <div
+                    key={startup.id}
+                    onClick={() => handleStartupClick(startup)}
+                    className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-gray-500">{startup.locationName}</span>
+                      <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
+                        {startup.industry}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {startup.companyName}
+                    </h3>
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {startup.companyDescription}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center text-gray-500 mt-4">
+                  No recent startups found.
+                </div>
+              )
+            ) : recentInvestors.length > 0 ? (
+              recentInvestors.map((investor) => (
+                <div
+                  key={investor.investorId}
+                  onClick={() => handleInvestorClick(investor)}
+                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-500">{investor.locationName}</span>
+                    <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
+                      {investor.gender}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {investor.firstname} {investor.lastname}
+                  </h3>
+                  <p className="text-sm text-gray-600 line-clamp-2">
+                    {investor.biography}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <div className="text-center text-gray-500 mt-4">
+                No recent investors found.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bookmarks Container */}
       {containerMode === "bookmarks" && (
         <Bookmarks
           userId={user}
@@ -1271,118 +1323,143 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         />
       )}
 
+      {/* Investor Details Container */}
       {investor && !viewingStartup && (
-        <div className="absolute left-16 top-0 h-screen w-90 bg-gray-100 shadow-lg z-20">
-          <div className="absolute left-0 flex justify-end p-2">
-            <MdKeyboardReturn
-              className="text-black text-2xl cursor-pointer"
+        <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-20 transform transition-all duration-300 ease-in-out animate-slide-in">
+          <div className="flex justify-end p-4 border-b border-gray-200">
+            <button
+              className="cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
               onClick={() => {
-                setInvestor(null);
-                setShowSearchContainer(true);
+                const container = document.querySelector('.animate-slide-in');
+                if (container) {
+                  container.classList.add('animate-slide-out');
+                  setTimeout(() => {
+                    setInvestor(null);
+                    setShowSearchContainer(true);
+                  }, 300);
+                } else {
+                  setInvestor(null);
+                  setShowSearchContainer(true);
+                }
               }}
-            />
+            >
+              <MdKeyboardReturn className="h-6 w-6" />
+            </button>
           </div>
 
-          <div className="image bg-gray-400 h-[13rem]"></div>
+          <div className="h-52 bg-gradient-to-br from-blue-500 to-blue-600"></div>
 
-          <div className="flex justify-between p-4 gap-4">
-            {/* Text content area */}
-            <div className="flex-1 min-w-0">
-              <h1 className="text-black font-semibold text-lg truncate">
+          <div className="p-4 space-y-4">
+            <div className="space-y-1">
+              <h1 className="text-xl font-semibold text-gray-900">
                 {investor.firstname} {investor.lastname}
               </h1>
-              <p className="text-black flex items-center space-x-1 truncate">
-                <CiLocationOn />
-                <span>{investor.locationName}</span>
+              <p className="flex items-center text-gray-600 text-sm">
+                <CiLocationOn className="mr-1" />
+                {investor.locationName}
               </p>
-              <p className="text-blue-700 flex items-center space-x-1 break-words">
-                <CiGlobe className="text-black" />
-                <span className="break-words">{investor.website}</span>
-              </p>
+              <a
+                href={investor.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center text-blue-600 text-sm hover:underline"
+              >
+                <CiGlobe className="mr-1 text-gray-700" />
+                {investor.website}
+              </a>
             </div>
 
-            {/* Like button area */}
-            <div className="flex flex-col items-center w-16 shrink-0">
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center">
-                  <button
-                    onClick={() => toggleLike(user.id, null, investor.id)}
-                    className={`cursor-pointer text-2xl ${
-                      likedInvestors.includes(investor.id)
-                        ? "text-red-500"
-                        : "text-gray-500"
-                    }`}
-                  >
-                    <FaHeart />
-                  </button>
-                  <p className="text-sm text-black ml-1">
-                    {investorLikeCounts[investor.id] || 0}
-                  </p>
-                </div>
-                <button
-                  onClick={toggleBookmark}
-                  className={`cursor-pointer text-2xl ${
-                    isCurrentItemBookmarked ? "text-blue-500" : "text-gray-500"
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => toggleLike(user.id, null, investor.id)}
+                className={`text-2xl transition cursor-pointer ${likedInvestors.includes(investor.id)
+                  ? "text-red-500"
+                  : "text-gray-400 hover:text-red-400"
                   }`}
+              >
+                <FaHeart />
+              </button>
+              <span className="text-sm text-gray-700">
+                {investorLikeCounts[investor.id] || 0}
+              </span>
+              <button
+                onClick={toggleBookmark}
+                className={`text-2xl transition cursor-pointer ${isCurrentItemBookmarked
+                  ? "text-blue-500"
+                  : "text-gray-400 hover:text-blue-400"
+                  }`}
+              >
+                <FaBookmark />
+              </button>
+            </div>
+
+            <div className="flex items-center text-gray-700">
+              <FaRegEye className="mr-2 text-xl" />
+              <span className="text-sm">{investor.views || 0} views</span>
+            </div>
+
+            <div className="pt-4 space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900">About</h3>
+                <p className="mt-1 text-sm text-gray-600">{investor.biography}</p>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  className="cursor-pointer flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={() => {
+                    if (investor && investor.locationLang && investor.locationLat) {
+                      mapInstanceRef.current.flyTo({
+                        center: [
+                          parseFloat(investor.locationLang),
+                          parseFloat(investor.locationLat),
+                        ],
+                        zoom: 14,
+                        essential: true,
+                      });
+                      setViewingInvestor(investor);
+                      setInvestor(null);
+                    }
+                  }}
                 >
-                  <FaBookmark />
+                  Preview Location
+                </button>
+                <button className="cursor-pointer flex-1 py-2 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
+                  Update Location
                 </button>
               </div>
             </div>
           </div>
-
-          {/* View count area */}
-          <div className="flex justify-between p-4 gap-4">
-            <div className="flex-1 min-w-0">
-              <p className="text-black text-1xl font-semibold flex items-center">
-                <FaRegEye className="mr-1 text-2xl  text-gray-700" />
-                {investor.views || 0}
-              </p>
-            </div>
-          </div>
-
-          <div className="p-4">
-            <button
-              className="btn btn-outline btn-warning text-black mr-2"
-              onClick={() => {
-                if (investor && investor.locationLang && investor.locationLat) {
-                  mapInstanceRef.current.flyTo({
-                    center: [
-                      parseFloat(investor.locationLang),
-                      parseFloat(investor.locationLat),
-                    ],
-                    zoom: 14,
-                    essential: true,
-                  });
-                  setViewingInvestor(investor); // Enter viewing mode
-                  setInvestor(null);
-                }
-              }}
-            >
-              Preview
-            </button>
-            <button className="btn btn-warning">Update location</button>
-          </div>
         </div>
       )}
 
+      {/* Startup Details Container */}
       {startup && !viewingStartup && (
-        <div className="absolute left-16 top-0 h-screen w-[24rem] bg-white shadow-2xl z-20 overflow-y-auto">
-          {/* Header Bar with Return Icon */}
-          <div className="flex justify-end p-4 border-b">
-            <MdKeyboardReturn
-              className="text-gray-700 text-2xl cursor-pointer hover:text-black transition"
+        <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-20 transform transition-all duration-300 ease-in-out animate-slide-in overflow-y-auto">
+          <div className="flex justify-end p-4 border-b border-gray-200">
+            <button
+              className="text-gray-500 hover:text-gray-700 transition-colors"
               onClick={() => {
-                setStartup(null);
-                setShowSearchContainer(true);
+                const container = document.querySelector('.animate-slide-in');
+                if (container) {
+                  container.classList.add('animate-slide-out');
+                  setTimeout(() => {
+                    setStartup(null);
+                    setShowSearchContainer(true);
+                  }, 300);
+                } else {
+                  setStartup(null);
+                  setShowSearchContainer(true);
+                }
               }}
-            />
+            >
+              <MdKeyboardReturn className="h-6 w-6" />
+            </button>
           </div>
 
-          {/* Startup Image Section */}
-          <div className="h-52 bg-gray-200 flex items-center justify-center">
+          <div className="h-52 bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
             {loadingImage ? (
-              <span className="loading loading-spinner text-primary" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
             ) : (
               <img
                 src={
@@ -1395,8 +1472,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             )}
           </div>
 
-          {/* Info & Actions */}
-          <div className="p-4 space-y-3">
+          <div className="p-4 space-y-4">
             <div className="space-y-1">
               <h1 className="text-xl font-semibold text-gray-900">
                 {startup.companyName}
@@ -1416,15 +1492,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </a>
             </div>
 
-            {/* Like & Bookmark Actions */}
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => toggleLike(user.id, startup.id, null)}
-                className={`text-2xl transition ${
-                  likedStartups.includes(startup.id)
-                    ? "text-red-500"
-                    : "text-gray-400 hover:text-red-400"
-                }`}
+                className={`text-2xl transition cursor-pointer ${likedStartups.includes(startup.id)
+                  ? "text-red-500"
+                  : "text-gray-400 hover:text-red-400"
+                  }`}
               >
                 <FaHeart />
               </button>
@@ -1433,65 +1507,65 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </span>
               <button
                 onClick={toggleBookmark}
-                className={`text-2xl transition ${
-                  isCurrentItemBookmarked
-                    ? "text-blue-500"
-                    : "text-gray-400 hover:text-blue-400"
-                }`}
+                className={`text-2xl transition cursor-pointer ${isCurrentItemBookmarked
+                  ? "text-blue-500"
+                  : "text-gray-400 hover:text-blue-400"
+                  }`}
               >
                 <FaBookmark />
               </button>
             </div>
-          </div>
 
-          {/* Details Section */}
-          <div className="px-4 pb-8 space-y-4 text-sm text-gray-800">
-            <div>
-              <p className="font-semibold">{startup.foundedDate}</p>
-              <p className="text-gray-500">Established</p>
-            </div>
-
-            <div>
-              <p className="font-medium">About:</p>
-              <p>{startup.companyDescription}</p>
-            </div>
-
-            <div>
-              <p className="font-medium">Industry:</p>
-              <p>{startup.industry}</p>
-            </div>
-
-            <div>
-              <p className="font-medium">Contact Info:</p>
-              <p>{startup.contactEmail}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+            <div className="pt-4 space-y-4 text-sm text-gray-800">
               <div>
-                <p className="font-medium">Funds Raised:</p>
-                <p>None</p>
+                <p className="font-semibold">{startup.foundedDate}</p>
+                <p className="text-gray-500">Established</p>
               </div>
+
               <div>
-                <p className="font-medium">Funding Rounds:</p>
-                <p>0</p>
+                <p className="font-medium">About:</p>
+                <p className="text-gray-600">{startup.companyDescription}</p>
               </div>
+
               <div>
-                <p className="font-medium">Investors:</p>
-                <p>0</p>
+                <p className="font-medium">Industry:</p>
+                <p className="text-gray-600">{startup.industry}</p>
               </div>
+
               <div>
-                <p className="font-medium">Team Size:</p>
-                <p>{startup.numberOfEmployees}</p>
+                <p className="font-medium">Contact Info:</p>
+                <p className="text-gray-600">{startup.contactEmail}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="font-medium">Funds Raised:</p>
+                  <p className="text-gray-600">None</p>
+                </div>
+                <div>
+                  <p className="font-medium">Funding Rounds:</p>
+                  <p className="text-gray-600">0</p>
+                </div>
+                <div>
+                  <p className="font-medium">Investors:</p>
+                  <p className="text-gray-600">0</p>
+                </div>
+                <div>
+                  <p className="font-medium">Team Size:</p>
+                  <p className="text-gray-600">{startup.numberOfEmployees}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
       )}
 
-      <div className={`flex-1 overflow-auto`}>
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
         <Outlet />
       </div>
 
+      {/* Modals */}
       {openLogin && (
         <Login
           closeModal={() => setOpenLogin(false)}
@@ -1502,10 +1576,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           onLoginSuccess={async (userData) => {
             setIsAuthenticated(true);
             setOpenLogin(false);
-            setCurrentUser(userData); // Update currentUser state
-            setUser(userData); // Update user state
+            setCurrentUser(userData);
+            setUser(userData);
             localStorage.setItem("user", JSON.stringify(userData));
-            setUserDetails(userData); // Update parent state
+            setUserDetails(userData);
             await fetchUserLikes();
           }}
         />

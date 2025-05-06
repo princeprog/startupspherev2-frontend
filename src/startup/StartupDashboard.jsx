@@ -833,14 +833,14 @@ export default function StartupDashboard() {
   }, []);
 
   return (
-    <div className="p-6 md:p-8 lg:p-10 space-y-6 bg-white text-black">
+    <div className="min-h-screen p-6 md:p-8 lg:p-10 space-y-6 bg-white text-black">
       {/* Back Button */}
       <button
-        onClick={() => navigate(-1)}
-        className="flex items-center text-black mb-6 transition-colors hover:text-white hover:bg-indigo-500 rounded-md p-1.5"
+        onClick={() => navigate("/")}
+        className=" cursor-pointer flex items-center text-black mb-6 transition-colors hover:text-white hover:bg-indigo-500 rounded-md p-1.5"
       >
         <ArrowLeft className="h-5 w-5 mr-2" />
-        <span>Back</span>
+        <span>Back to Home</span>
       </button>
 
       {error && (

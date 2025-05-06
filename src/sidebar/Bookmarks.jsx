@@ -12,7 +12,7 @@ const Bookmarks = ({
   const [startups, setStartups] = useState([]);
   const [investors, setInvestors] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState("startups"); // Default to startups tab
+  const [activeTab, setActiveTab] = useState("startups");
 
   const removeFromBookmarks = async (item, type) => {
     try {
@@ -125,11 +125,21 @@ const Bookmarks = ({
   };
 
   return (
-    <div className="absolute left-19 top-0 h-screen w-90 bg-gray-100 shadow-lg z-5 search-container-animate">
-      <div className="p-4 bg-gradient-to-b from-blue-500 to-white relative">
+    <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-5 transform transition-all duration-300 ease-in-out animate-slide-in">
+      <div className="p-4 bg-gradient-to-b from-blue-600 to-blue-500 relative">
         <button
-          className="absolute top-2 right-2 text-gray-700 hover:text-gray-900"
-          onClick={() => setContainerMode(null)}
+          className="absolute top-2 right-2 text-white hover:text-gray-200 transition-colors"
+          onClick={() => {
+            const container = document.querySelector('.animate-slide-in');
+            if (container) {
+              container.classList.add('animate-slide-out');
+              setTimeout(() => {
+                setContainerMode(null);
+              }, 300); // Match the duration of the animation
+            } else {
+              setContainerMode(null);
+            }
+          }}
           aria-label="Close"
         >
           <svg
@@ -148,62 +158,70 @@ const Bookmarks = ({
           </svg>
         </button>
 
-        <h2 className="text-lg text-black font-semibold">My Bookmarks</h2>
+        <h2 className="text-lg text-white font-semibold mb-4">My Bookmarks</h2>
 
-        <div className="join join-vertical lg:join-horizontal w-full mt-4">
+        <div className="flex gap-2">
           <button
             onClick={() => setActiveTab("startups")}
-            className={`btn ${activeTab === "startups" ? "bg-blue-700 text-white" : "bg-white text-black"} join-item w-[50%] hover:bg-gray-200`}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "startups"
+                ? "bg-white text-blue-600"
+                : "bg-white/20 text-white hover:bg-white/30"
+            }`}
           >
             Startups
           </button>
           <button
             onClick={() => setActiveTab("investors")}
-            className={`btn ${activeTab === "investors" ? "bg-blue-700 text-white" : "bg-white text-black"} join-item w-[50%] hover:bg-gray-200`}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === "investors"
+                ? "bg-white text-blue-600"
+                : "bg-white/20 text-white hover:bg-white/30"
+            }`}
           >
             Investors
           </button>
         </div>
       </div>
 
-      <div className="p-2 overflow-y-auto" style={{ maxHeight: "calc(100vh - 120px)" }}>
+      <div className="p-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 120px)" }}>
         {loading ? (
-          <div className="text-center py-8 text-gray-500">
-            Loading...
+          <div className="flex items-center justify-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
         ) : activeTab === "startups" ? (
           startups.length > 0 ? (
             startups.map((startup) => (
-              <div key={startup.id} className="mb-4 bg-white rounded-lg shadow-md p-4">
+              <div key={startup.id} className="mb-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 border border-gray-100">
                 <div className="flex justify-between">
-                  <div>
-                    <h1 className="text-lg font-semibold text-black">{startup.companyName}</h1>
-                    <p className="text-gray-600 flex items-center">
+                  <div className="space-y-2">
+                    <h1 className="text-lg font-semibold text-gray-900">{startup.companyName}</h1>
+                    <p className="text-gray-600 flex items-center text-sm">
                       <CiLocationOn className="mr-1" />
                       {startup.locationName || "No location specified"}
                     </p>
                     {startup.website && (
-                      <p className="text-blue-700 flex items-center">
-                        <CiGlobe className="mr-1 text-black" />
+                      <p className="text-blue-600 flex items-center text-sm hover:underline">
+                        <CiGlobe className="mr-1 text-gray-700" />
                         {startup.website}
                       </p>
                     )}
-                    <span className="inline-block px-2 py-1 mt-2 text-xs text-blue-800 bg-blue-200 rounded-full">
+                    <span className="inline-block px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
                       {startup.industry}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-3 flex items-center justify-between">
+                <div className="mt-4 flex items-center justify-between">
                   <button
                     onClick={() => handlePreviewStartup(startup)}
-                    className="btn btn-sm btn-outline btn-primary"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                   >
                     Preview
                   </button>
                   <button
                     onClick={() => handleRemoveBookmark(startup, "startups")}
-                    className="flex items-center text-red-500 hover:text-red-700"
+                    className="flex items-center text-red-500 hover:text-red-700 transition-colors text-sm font-medium"
                   >
                     <FaBookmark className="mr-1" />
                     Remove
@@ -212,46 +230,48 @@ const Bookmarks = ({
               </div>
             ))
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              No bookmarked startups found
+            <div className="text-center py-12 text-gray-500">
+              <FaBookmark className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <p className="text-lg font-medium text-gray-900">No bookmarked startups</p>
+              <p className="text-sm text-gray-500 mt-1">Startups you bookmark will appear here</p>
             </div>
           )
         ) : investors.length > 0 ? (
           investors.map((investor) => (
-            <div key={investor.id} className="mb-4 bg-white rounded-lg shadow-md p-4">
+            <div key={investor.id} className="mb-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 border border-gray-100">
               <div className="flex justify-between">
-                <div>
-                  <h1 className="text-lg font-semibold text-black">
+                <div className="space-y-2">
+                  <h1 className="text-lg font-semibold text-gray-900">
                     {investor.firstname} {investor.lastname}
                   </h1>
-                  <p className="text-gray-600 flex items-center">
+                  <p className="text-gray-600 flex items-center text-sm">
                     <CiLocationOn className="mr-1" />
                     {investor.locationName || "No location specified"}
                   </p>
                   {investor.website && (
-                    <p className="text-blue-700 flex items-center">
-                      <CiGlobe className="mr-1 text-black" />
+                    <p className="text-blue-600 flex items-center text-sm hover:underline">
+                      <CiGlobe className="mr-1 text-gray-700" />
                       {investor.website}
                     </p>
                   )}
                   {investor.gender && (
-                    <span className="inline-block px-2 py-1 mt-2 text-xs text-blue-800 bg-blue-200 rounded-full">
+                    <span className="inline-block px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
                       {investor.gender}
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="mt-3 flex items-center justify-between">
+              <div className="mt-4 flex items-center justify-between">
                 <button
                   onClick={() => handlePreviewInvestor(investor)}
-                  className="btn btn-sm btn-outline btn-primary"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                 >
                   Preview
                 </button>
                 <button
                   onClick={() => handleRemoveBookmark(investor, "investors")}
-                  className="flex items-center text-red-500 hover:text-red-700"
+                  className="flex items-center text-red-500 hover:text-red-700 transition-colors text-sm font-medium"
                 >
                   <FaBookmark className="mr-1" />
                   Remove
@@ -260,8 +280,10 @@ const Bookmarks = ({
             </div>
           ))
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            No bookmarked investors found
+          <div className="text-center py-12 text-gray-500">
+            <FaBookmark className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <p className="text-lg font-medium text-gray-900">No bookmarked investors</p>
+            <p className="text-sm text-gray-500 mt-1">Investors you bookmark will appear here</p>
           </div>
         )}
       </div>
