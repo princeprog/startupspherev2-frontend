@@ -35,9 +35,11 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
 import StartupReviewSection from "./StartupReviewSelection";
+import { useSidebar } from "../context/SidebarContext";
 
 export default function AllStartupDashboard() {
   const navigate = useNavigate();
+  const { closeSidebar } = useSidebar();
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedIndustry, setSelectedIndustry] = useState("All");
   const [rankingMetric, setRankingMetric] = useState("overall");
@@ -548,16 +550,20 @@ export default function AllStartupDashboard() {
     }
   };
 
+  useEffect(() => {
+    closeSidebar();
+  }, [closeSidebar]);
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <main className="flex-grow p-6">
         {/* Back Button */}
         <button
-          onClick={() => navigate(-1)}
-          className="flex items-center text-black mb-6 transition-colors hover:text-white hover:bg-indigo-500 rounded-md p-2"
+          onClick={() => navigate("/")}
+          className="cursor-pointer flex items-center text-black mb-6 transition-colors hover:text-white hover:bg-indigo-500 rounded-md p-2"
         >
           <ArrowLeft className="h-5 w-5 mr-2" />
-          <span>Back</span>
+          <span>Back to Home</span>
         </button>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
