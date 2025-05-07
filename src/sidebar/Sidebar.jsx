@@ -26,6 +26,21 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showSearchContainer, setShowSearchContainer] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    startups: {
+      industry: '',
+      foundedDate: '',
+      teamSize: '',
+      fundingStage: ''
+    },
+    investors: {
+      investmentStage: '',
+      investmentRange: '',
+      preferredIndustry: '',
+      location: ''
+    }
+  });
   const [startups, setStartups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [startup, setStartup] = useState(null);
@@ -694,6 +709,30 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     fetchStartups();
   }, []);
 
+  const applyFilters = (items) => {
+    if (!items || items.length === 0) return items;
+
+    const currentFilters = viewingType === 'startups' ? filters.startups : filters.investors;
+
+    return items.filter(item => {
+      if (viewingType === 'startups') {
+        return (
+          (!currentFilters.industry || item.industry === currentFilters.industry) &&
+          (!currentFilters.foundedDate || item.foundedDate === currentFilters.foundedDate) &&
+          (!currentFilters.teamSize || item.numberOfEmployees === currentFilters.teamSize) &&
+          (!currentFilters.fundingStage || item.fundingStage === currentFilters.fundingStage)
+        );
+      } else {
+        return (
+          (!currentFilters.investmentStage || item.investmentStage === currentFilters.investmentStage) &&
+          (!currentFilters.investmentRange || item.investmentRange === currentFilters.investmentRange) &&
+          (!currentFilters.preferredIndustry || item.preferredIndustry === currentFilters.preferredIndustry) &&
+          (!currentFilters.location || item.locationName === currentFilters.location)
+        );
+      }
+    });
+  };
+
   return (
     <div className="relative flex h-screen w-screen overflow-hidden bg-gray-50">
       <ToastContainer
@@ -982,10 +1021,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   {isAuthenticated === null
                     ? "?"
                     : isAuthenticated && currentUser
-                    ? `${currentUser.firstname?.[0] ?? ""}${
-                        currentUser.lastname?.[0] ?? ""
-                      }`.toUpperCase()
-                    : "G"}
+                      ? `${currentUser.firstname?.[0] ?? ""}${currentUser.lastname?.[0] ?? ""
+                        }`.toUpperCase()
+                      : "G"}
                 </span>
               </div>
             </div>
@@ -1131,26 +1169,359 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 </svg>
                 <span className="sr-only">Search</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setShowFilters(!showFilters)}
+                className="p-2.5 ms-2 text-sm font-medium bg-blue-700 rounded-lg border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 transition-colors"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                  />
+                </svg>
+              </button>
             </form>
+
+            {showFilters && (
+              <div className="mt-4 p-4 bg-white rounded-lg shadow-lg">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">Advanced Filters</h3>
+                  <button
+                    onClick={() => {
+                      setFilters({
+                        startups: {
+                          industry: '',
+                          foundedDate: '',
+                          teamSize: '',
+                          fundingStage: ''
+                        },
+                        investors: {
+                          investmentStage: '',
+                          investmentRange: '',
+                          preferredIndustry: '',
+                          location: ''
+                        }
+                      });
+                    }}
+                    className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Reset All
+                  </button>
+                </div>
+
+                {viewingType === 'startups' ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                        <select
+                          value={filters.startups.industry}
+                          onChange={(e) => setFilters(prev => ({
+                            ...prev,
+                            startups: { ...prev.startups, industry: e.target.value }
+                          }))}
+                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="">All Industries</option>
+                          <optgroup label="Technology & Digital">
+                            <option value="technology">Technology</option>
+                            <option value="telecommunications">Telecommunications</option>
+                            <option value="entertainment">Entertainment</option>
+                          </optgroup>
+                          <optgroup label="Business & Finance">
+                            <option value="finance">Finance</option>
+                            <option value="legal_services">Legal Services</option>
+                            <option value="real_estate">Real Estate</option>
+                          </optgroup>
+                          <optgroup label="Healthcare & Education">
+                            <option value="healthcare">Healthcare</option>
+                            <option value="education">Education</option>
+                          </optgroup>
+                          <optgroup label="Industrial & Manufacturing">
+                            <option value="manufacturing">Manufacturing</option>
+                            <option value="construction">Construction</option>
+                            <option value="energy">Energy</option>
+                          </optgroup>
+                          <optgroup label="Consumer & Services">
+                            <option value="retail">Retail</option>
+                            <option value="hospitality">Hospitality</option>
+                            <option value="transportation">Transportation</option>
+                          </optgroup>
+                          <optgroup label="Other">
+                            <option value="agriculture">Agriculture</option>
+                          </optgroup>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Founded Date</label>
+                        <select
+                          value={filters.startups.foundedDate}
+                          onChange={(e) => setFilters(prev => ({
+                            ...prev,
+                            startups: { ...prev.startups, foundedDate: e.target.value }
+                          }))}
+                          className="mt-1 block w-full text-black rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="">Any Time</option>
+                          <optgroup label="Recent (2020-Present)">
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                          </optgroup>
+                          <optgroup label="Past Years">
+                            <option value="2019">2019</option>
+                            <option value="2018">2018</option>
+                            <option value="2017">2017</option>
+                            <option value="2016">2016</option>
+                            <option value="2015">2015</option>
+                            <option value="2014">2014</option>
+                            <option value="2013">2013</option>
+                          </optgroup>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Team Size</label>
+                        <select
+                          value={filters.startups.teamSize}
+                          onChange={(e) => setFilters(prev => ({
+                            ...prev,
+                            startups: { ...prev.startups, teamSize: e.target.value }
+                          }))}
+                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="">Any Size</option>
+                          <option value="1-10">1-10 employees</option>
+                          <option value="11-50">11-50 employees</option>
+                          <option value="51-200">51-200 employees</option>
+                          <option value="201+">201+ employees</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Funding Stage</label>
+                        <select
+                          value={filters.startups.fundingStage}
+                          onChange={(e) => setFilters(prev => ({
+                            ...prev,
+                            startups: { ...prev.startups, fundingStage: e.target.value }
+                          }))}
+                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="">Any Stage</option>
+                          <option value="bootstrapped">Bootstrapped</option>
+                          <option value="seed">Seed</option>
+                          <option value="series_a">Series A</option>
+                          <option value="series_b">Series B</option>
+                          <option value="series_c">Series C</option>
+                          <option value="public">Public</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Investment Stage</label>
+                        <select
+                          value={filters.investors.investmentStage}
+                          onChange={(e) => setFilters(prev => ({
+                            ...prev,
+                            investors: { ...prev.investors, investmentStage: e.target.value }
+                          }))}
+                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="">Any Stage</option>
+                          <option value="bootstrapped">Bootstrapped</option>
+                          <option value="seed">Seed</option>
+                          <option value="series_a">Series A</option>
+                          <option value="series_b">Series B</option>
+                          <option value="series_c">Series C</option>
+                          <option value="public">Public</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Investment Range</label>
+                        <select
+                          value={filters.investors.investmentRange}
+                          onChange={(e) => setFilters(prev => ({
+                            ...prev,
+                            investors: { ...prev.investors, investmentRange: e.target.value }
+                          }))}
+                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="">Any Range</option>
+                          <option value="0-100k">$0 - $100k</option>
+                          <option value="100k-1M">$100k - $1M</option>
+                          <option value="1M-10M">$1M - $10M</option>
+                          <option value="10M+">$10M+</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Industry</label>
+                        <select
+                          value={filters.investors.preferredIndustry}
+                          onChange={(e) => setFilters(prev => ({
+                            ...prev,
+                            investors: { ...prev.investors, preferredIndustry: e.target.value }
+                          }))}
+                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="">All Industries</option>
+                          <optgroup label="Technology & Digital">
+                            <option value="technology">Technology</option>
+                            <option value="telecommunications">Telecommunications</option>
+                            <option value="entertainment">Entertainment</option>
+                          </optgroup>
+                          <optgroup label="Business & Finance">
+                            <option value="finance">Finance</option>
+                            <option value="legal_services">Legal Services</option>
+                            <option value="real_estate">Real Estate</option>
+                          </optgroup>
+                          <optgroup label="Healthcare & Education">
+                            <option value="healthcare">Healthcare</option>
+                            <option value="education">Education</option>
+                          </optgroup>
+                          <optgroup label="Industrial & Manufacturing">
+                            <option value="manufacturing">Manufacturing</option>
+                            <option value="construction">Construction</option>
+                            <option value="energy">Energy</option>
+                          </optgroup>
+                          <optgroup label="Consumer & Services">
+                            <option value="retail">Retail</option>
+                            <option value="hospitality">Hospitality</option>
+                            <option value="transportation">Transportation</option>
+                          </optgroup>
+                          <optgroup label="Other">
+                            <option value="agriculture">Agriculture</option>
+                          </optgroup>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                        <select
+                          value={filters.investors.location}
+                          onChange={(e) => setFilters(prev => ({
+                            ...prev,
+                            investors: { ...prev.investors, location: e.target.value }
+                          }))}
+                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                        >
+                          <option value="">Any Location</option>
+                          <optgroup label="North America">
+                            <option value="New York">New York</option>
+                            <option value="San Francisco">San Francisco</option>
+                            <option value="Los Angeles">Los Angeles</option>
+                            <option value="Boston">Boston</option>
+                          </optgroup>
+                          <optgroup label="Europe">
+                            <option value="London">London</option>
+                            <option value="Berlin">Berlin</option>
+                            <option value="Paris">Paris</option>
+                          </optgroup>
+                          <optgroup label="Asia">
+                            <option value="Singapore">Singapore</option>
+                            <option value="Tokyo">Tokyo</option>
+                            <option value="Hong Kong">Hong Kong</option>
+                          </optgroup>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleSearch();
+                      setShowFilters(false);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    Apply Filters
+                  </button>
+                </div>
+
+                {/* Active Filters Display */}
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(viewingType === 'startups' ? filters.startups : filters.investors).map(([key, value]) => {
+                      if (!value) return null;
+                      return (
+                        <div key={key} className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
+                          <span>{key.replace(/([A-Z])/g, ' $1').trim()}: {value}</span>
+                          <button
+                            onClick={() => {
+                              if (viewingType === 'startups') {
+                                setFilters(prev => ({
+                                  ...prev,
+                                  startups: { ...prev.startups, [key]: '' }
+                                }));
+                              } else {
+                                setFilters(prev => ({
+                                  ...prev,
+                                  investors: { ...prev.investors, [key]: '' }
+                                }));
+                              }
+                            }}
+                            className="hover:text-blue-900"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-2 mt-4">
               <button
                 onClick={() => setViewingType("startups")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  viewingType === "startups"
-                    ? "bg-white text-blue-600"
-                    : "bg-white/20 text-white hover:bg-white/30"
-                }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "startups"
+                  ? "bg-white text-blue-600"
+                  : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
               >
                 Startups
               </button>
               <button
                 onClick={() => setViewingType("investors")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  viewingType === "investors"
-                    ? "bg-white text-blue-600"
-                    : "bg-white/20 text-white hover:bg-white/30"
-                }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "investors"
+                  ? "bg-white text-blue-600"
+                  : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
               >
                 Investors
               </button>
@@ -1164,7 +1535,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </div>
             ) : viewingType === "startups" ? (
               startups && startups.length > 0 ? (
-                startups.map((startup) => (
+                applyFilters(startups).map((startup) => (
                   <div
                     key={startup.id}
                     onClick={() => handleStartupClick(startup)}
@@ -1192,7 +1563,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 </div>
               )
             ) : investors.length > 0 ? (
-              investors.map((investor) => (
+              applyFilters(investors).map((investor) => (
                 <div
                   key={investor.investorId}
                   onClick={() => handleInvestorClick(investor)}
@@ -1265,21 +1636,19 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <div className="flex gap-2">
               <button
                 onClick={() => setViewingType("startups")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  viewingType === "startups"
-                    ? "bg-white text-blue-600"
-                    : "bg-white/20 text-white hover:bg-white/30"
-                }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "startups"
+                  ? "bg-white text-blue-600"
+                  : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
               >
                 Startups
               </button>
               <button
                 onClick={() => setViewingType("investors")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  viewingType === "investors"
-                    ? "bg-white text-blue-600"
-                    : "bg-white/20 text-white hover:bg-white/30"
-                }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "investors"
+                  ? "bg-white text-blue-600"
+                  : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
               >
                 Investors
               </button>
@@ -1408,11 +1777,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => toggleLike(user.id, null, investor.id)}
-                className={`text-2xl transition cursor-pointer ${
-                  likedInvestors.includes(investor.id)
-                    ? "text-red-500"
-                    : "text-gray-400 hover:text-red-400"
-                }`}
+                className={`text-2xl transition cursor-pointer ${likedInvestors.includes(investor.id)
+                  ? "text-red-500"
+                  : "text-gray-400 hover:text-red-400"
+                  }`}
               >
                 <FaHeart />
               </button>
@@ -1421,11 +1789,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </span>
               <button
                 onClick={toggleBookmark}
-                className={`text-2xl transition cursor-pointer ${
-                  isCurrentItemBookmarked
-                    ? "text-blue-500"
-                    : "text-gray-400 hover:text-blue-400"
-                }`}
+                className={`text-2xl transition cursor-pointer ${isCurrentItemBookmarked
+                  ? "text-blue-500"
+                  : "text-gray-400 hover:text-blue-400"
+                  }`}
               >
                 <FaBookmark />
               </button>
@@ -1539,11 +1906,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => toggleLike(user.id, startup.id, null)}
-                className={`text-2xl transition cursor-pointer ${
-                  likedStartups.includes(startup.id)
-                    ? "text-red-500"
-                    : "text-gray-400 hover:text-red-400"
-                }`}
+                className={`text-2xl transition cursor-pointer ${likedStartups.includes(startup.id)
+                  ? "text-red-500"
+                  : "text-gray-400 hover:text-red-400"
+                  }`}
               >
                 <FaHeart />
               </button>
@@ -1552,11 +1918,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </span>
               <button
                 onClick={toggleBookmark}
-                className={`text-2xl transition cursor-pointer ${
-                  isCurrentItemBookmarked
-                    ? "text-blue-500"
-                    : "text-gray-400 hover:text-blue-400"
-                }`}
+                className={`text-2xl transition cursor-pointer ${isCurrentItemBookmarked
+                  ? "text-blue-500"
+                  : "text-gray-400 hover:text-blue-400"
+                  }`}
               >
                 <FaBookmark />
               </button>
@@ -1631,7 +1996,15 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         />
       )}
 
-      {openRegister && <Signup closeModal={() => setOpenRegister(false)} />}
+      {openRegister && (
+        <Signup 
+          closeModal={() => setOpenRegister(false)} 
+          openLogin={() => {
+            setOpenRegister(false);
+            setOpenLogin(true);
+          }}
+        />
+      )}
     </div>
   );
 }
