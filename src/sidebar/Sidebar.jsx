@@ -716,12 +716,37 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
     return items.filter(item => {
       if (viewingType === 'startups') {
-        return (
-          (!currentFilters.industry || item.industry === currentFilters.industry) &&
-          (!currentFilters.foundedDate || item.foundedDate === currentFilters.foundedDate) &&
-          (!currentFilters.teamSize || item.numberOfEmployees === currentFilters.teamSize) &&
-          (!currentFilters.fundingStage || item.fundingStage === currentFilters.fundingStage)
-        );
+        // Industry filter
+        const industryMatch = !currentFilters.industry || item.industry === currentFilters.industry;
+
+        // Founded date filter
+        const foundedDateMatch = !currentFilters.foundedDate || 
+          (item.foundedDate && item.foundedDate.includes(currentFilters.foundedDate));
+
+        // Team size filter
+        const teamSizeMatch = !currentFilters.teamSize || (() => {
+          const employeeCount = parseInt(item.numberOfEmployees);
+          if (isNaN(employeeCount)) return false;
+          
+          switch (currentFilters.teamSize) {
+            case '1-10':
+              return employeeCount >= 1 && employeeCount <= 10;
+            case '11-50':
+              return employeeCount >= 11 && employeeCount <= 50;
+            case '51-200':
+              return employeeCount >= 51 && employeeCount <= 200;
+            case '201+':
+              return employeeCount >= 201;
+            default:
+              return true;
+          }
+        })();
+
+        // Funding stage filter
+        const fundingStageMatch = !currentFilters.fundingStage || 
+          item.fundingStage === currentFilters.fundingStage;
+
+        return industryMatch && foundedDateMatch && teamSizeMatch && fundingStageMatch;
       } else {
         return (
           (!currentFilters.investmentStage || item.investmentStage === currentFilters.investmentStage) &&
@@ -1277,6 +1302,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                         >
                           <option value="">Any Time</option>
                           <optgroup label="Recent (2020-Present)">
+                            <option value="2027">2027</option>
+                            <option value="2026">2026</option>
+                            <option value="2025">2025</option>
                             <option value="2024">2024</option>
                             <option value="2023">2023</option>
                             <option value="2022">2022</option>
@@ -1997,8 +2025,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
       )}
 
       {openRegister && (
-        <Signup 
-          closeModal={() => setOpenRegister(false)} 
+        <Signup
+          closeModal={() => setOpenRegister(false)}
           openLogin={() => {
             setOpenRegister(false);
             setOpenLogin(true);
