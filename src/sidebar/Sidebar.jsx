@@ -715,45 +715,59 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     const currentFilters = viewingType === 'startups' ? filters.startups : filters.investors;
 
     return items.filter(item => {
-      if (viewingType === 'startups') {
-        // Industry filter
-        const industryMatch = !currentFilters.industry || item.industry === currentFilters.industry;
+      try {
+        if (viewingType === 'startups') {
+          // Industry filter
+          const industryMatch = !currentFilters.industry || 
+            (item.industry && item.industry.toLowerCase() === currentFilters.industry.toLowerCase());
 
-        // Founded date filter
-        const foundedDateMatch = !currentFilters.foundedDate || 
-          (item.foundedDate && item.foundedDate.includes(currentFilters.foundedDate));
+          // Founded date filter
+          const foundedDateMatch = !currentFilters.foundedDate || 
+            (item.foundedDate && item.foundedDate.toString().includes(currentFilters.foundedDate));
 
-        // Team size filter
-        const teamSizeMatch = !currentFilters.teamSize || (() => {
-          const employeeCount = parseInt(item.numberOfEmployees);
-          if (isNaN(employeeCount)) return false;
-          
-          switch (currentFilters.teamSize) {
-            case '1-10':
-              return employeeCount >= 1 && employeeCount <= 10;
-            case '11-50':
-              return employeeCount >= 11 && employeeCount <= 50;
-            case '51-200':
-              return employeeCount >= 51 && employeeCount <= 200;
-            case '201+':
-              return employeeCount >= 201;
-            default:
-              return true;
-          }
-        })();
+          // Team size filter
+          const teamSizeMatch = !currentFilters.teamSize || (() => {
+            const employeeCount = parseInt(item.numberOfEmployees);
+            if (isNaN(employeeCount)) return false;
+            
+            switch (currentFilters.teamSize) {
+              case '1-10':
+                return employeeCount >= 1 && employeeCount <= 10;
+              case '11-50':
+                return employeeCount >= 11 && employeeCount <= 50;
+              case '51-200':
+                return employeeCount >= 51 && employeeCount <= 200;
+              case '201+':
+                return employeeCount >= 201;
+              default:
+                return true;
+            }
+          })();
 
-        // Funding stage filter
-        const fundingStageMatch = !currentFilters.fundingStage || 
-          item.fundingStage === currentFilters.fundingStage;
+          // Funding stage filter
+          const fundingStageMatch = !currentFilters.fundingStage || 
+            (item.fundingStage && item.fundingStage.toLowerCase() === currentFilters.fundingStage.toLowerCase());
 
-        return industryMatch && foundedDateMatch && teamSizeMatch && fundingStageMatch;
-      } else {
-        return (
-          (!currentFilters.investmentStage || item.investmentStage === currentFilters.investmentStage) &&
-          (!currentFilters.investmentRange || item.investmentRange === currentFilters.investmentRange) &&
-          (!currentFilters.preferredIndustry || item.preferredIndustry === currentFilters.preferredIndustry) &&
-          (!currentFilters.location || item.locationName === currentFilters.location)
-        );
+          return industryMatch && foundedDateMatch && teamSizeMatch && fundingStageMatch;
+        } else {
+          // Investor filters
+          const investmentStageMatch = !currentFilters.investmentStage || 
+            (item.investmentStage && item.investmentStage.toLowerCase() === currentFilters.investmentStage.toLowerCase());
+
+          const investmentRangeMatch = !currentFilters.investmentRange || 
+            (item.investmentRange && item.investmentRange === currentFilters.investmentRange);
+
+          const preferredIndustryMatch = !currentFilters.preferredIndustry || 
+            (item.preferredIndustry && item.preferredIndustry.toLowerCase() === currentFilters.preferredIndustry.toLowerCase());
+
+          const locationMatch = !currentFilters.location || 
+            (item.locationName && item.locationName.toLowerCase() === currentFilters.location.toLowerCase());
+
+          return investmentStageMatch && investmentRangeMatch && preferredIndustryMatch && locationMatch;
+        }
+      } catch (error) {
+        console.error('Error applying filters:', error);
+        return true; // Return true to show the item if there's an error in filtering
       }
     });
   };
@@ -1262,6 +1276,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                           <option value="">All Industries</option>
                           <optgroup label="Technology & Digital">
                             <option value="technology">Technology</option>
+                            <option value="information technology">Information Technology</option>
                             <option value="telecommunications">Telecommunications</option>
                             <option value="entertainment">Entertainment</option>
                           </optgroup>
