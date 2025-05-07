@@ -719,11 +719,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         if (viewingType === 'startups') {
           // Industry filter
           const industryMatch = !currentFilters.industry || 
-            (item.industry && item.industry.toLowerCase() === currentFilters.industry.toLowerCase());
+            (item.industry && item.industry.localeCompare(currentFilters.industry, undefined, { sensitivity: 'base' }) === 0);
 
           // Founded date filter
           const foundedDateMatch = !currentFilters.foundedDate || 
-            (item.foundedDate && item.foundedDate.toString().includes(currentFilters.foundedDate));
+            (item.foundedDate && item.foundedDate.toString().localeCompare(currentFilters.foundedDate, undefined, { sensitivity: 'base' }) !== -1);
 
           // Team size filter
           const teamSizeMatch = !currentFilters.teamSize || (() => {
@@ -746,22 +746,22 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
           // Funding stage filter
           const fundingStageMatch = !currentFilters.fundingStage || 
-            (item.fundingStage && item.fundingStage.toLowerCase() === currentFilters.fundingStage.toLowerCase());
+            (item.fundingStage && item.fundingStage.localeCompare(currentFilters.fundingStage, undefined, { sensitivity: 'base' }) === 0);
 
           return industryMatch && foundedDateMatch && teamSizeMatch && fundingStageMatch;
         } else {
           // Investor filters
           const investmentStageMatch = !currentFilters.investmentStage || 
-            (item.investmentStage && item.investmentStage.toLowerCase() === currentFilters.investmentStage.toLowerCase());
+            (item.investmentStage && item.investmentStage.localeCompare(currentFilters.investmentStage, undefined, { sensitivity: 'base' }) === 0);
 
           const investmentRangeMatch = !currentFilters.investmentRange || 
-            (item.investmentRange && item.investmentRange === currentFilters.investmentRange);
+            (item.investmentRange && item.investmentRange.localeCompare(currentFilters.investmentRange, undefined, { sensitivity: 'base' }) === 0);
 
           const preferredIndustryMatch = !currentFilters.preferredIndustry || 
-            (item.preferredIndustry && item.preferredIndustry.toLowerCase() === currentFilters.preferredIndustry.toLowerCase());
+            (item.preferredIndustry && item.preferredIndustry.localeCompare(currentFilters.preferredIndustry, undefined, { sensitivity: 'base' }) === 0);
 
           const locationMatch = !currentFilters.location || 
-            (item.locationName && item.locationName.toLowerCase() === currentFilters.location.toLowerCase());
+            (item.locationName && item.locationName.localeCompare(currentFilters.location, undefined, { sensitivity: 'base' }) === 0);
 
           return investmentStageMatch && investmentRangeMatch && preferredIndustryMatch && locationMatch;
         }
