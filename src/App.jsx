@@ -2,7 +2,6 @@ import { useState, useRef } from "react";
 import { Routes, Route } from "react-router-dom";
 import Sidebar from "./sidebar/Sidebar";
 import Startupmap from "./3dmap/Startupmap";
-import Startup from "./startup/Startup";
 import Startupadd from "./startup/Startupadd";
 import StartupDashboard from "./startup/StartupDashboard";
 import AllStartupDashboard from "./startup/AllStartupDashboard";
@@ -37,7 +36,6 @@ function App() {
             }
           />
         <Route element={<ProtectedRoute />}>
-            <Route path="dashboard" element={<Startup />} />
             <Route path="/startup-dashboard" element={<StartupDashboard />} />
             <Route
             path="/all-startup-dashboard"

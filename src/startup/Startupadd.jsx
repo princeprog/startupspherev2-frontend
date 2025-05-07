@@ -8,12 +8,20 @@ import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Verification from "../modals/Verification";
+import { useNavigate } from "react-router-dom";
 
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
+mapboxgl.accessToken =
+  import.meta.env.VITE_MAPBOX_TOKEN ||
+  "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
 
 export default function Startupadd() {
   const [selectedTab, setSelectedTab] = useState("Company Information");
   const [startupId, setStartupId] = useState(null);
+  const [regions, setRegions] = useState([]);
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [barangays, setBarangays] = useState([]);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     companyName: "",
     companyDescription: "",
@@ -27,7 +35,6 @@ export default function Startupadd() {
     streetAddress: "",
     city: "",
     province: "",
-    country: "",
     postalCode: "",
     facebook: "",
     twitter: "",
@@ -74,7 +81,6 @@ export default function Startupadd() {
       streetAddress: "",
       city: "",
       province: "",
-      country: "",
       postalCode: "",
       facebook: "",
       twitter: "",
@@ -96,7 +102,9 @@ export default function Startupadd() {
     const file = e.target.files[0];
     if (file) {
       if (!file.type.startsWith("image/")) {
-        toast.error("Invalid file type. Please upload an image file (e.g., JPEG, PNG).");
+        toast.error(
+          "Invalid file type. Please upload an image file (e.g., JPEG, PNG)."
+        );
         return;
       }
       setUploadedImage(file);
@@ -132,16 +140,21 @@ export default function Startupadd() {
     const formData = new FormData();
     formData.append("file", uploadedFile);
     try {
-      const response = await fetch(`http://localhost:8080/startups/${startupId}/upload-csv`, {
-        method: "PUT",
-        body: formData,
-        credentials: "include",
-      });
+      const response = await fetch(
+        `http://localhost:8080/startups/${startupId}/upload-csv`,
+        {
+          method: "PUT",
+          body: formData,
+          credentials: "include",
+        }
+      );
       if (response.ok) {
         toast.success("File uploaded successfully!");
       } else {
         const errorData = await response.json();
-        toast.error(`Failed to upload file: ${errorData.message || "Unknown error"}`);
+        toast.error(
+          `Failed to upload file: ${errorData.message || "Unknown error"}`
+        );
       }
     } catch (error) {
       console.error("Error uploading file:", error);
@@ -257,7 +270,6 @@ export default function Startupadd() {
       return toast.error("Street Address is required.");
     if (!formData.city) return toast.error("City is required.");
     if (!formData.province) return toast.error("Province is required.");
-    if (!formData.country) return toast.error("Country is required.");
     if (!formData.postalCode) return toast.error("Postal Code is required.");
     return "";
   };
@@ -318,35 +330,44 @@ export default function Startupadd() {
     }
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async () => {
+    setIsSubmitting(true);
     let errorMessage = validateCompanyInformation();
     if (errorMessage) {
       setError(errorMessage);
+      setIsSubmitting(false);
       return;
     }
     errorMessage = validateContactInformation();
     if (errorMessage) {
       setError(errorMessage);
+      setIsSubmitting(false);
       return;
     }
     errorMessage = validateAddressInformation();
     if (errorMessage) {
       setError(errorMessage);
+      setIsSubmitting(false);
       return;
     }
     errorMessage = validateSocialMediaLinks();
     if (errorMessage) {
       setError(errorMessage);
+      setIsSubmitting(false);
       return;
     }
     errorMessage = validateAdditionalInformation();
     if (errorMessage) {
       setError(errorMessage);
+      setIsSubmitting(false);
       return;
     }
     errorMessage = validateLocationInfo();
     if (errorMessage) {
       setError(errorMessage);
+      setIsSubmitting(false);
       return;
     }
 
@@ -371,11 +392,14 @@ export default function Startupadd() {
           const imageFormData = new FormData();
           imageFormData.append("photo", uploadedImage);
           try {
-            const imageResponse = await fetch(`http://localhost:8080/startups/${startupId}/upload-photo`, {
-              method: "PUT",
-              body: imageFormData,
-              credentials: "include",
-            });
+            const imageResponse = await fetch(
+              `http://localhost:8080/startups/${startupId}/upload-photo`,
+              {
+                method: "PUT",
+                body: imageFormData,
+                credentials: "include",
+              }
+            );
 
             let imageErrorMessage = "Failed to upload image.";
             if (!imageResponse.ok) {
@@ -384,12 +408,15 @@ export default function Startupadd() {
                 imageErrorMessage = imageErrorData.error || imageErrorMessage;
               } catch (jsonError) {
                 const text = await imageResponse.text();
-                imageErrorMessage = text || "Failed to upload image: Invalid server response.";
+                imageErrorMessage =
+                  text || "Failed to upload image: Invalid server response.";
               }
               toast.error(imageErrorMessage);
             } else {
               const imageSuccessData = await imageResponse.json();
-              toast.success(imageSuccessData.message || "Image uploaded successfully!");
+              toast.success(
+                imageSuccessData.message || "Image uploaded successfully!"
+              );
             }
           } catch (imageError) {
             console.error("Error uploading image:", imageError);
@@ -397,24 +424,29 @@ export default function Startupadd() {
           }
         }
 
-        const emailResponse = await fetch("http://localhost:8080/startups/send-verification-email", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            startupId,
-            email: formData.contactEmail,
-          }),
-          credentials: "include",
-        });
+        const emailResponse = await fetch(
+          "http://localhost:8080/startups/send-verification-email",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              startupId,
+              email: formData.contactEmail,
+            }),
+            credentials: "include",
+          }
+        );
 
         let emailResponseData;
         try {
           emailResponseData = await emailResponse.json();
         } catch (jsonError) {
           console.error("Failed to parse email response:", jsonError);
-          toast.error("Failed to send verification email: Invalid server response.");
+          toast.error(
+            "Failed to send verification email: Invalid server response."
+          );
           return;
         }
 
@@ -426,21 +458,32 @@ export default function Startupadd() {
             toast.info("Email is already verified. Proceeding to upload data.");
             setSelectedTab("Upload Data");
           } else {
-            toast.error(`Failed to send verification email: ${emailResponseData.error || "Unknown error"}`);
+            toast.error(
+              `Failed to send verification email: ${
+                emailResponseData.error || "Unknown error"
+              }`
+            );
           }
         }
       } else {
         console.error("Error adding a startup: ", data);
-        toast.error(`Failed to add startup: ${data.message || data.error || "Unknown error"}`);
+        toast.error(
+          `Failed to add startup: ${
+            data.message || data.error || "Unknown error"
+          }`
+        );
       }
     } catch (error) {
       console.error("Error:", error);
       toast.error("An error occurred while adding the startup.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const downloadCsvTemplate = () => {
-    const csvContent = "revenue,annualRevenue,paidUpCapital,numberOfActiveStartups,numberOfNewStartupsThisYear,averageStartupGrowthRate,startupSurvivalRate,totalStartupFundingReceived,averageFundingPerStartup,numberOfFundingRounds,numberOfStartupsWithForeignInvestment,amountOfGovernmentGrantsOrSubsidiesReceived,numberOfStartupIncubatorsOrAccelerators,numberOfStartupsInIncubationPrograms,numberOfMentorsOrAdvisorsInvolved,publicPrivatePartnershipsInvolvingStartups\n";
+    const csvContent =
+      "revenue,annualRevenue,paidUpCapital,numberOfActiveStartups,numberOfNewStartupsThisYear,averageStartupGrowthRate,startupSurvivalRate,totalStartupFundingReceived,averageFundingPerStartup,numberOfFundingRounds,numberOfStartupsWithForeignInvestment,amountOfGovernmentGrantsOrSubsidiesReceived,numberOfStartupIncubatorsOrAccelerators,numberOfStartupsInIncubationPrograms,numberOfMentorsOrAdvisorsInvolved,publicPrivatePartnershipsInvolvingStartups\n";
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -448,6 +491,53 @@ export default function Startupadd() {
     link.click();
     URL.revokeObjectURL(link.href);
   };
+
+  useEffect(() => {
+    fetch("https://psgc.gitlab.io/api/regions/")
+      .then((response) => response.json())
+      .then((data) => setRegions(data))
+      .catch((error) => console.error("Error fetching regions:", error));
+  }, []);
+
+  useEffect(() => {
+    if (formData.region) {
+      fetch(`https://psgc.gitlab.io/api/regions/${formData.region}/provinces/`)
+        .then((response) => response.json())
+        .then((data) => setProvinces(data))
+        .catch((error) => console.error("Error fetching provinces:", error));
+    } else {
+      setProvinces([]);
+      setCities([]);
+      setBarangays([]);
+    }
+  }, [formData.region]);
+
+  useEffect(() => {
+    if (formData.province) {
+      fetch(
+        `https://psgc.gitlab.io/api/provinces/${formData.province}/cities-municipalities/`
+      )
+        .then((response) => response.json())
+        .then((data) => setCities(data))
+        .catch((error) => console.error("Error fetching cities:", error));
+    } else {
+      setCities([]);
+      setBarangays([]);
+    }
+  }, [formData.province]);
+
+  useEffect(() => {
+    if (formData.city) {
+      fetch(
+        `https://psgc.gitlab.io/api/cities-municipalities/${formData.city}/barangays/`
+      )
+        .then((response) => response.json())
+        .then((data) => setBarangays(data))
+        .catch((error) => console.error("Error fetching barangays:", error));
+    } else {
+      setBarangays([]);
+    }
+  }, [formData.city]);
 
   return (
     <div className="bg-gray-100 min-h-screen text-gray-800 relative">
@@ -506,10 +596,13 @@ export default function Startupadd() {
                 Founded Date
               </label>
               <DatePicker
-                selected={formData.foundedDate ? new Date(formData.foundedDate) : null}
+                selected={
+                  formData.foundedDate ? new Date(formData.foundedDate) : null
+                }
                 onChange={handleDateChange}
                 placeholderText="Select founded date"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
+                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                maxDate={new Date()} // Restrict selection to today or earlier
               />
             </div>
 
@@ -605,14 +698,30 @@ export default function Startupadd() {
               <label className="block mb-1 text-sm font-medium">
                 Phone Number
               </label>
-              <input
-                type="text"
-                name="phoneNumber"
-                placeholder="Phone number"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.phoneNumber}
-                onChange={handleChange}
-              />
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
+                  +639
+                </span>
+                <input
+                  type="text"
+                  name="phoneNumber"
+                  placeholder="Enter 9-digit number (e.g., 123456789)"
+                  className="w-full border border-gray-300 rounded-md px-12 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  value={formData.phoneNumber.replace("+639", "")}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, "");
+                    if (value.length <= 9) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        phoneNumber: `+639 ${value}`,
+                      }));
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-sm text-gray-500 mt-1">
+                Format: +639 followed by 9 digits (e.g., +639123456789)
+              </p>
             </div>
 
             <div>
@@ -623,7 +732,7 @@ export default function Startupadd() {
                 type="email"
                 name="contactEmail"
                 placeholder="Contact email"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
+                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={formData.contactEmail}
                 onChange={handleChange}
               />
@@ -634,7 +743,7 @@ export default function Startupadd() {
                 type="url"
                 name="website"
                 placeholder="Website link"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
+                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={formData.website}
                 onChange={handleChange}
               />
@@ -660,77 +769,150 @@ export default function Startupadd() {
         {selectedTab === "Address Information" && (
           <form className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block mb-1 text-sm font-medium">
-                Street Address
-              </label>
-              <input
-                type="text"
-                name="streetAddress"
-                placeholder="Street Address"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.streetAddress}
-                onChange={handleChange}
-              />
+              <label className="block mb-1 text-sm font-medium">Region</label>
+              <select
+                name="region"
+                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                value={formData.region}
+                onChange={(e) => {
+                  handleChange(e);
+                  setFormData((prev) => ({
+                    ...prev,
+                    province: "",
+                    city: "",
+                    barangay: "",
+                  }));
+                }}
+              >
+                <option value="">Select Region</option>
+                {regions.map((region) => (
+                  <option key={region.code} value={region.code}>
+                    {region.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            <div>
-              <label className="block mb-1 text-sm font-medium">City</label>
-              <input
-                type="text"
-                name="city"
-                placeholder="City"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.city}
-                onChange={handleChange}
-              />
-            </div>
             <div>
               <label className="block mb-1 text-sm font-medium">Province</label>
-              <input
-                type="text"
+              <select
                 name="province"
-                placeholder="Province"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
+                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={formData.province}
-                onChange={handleChange}
-              />
+                onChange={(e) => {
+                  handleChange(e);
+                  setFormData((prev) => ({
+                    ...prev,
+                    city: "",
+                    barangay: "",
+                  }));
+                }}
+                disabled={!formData.region}
+              >
+                <option value="">Select Province</option>
+                {provinces.map((province) => (
+                  <option key={province.code} value={province.code}>
+                    {province.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
-              <label className="block mb-1 text-sm font-medium">Country</label>
-              <input
-                type="text"
-                name="country"
-                placeholder="Country"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.country}
-                onChange={handleChange}
-              />
-            </div>
-            <div>
               <label className="block mb-1 text-sm font-medium">
-                Postal Code
+                City/Municipality
               </label>
-              <input
-                type="text"
-                name="postalCode"
-                placeholder="Postal Code"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.postalCode}
-                onChange={handleChange}
-              />
+              <select
+                name="city"
+                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                value={formData.city}
+                onChange={(e) => {
+                  handleChange(e);
+                  setFormData((prev) => ({
+                    ...prev,
+                    barangay: "",
+                  }));
+                }}
+                disabled={!formData.province}
+              >
+                <option value="">Select City/Municipality</option>
+                {cities.map((city) => (
+                  <option key={city.code} value={city.code}>
+                    {city.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            <div className="col-span-2 flex justify-between mt-4">
+
+            <div>
+              <label className="block mb-1 text-sm font-medium">Barangay</label>
+              <select
+                name="barangay"
+                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                value={formData.barangay}
+                onChange={handleChange}
+                disabled={!formData.city}
+              >
+                <option value="">Select Barangay</option>
+                {barangays.map((barangay) => (
+                  <option key={barangay.code} value={barangay.code}>
+                    {barangay.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block mb-1 text-sm font-medium">Street</label>
+                <input
+                  type="text"
+                  name="streetAddress"
+                  placeholder="Enter street"
+                  className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  value={formData.streetAddress}
+                  onChange={handleChange}
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-sm font-medium">
+                  Postal Code
+                </label>
+                <input
+                  type="text"
+                  name="postalCode"
+                  placeholder="Enter postal code"
+                  className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  value={formData.postalCode}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, ""); // Allow only numbers
+                    if (value.length <= 4) {
+                      setFormData((prev) => ({
+                        ...prev,
+                        postalCode: value,
+                      }));
+                    }
+                  }}
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Postal code must be a 4-digit number.
+                </p>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="col-span-2 flex justify-between mt-6">
               <button
                 type="button"
-                className="bg-gray-300 px-6 py-2 rounded-md"
+                className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400 transition"
                 onClick={handleBack}
               >
                 Back
               </button>
               <button
                 type="button"
-                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
+                className="bg-[#1D3557] text-white px-6 py-2 rounded-md hover:bg-[#16324f] transition"
                 onClick={handleNext}
               >
                 Next
@@ -873,16 +1055,12 @@ export default function Startupadd() {
         {selectedTab === "Location Info" && (
           <div>
             <div ref={geocoderContainerRef} className="mb-4" />
-            <div
-              ref={mapContainerRef}
-              className="w-full h-96 rounded-md"
-            />
+            <div ref={mapContainerRef} className="w-full h-96 rounded-md" />
             <div className="mt-4">
+              <p>Selected Location: {formData.locationName || "None"}</p>
               <p>
-                Selected Location: {formData.locationName || "None"}
-              </p>
-              <p>
-                Latitude: {formData.locationLat || "N/A"}, Longitude: {formData.locationLng || "N/A"}
+                Latitude: {formData.locationLat || "N/A"}, Longitude:{" "}
+                {formData.locationLng || "N/A"}
               </p>
             </div>
             <div className="flex justify-between mt-4">
@@ -897,8 +1075,12 @@ export default function Startupadd() {
                 type="button"
                 className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
                 onClick={handleSubmit}
+                disabled={isSubmitting}
               >
                 Submit
+                {isSubmitting && (
+                  <span className="loading loading-spinner text-primary"></span>
+                )}
               </button>
             </div>
           </div>
@@ -909,27 +1091,76 @@ export default function Startupadd() {
               Upload Startup Data (CSV)
             </h2>
             <div className="mb-4">
-              <h3 className="text-md font-medium mb-2">CSV Upload Instructions</h3>
+              <h3 className="text-md font-medium mb-2">
+                CSV Upload Instructions
+              </h3>
               <p className="text-sm text-gray-600">
-                Please upload a CSV file containing your startup's data. The file must include the following columns:
+                Please upload a CSV file containing your startup's data. The
+                file must include the following columns:
               </p>
               <ul className="list-disc list-inside text-sm text-gray-600 mb-2">
-                <li><strong>revenue</strong>: Total revenue of the startup.</li>
-                <li><strong>annualRevenue</strong>: Annual revenue of the startup.</li>
-                <li><strong>paidUpCapital</strong>: Paid-up capital of the startup.</li>
-                <li><strong>numberOfActiveStartups</strong>: Number of active startups.</li>
-                <li><strong>numberOfNewStartupsThisYear</strong>: Number of new startups this year.</li>
-                <li><strong>averageStartupGrowthRate</strong>: Average growth rate of startups (as a percentage).</li>
-                <li><strong>startupSurvivalRate</strong>: Survival rate of startups (as a percentage).</li>
-                <li><strong>totalStartupFundingReceived</strong>: Total funding received by startups.</li>
-                <li><strong>averageFundingPerStartup</strong>: Average funding per startup.</li>
-                <li><strong>numberOfFundingRounds</strong>: Number of funding rounds.</li>
-                <li><strong>numberOfStartupsWithForeignInvestment</strong>: Number of startups with foreign investment.</li>
-                <li><strong>amountOfGovernmentGrantsOrSubsidiesReceived</strong>: Amount of government grants or subsidies received.</li>
-                <li><strong>numberOfStartupIncubatorsOrAccelerators</strong>: Number of startup incubators or accelerators.</li>
-                <li><strong>numberOfStartupsInIncubationPrograms</strong>: Number of startups in incubation programs.</li>
-                <li><strong>numberOfMentorsOrAdvisorsInvolved</strong>: Number of mentors or advisors involved.</li>
-                <li><strong>publicPrivatePartnershipsInvolvingStartups</strong>: Number of public-private partnerships involving startups.</li>
+                <li>
+                  <strong>revenue</strong>: Total revenue of the startup.
+                </li>
+                <li>
+                  <strong>annualRevenue</strong>: Annual revenue of the startup.
+                </li>
+                <li>
+                  <strong>paidUpCapital</strong>: Paid-up capital of the
+                  startup.
+                </li>
+                <li>
+                  <strong>numberOfActiveStartups</strong>: Number of active
+                  startups.
+                </li>
+                <li>
+                  <strong>numberOfNewStartupsThisYear</strong>: Number of new
+                  startups this year.
+                </li>
+                <li>
+                  <strong>averageStartupGrowthRate</strong>: Average growth rate
+                  of startups (as a percentage).
+                </li>
+                <li>
+                  <strong>startupSurvivalRate</strong>: Survival rate of
+                  startups (as a percentage).
+                </li>
+                <li>
+                  <strong>totalStartupFundingReceived</strong>: Total funding
+                  received by startups.
+                </li>
+                <li>
+                  <strong>averageFundingPerStartup</strong>: Average funding per
+                  startup.
+                </li>
+                <li>
+                  <strong>numberOfFundingRounds</strong>: Number of funding
+                  rounds.
+                </li>
+                <li>
+                  <strong>numberOfStartupsWithForeignInvestment</strong>: Number
+                  of startups with foreign investment.
+                </li>
+                <li>
+                  <strong>amountOfGovernmentGrantsOrSubsidiesReceived</strong>:
+                  Amount of government grants or subsidies received.
+                </li>
+                <li>
+                  <strong>numberOfStartupIncubatorsOrAccelerators</strong>:
+                  Number of startup incubators or accelerators.
+                </li>
+                <li>
+                  <strong>numberOfStartupsInIncubationPrograms</strong>: Number
+                  of startups in incubation programs.
+                </li>
+                <li>
+                  <strong>numberOfMentorsOrAdvisorsInvolved</strong>: Number of
+                  mentors or advisors involved.
+                </li>
+                <li>
+                  <strong>publicPrivatePartnershipsInvolvingStartups</strong>:
+                  Number of public-private partnerships involving startups.
+                </li>
               </ul>
               <button
                 type="button"
@@ -942,7 +1173,16 @@ export default function Startupadd() {
             <div className="mb-4">
               <h3 className="text-md font-medium mb-2">Privacy Policy</h3>
               <p className="text-sm text-gray-600">
-                Your data is important to us. The uploaded CSV file will be securely stored and used solely for the purpose of analyzing and displaying your startup's metrics. We implement industry-standard security measures to protect your data and will not share it with third parties without your consent. For more details, please review our full <a href="/privacy-policy" className="text-[#1D3557] underline">Privacy Policy</a>.
+                Your data is important to us. The uploaded CSV file will be
+                securely stored and used solely for the purpose of analyzing and
+                displaying your startup's metrics. We implement
+                industry-standard security measures to protect your data and
+                will not share it with third parties without your consent. For
+                more details, please review our full{" "}
+                <a href="/privacy-policy" className="text-[#1D3557] underline">
+                  Privacy Policy
+                </a>
+                .
               </p>
             </div>
             <input
@@ -951,13 +1191,6 @@ export default function Startupadd() {
               onChange={handleFileUpload}
               className="mb-4 w-full border border-gray-300 rounded-md px-4 py-2"
             />
-            <button
-              type="button"
-              className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
-              onClick={handleFileSubmit}
-            >
-              Upload CSV
-            </button>
             <div className="flex justify-between mt-4">
               <button
                 type="button"
@@ -966,7 +1199,20 @@ export default function Startupadd() {
               >
                 Back
               </button>
-              
+              <button
+                type="button"
+                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
+                onClick={handleFileSubmit}
+              >
+                Upload CSV
+              </button>
+              <button
+                type="button"
+                className="bg-gray-300 px-6 py-2 rounded-md hover:bg-gray-400 transition"
+                onClick={() => navigate("/startup-dashboard")} // Navigate to /startup-dashboard
+              >
+                Skip
+              </button>
             </div>
           </div>
         )}
