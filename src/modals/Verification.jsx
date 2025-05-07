@@ -69,7 +69,7 @@ export default function Verification({ setVerificationModal, setSelectedTab, sta
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/60 bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-md shadow-md w-1/3">
         <h2 className="text-xl font-semibold mb-4">Verify Your Email</h2>
         <p className="text-sm text-gray-600 mb-4">
