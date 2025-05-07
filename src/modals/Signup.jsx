@@ -1,17 +1,25 @@
 import { useState } from "react";
 
-export default function Signup({ closeModal }) {
+export default function Signup({ closeModal, openLogin }) {
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleSignup = async (e) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
+
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const response = await fetch("http://localhost:8080/auth/signup", {
@@ -39,102 +47,167 @@ export default function Signup({ closeModal }) {
     }
   };
 
+  const handleSwitchToLogin = () => {
+    closeModal();
+    openLogin();
+  };
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 bg-opacity-90"
-    >
-      <div
-        className="w-full max-w-sm mx-auto overflow-hidden bg-white rounded-lg shadow-lg"
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div 
+        className="w-full max-w-md mx-auto overflow-hidden bg-white rounded-xl shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative px-6 py-4">
-          {/* Close Button */}
+        {/* Header with Logo */}
+        <div className="relative px-6 py-8 bg-gradient-to-br from-blue-600 to-blue-700">
           <button
+            className="absolute top-4 cursor-pointer right-4 text-white/80 hover:text-white transition-colors"
             onClick={closeModal}
-            className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
           >
-            ✖
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
-
-          <h3 className="mt-3 text-xl font-medium text-center text-gray-700">
-            Register
+          <div className="flex justify-center mb-6">
+            <img
+              src="/src/assets/StartUpSphere_loginLogo.png"
+              alt="StartUpSphere Logo"
+              className="h-16 w-auto object-contain"
+            />
+          </div>
+          <h3 className="text-2xl font-bold text-center text-white">
+            Create Account
           </h3>
+          <p className="text-center text-white/80 mt-2">
+            Join StartUpSphere and connect with innovators
+          </p>
+        </div>
 
-          <form onSubmit={handleSignup}>
-            <div className="w-full mt-4">
-              <input
-                className="block w-full px-4 py-2 mt-2 text-black placeholder-gray-400 bg-gray-50 border border-gray-300 rounded-lg focus:border-black focus:ring-opacity-40 focus:outline-none focus:ring focus:ring-black"
-                type="text"
-                placeholder="First Name"
-                aria-label="First Name"
-                value={firstname}
-                onChange={(e) => setFirstname(e.target.value)}
-                required
-              />
+        {/* Registration Form */}
+        <div className="px-8 py-6">
+          <form onSubmit={handleSignup} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="firstname" className="block text-sm font-medium text-gray-700 mb-1">
+                  First Name
+                </label>
+                <input
+                  id="firstname"
+                  className="block w-full px-4 py-3 text-gray-900 placeholder-gray-400 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                  type="text"
+                  placeholder="Enter first name"
+                  value={firstname}
+                  onChange={(e) => setFirstname(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="lastname" className="block text-sm font-medium text-gray-700 mb-1">
+                  Last Name
+                </label>
+                <input
+                  id="lastname"
+                  className="block w-full px-4 py-3 text-gray-900 placeholder-gray-400 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                  type="text"
+                  placeholder="Enter last name"
+                  value={lastname}
+                  onChange={(e) => setLastname(e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
-            <div className="w-full mt-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email Address
+              </label>
               <input
-                className="block w-full px-4 py-2 mt-2 text-black placeholder-gray-400 bg-gray-50 border border-gray-300 rounded-lg focus:border-black focus:ring-opacity-40 focus:outline-none focus:ring focus:ring-black"
-                type="text"
-                placeholder="Last Name"
-                aria-label="Last Name"
-                value={lastname}
-                onChange={(e) => setLastname(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="w-full mt-4">
-              <input
-                className="block w-full px-4 py-2 mt-2 text-black placeholder-gray-400 bg-gray-50 border border-gray-300 rounded-lg focus:border-black focus:ring-opacity-40 focus:outline-none focus:ring focus:ring-black"
+                id="email"
+                className="block w-full px-4 py-3 text-gray-900 placeholder-gray-400 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 type="email"
-                placeholder="Email Address"
-                aria-label="Email Address"
+                placeholder="Enter your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
 
-            <div className="w-full mt-4">
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
               <input
-                className="block w-full px-4 py-2 mt-2 text-black placeholder-gray-400 bg-gray-50 border border-gray-300 rounded-lg focus:border-black focus:ring-opacity-40 focus:outline-none focus:ring focus:ring-black"
+                id="password"
+                className="block w-full px-4 py-3 text-gray-900 placeholder-gray-400 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
                 type="password"
-                placeholder="Password"
-                aria-label="Password"
+                placeholder="Create a password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
 
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                className={`block w-full px-4 py-3 text-gray-900 placeholder-gray-400 bg-gray-50 border ${
+                  confirmPassword && password !== confirmPassword
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                } rounded-lg focus:ring-2 transition-all duration-200`}
+                type="password"
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+              {confirmPassword && password !== confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">
+                  Passwords do not match
+                </p>
+              )}
+            </div>
+
             {error && (
-              <p className="mt-2 text-sm text-red-500 text-center">
-                {error}
-              </p>
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600 text-center">{error}</p>
+              </div>
             )}
 
-            <div className="flex items-center justify-between mt-4">
-              <button
-                type="submit"
-                className="px-6 py-2 w-full text-sm font-medium tracking-wide text-white capitalize transition-colors duration-300 transform bg-black rounded-lg focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-50"
-                disabled={loading}
-              >
-                {loading ? "Registering..." : "Sign Up"}
-              </button>
-            </div>
+            <button
+              type="submit"
+              disabled={loading || (confirmPassword && password !== confirmPassword)}
+              className="w-full py-3 px-4 cursor-pointer text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creating account...
+                </div>
+              ) : (
+                "Create Account"
+              )}
+            </button>
           </form>
-        </div>
 
-        <div className="flex items-center justify-center py-4 text-center bg-gray-50">
-          <span className="text-sm text-gray-600">Already have an account? </span>
-
-          <button
-            onClick={closeModal} // Close modal to return to Login
-            className="mx-2 text-sm font-bold text-black hover:underline"
-          >
-            Login
-          </button>
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Already have an account?{" "}
+              <button
+                onClick={handleSwitchToLogin}
+                className="font-medium cursor-pointer text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Sign in
+              </button>
+            </p>
+          </div>
         </div>
       </div>
     </div>
