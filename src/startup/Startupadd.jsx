@@ -454,16 +454,11 @@ export default function Startupadd() {
           toast.success("Startup added successfully! Verification email sent.");
           setVerificationModal(true);
         } else {
-          if (emailResponseData.error.includes("Email is already verified")) {
-            toast.info("Email is already verified. Proceeding to upload data.");
-            setSelectedTab("Upload Data");
-          } else {
-            toast.error(
-              `Failed to send verification email: ${
-                emailResponseData.error || "Unknown error"
-              }`
-            );
-          }
+          toast.error(
+            `Failed to send verification email: ${
+              emailResponseData.error || "Unknown error"
+            }`
+          );
         }
       } else {
         console.error("Error adding a startup: ", data);
@@ -700,27 +695,27 @@ export default function Startupadd() {
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-                  +639
+                  +63
                 </span>
                 <input
                   type="text"
                   name="phoneNumber"
-                  placeholder="Enter 9-digit number (e.g., 123456789)"
+                  placeholder="Enter 10-digit number (e.g., 123456789)"
                   className="w-full border border-gray-300 rounded-md px-12 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  value={formData.phoneNumber.replace("+639", "")}
+                  value={formData.phoneNumber.replace("+63", "")}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, "");
-                    if (value.length <= 9) {
+                    if (value.length <= 10) {
                       setFormData((prev) => ({
                         ...prev,
-                        phoneNumber: `+639 ${value}`,
+                        phoneNumber: `+63 ${value}`,
                       }));
                     }
                   }}
                 />
               </div>
               <p className="text-sm text-gray-500 mt-1">
-                Format: +639 followed by 9 digits (e.g., +639123456789)
+                Format: +63 followed by 10 digits (e.g., +639123456789)
               </p>
             </div>
 
