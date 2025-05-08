@@ -37,3 +37,18 @@
   .animate-slide-out {
     animation: slideOut 0.3s ease-in-out forwards;
   }
+
+
+  .search-input {
+    outline: none !important;
+    box-shadow: none !important;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+  }
+  
+  .search-input:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    border-color: transparent !important;
+    ring-width: 0 !important;
+  }

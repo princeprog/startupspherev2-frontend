@@ -27,19 +27,21 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const [showSearchContainer, setShowSearchContainer] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showRecents, setShowRecents] = useState(false);
+  const [showBookmarks, setShowBookmarks] = useState(false);
   const [filters, setFilters] = useState({
     startups: {
-      industry: '',
-      foundedDate: '',
-      teamSize: '',
-      fundingStage: ''
+      industry: "",
+      foundedDate: "",
+      teamSize: "",
+      fundingStage: "",
     },
     investors: {
-      investmentStage: '',
-      investmentRange: '',
-      preferredIndustry: '',
-      location: ''
-    }
+      investmentStage: "",
+      investmentRange: "",
+      preferredIndustry: "",
+      location: "",
+    },
   });
   const [startups, setStartups] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -136,17 +138,19 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
       if (response.ok) {
         console.log("Logout successful");
         setIsAuthenticated(false);
-        setUser(null); // Clear user state
-        setCurrentUser(null); // Clear current user state
-        setLikedStartups([]); // Clear likes
-        setLikedInvestors([]); // Clear likes
+        setUser(null); 
+        setCurrentUser(null); 
+        setLikedStartups([]);
+        setLikedInvestors([]);
+
         localStorage.removeItem("likedStartups");
         localStorage.removeItem("likedInvestors");
         localStorage.removeItem("user");
         localStorage.removeItem("isAuthenticated");
         document.cookie =
           "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        setUserDetails(null); // Clear parent state
+        setUserDetails(null);
+        navigate("/")
       } else {
         console.error("Failed to logout");
       }
@@ -712,61 +716,114 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const applyFilters = (items) => {
     if (!items || items.length === 0) return items;
 
-    const currentFilters = viewingType === 'startups' ? filters.startups : filters.investors;
+    const currentFilters =
+      viewingType === "startups" ? filters.startups : filters.investors;
 
-    return items.filter(item => {
+    return items.filter((item) => {
       try {
-        if (viewingType === 'startups') {
+        if (viewingType === "startups") {
           // Industry filter
-          const industryMatch = !currentFilters.industry || 
-            (item.industry && item.industry.localeCompare(currentFilters.industry, undefined, { sensitivity: 'base' }) === 0);
+          const industryMatch =
+            !currentFilters.industry ||
+            (item.industry &&
+              item.industry.localeCompare(currentFilters.industry, undefined, {
+                sensitivity: "base",
+              }) === 0);
 
           // Founded date filter
-          const foundedDateMatch = !currentFilters.foundedDate || 
-            (item.foundedDate && item.foundedDate.toString().localeCompare(currentFilters.foundedDate, undefined, { sensitivity: 'base' }) !== -1);
+          const foundedDateMatch =
+            !currentFilters.foundedDate ||
+            (item.foundedDate &&
+              item.foundedDate
+                .toString()
+                .localeCompare(currentFilters.foundedDate, undefined, {
+                  sensitivity: "base",
+                }) !== -1);
 
           // Team size filter
-          const teamSizeMatch = !currentFilters.teamSize || (() => {
-            const employeeCount = parseInt(item.numberOfEmployees);
-            if (isNaN(employeeCount)) return false;
-            
-            switch (currentFilters.teamSize) {
-              case '1-10':
-                return employeeCount >= 1 && employeeCount <= 10;
-              case '11-50':
-                return employeeCount >= 11 && employeeCount <= 50;
-              case '51-200':
-                return employeeCount >= 51 && employeeCount <= 200;
-              case '201+':
-                return employeeCount >= 201;
-              default:
-                return true;
-            }
-          })();
+          const teamSizeMatch =
+            !currentFilters.teamSize ||
+            (() => {
+              const employeeCount = parseInt(item.numberOfEmployees);
+              if (isNaN(employeeCount)) return false;
+
+              switch (currentFilters.teamSize) {
+                case "1-10":
+                  return employeeCount >= 1 && employeeCount <= 10;
+                case "11-50":
+                  return employeeCount >= 11 && employeeCount <= 50;
+                case "51-200":
+                  return employeeCount >= 51 && employeeCount <= 200;
+                case "201+":
+                  return employeeCount >= 201;
+                default:
+                  return true;
+              }
+            })();
 
           // Funding stage filter
-          const fundingStageMatch = !currentFilters.fundingStage || 
-            (item.fundingStage && item.fundingStage.localeCompare(currentFilters.fundingStage, undefined, { sensitivity: 'base' }) === 0);
+          const fundingStageMatch =
+            !currentFilters.fundingStage ||
+            (item.fundingStage &&
+              item.fundingStage.localeCompare(
+                currentFilters.fundingStage,
+                undefined,
+                { sensitivity: "base" }
+              ) === 0);
 
-          return industryMatch && foundedDateMatch && teamSizeMatch && fundingStageMatch;
+          return (
+            industryMatch &&
+            foundedDateMatch &&
+            teamSizeMatch &&
+            fundingStageMatch
+          );
         } else {
           // Investor filters
-          const investmentStageMatch = !currentFilters.investmentStage || 
-            (item.investmentStage && item.investmentStage.localeCompare(currentFilters.investmentStage, undefined, { sensitivity: 'base' }) === 0);
+          const investmentStageMatch =
+            !currentFilters.investmentStage ||
+            (item.investmentStage &&
+              item.investmentStage.localeCompare(
+                currentFilters.investmentStage,
+                undefined,
+                { sensitivity: "base" }
+              ) === 0);
 
-          const investmentRangeMatch = !currentFilters.investmentRange || 
-            (item.investmentRange && item.investmentRange.localeCompare(currentFilters.investmentRange, undefined, { sensitivity: 'base' }) === 0);
+          const investmentRangeMatch =
+            !currentFilters.investmentRange ||
+            (item.investmentRange &&
+              item.investmentRange.localeCompare(
+                currentFilters.investmentRange,
+                undefined,
+                { sensitivity: "base" }
+              ) === 0);
 
-          const preferredIndustryMatch = !currentFilters.preferredIndustry || 
-            (item.preferredIndustry && item.preferredIndustry.localeCompare(currentFilters.preferredIndustry, undefined, { sensitivity: 'base' }) === 0);
+          const preferredIndustryMatch =
+            !currentFilters.preferredIndustry ||
+            (item.preferredIndustry &&
+              item.preferredIndustry.localeCompare(
+                currentFilters.preferredIndustry,
+                undefined,
+                { sensitivity: "base" }
+              ) === 0);
 
-          const locationMatch = !currentFilters.location || 
-            (item.locationName && item.locationName.localeCompare(currentFilters.location, undefined, { sensitivity: 'base' }) === 0);
+          const locationMatch =
+            !currentFilters.location ||
+            (item.locationName &&
+              item.locationName.localeCompare(
+                currentFilters.location,
+                undefined,
+                { sensitivity: "base" }
+              ) === 0);
 
-          return investmentStageMatch && investmentRangeMatch && preferredIndustryMatch && locationMatch;
+          return (
+            investmentStageMatch &&
+            investmentRangeMatch &&
+            preferredIndustryMatch &&
+            locationMatch
+          );
         }
       } catch (error) {
-        console.error('Error applying filters:', error);
+        console.error("Error applying filters:", error);
         return true; // Return true to show the item if there's an error in filtering
       }
     });
@@ -804,25 +861,6 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               {viewingStartup.companyName}
             </p>
           </span>
-        </div>
-      )}
-
-      {location.pathname === "/" && (
-        <div className="absolute p-4 rounded bg-white bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-4 z-50 shadow-lg">
-          <div className="flex items-center">
-            <div
-              aria-label="status"
-              className="mr-2 status status-lg bg-red-600"
-            ></div>
-            <h1 className="text-black">Startups</h1>
-          </div>
-          <div className="flex items-center">
-            <div
-              aria-label="status"
-              className="mr-2 status status-lg bg-blue-600"
-            ></div>
-            <h1 className="text-black">Investors</h1>
-          </div>
         </div>
       )}
 
@@ -873,6 +911,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   <button
                     className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
                     onClick={() => {
+                      if (location.pathname !== "/") {
+                        navigate("/");
+                      }
                       fetchStartups();
                       fetchInvestors();
                       fetchUserLikes();
@@ -910,7 +951,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       <button
                         className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
                         onClick={() => {
+                          if (location.pathname !== "/") {
+                            navigate("/");
+                          }
                           setContainerMode("recents");
+                          setShowRecents(!showRecents);
                           setShowSearchContainer(false);
                           setStartup(null);
                           setInvestor(null);
@@ -943,7 +988,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       <button
                         className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
                         onClick={() => {
+                          if (location.pathname !== "/") {
+                            navigate("/");
+                          }
                           setContainerMode("bookmarks");
+                          setShowBookmarks(!showBookmarks);
                           setShowSearchContainer(false);
                           setStartup(null);
                           setInvestor(null);
@@ -971,10 +1020,14 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       </button>
                     </li>
 
-                    {/* Dashboard Icon */}
                     <li className="flex justify-center">
                       <button
-                        onClick={() => navigate("/startup-dashboard")}
+                        onClick={() => {
+                          setShowRecents(false);
+                          setShowSearchContainer(false);
+                          setShowBookmarks(false);
+                          navigate("/startup-dashboard");
+                        }}
                         className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
                       >
                         <LuLayoutDashboard className="h-6 w-6 opacity-80 group-hover:opacity-100" />
@@ -987,7 +1040,12 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     {/* All Startups Icon */}
                     <li className="flex justify-center">
                       <button
-                        onClick={() => navigate("/all-startup-dashboard")}
+                        onClick={() => {
+                          setShowRecents(false);
+                          setShowSearchContainer(false)
+                          setShowBookmarks(false);
+                          navigate("/all-startup-dashboard");
+                        }}
                         className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
                       >
                         <Award className="h-6 w-6 opacity-80 group-hover:opacity-100" />
@@ -1060,9 +1118,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   {isAuthenticated === null
                     ? "?"
                     : isAuthenticated && currentUser
-                      ? `${currentUser.firstname?.[0] ?? ""}${currentUser.lastname?.[0] ?? ""
-                        }`.toUpperCase()
-                      : "G"}
+                    ? `${currentUser.firstname?.[0] ?? ""}${
+                        currentUser.lastname?.[0] ?? ""
+                      }`.toUpperCase()
+                    : "G"}
                 </span>
               </div>
             </div>
@@ -1183,7 +1242,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="bg-white/90 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5"
-                  placeholder={`Search ${viewingType}`}
+                  placeholder={
+                    filters.startups.industry
+                      ? `Search ${filters.startups.industry}`
+                      : "Search"
+                  }
                   required
                 />
               </div>
@@ -1206,7 +1269,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
                   />
                 </svg>
-                <span className="sr-only">Search</span>
+                <span className="sr-only">
+                  Search {filters.startups.industry && "industry"}
+                </span>
               </button>
               <button
                 type="button"
@@ -1233,56 +1298,82 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             {showFilters && (
               <div className="mt-4 p-4 bg-white rounded-lg shadow-lg">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Advanced Filters</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Advanced Filters
+                  </h3>
                   <button
                     onClick={() => {
                       setFilters({
                         startups: {
-                          industry: '',
-                          foundedDate: '',
-                          teamSize: '',
-                          fundingStage: ''
+                          industry: "",
+                          foundedDate: "",
+                          teamSize: "",
+                          fundingStage: "",
                         },
                         investors: {
-                          investmentStage: '',
-                          investmentRange: '',
-                          preferredIndustry: '',
-                          location: ''
-                        }
+                          investmentStage: "",
+                          investmentRange: "",
+                          preferredIndustry: "",
+                          location: "",
+                        },
                       });
                     }}
                     className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                      />
                     </svg>
                     Reset All
                   </button>
                 </div>
 
-                {viewingType === 'startups' ? (
+                {viewingType === "startups" ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Industry</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Industry
+                        </label>
                         <select
                           value={filters.startups.industry}
-                          onChange={(e) => setFilters(prev => ({
-                            ...prev,
-                            startups: { ...prev.startups, industry: e.target.value }
-                          }))}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              startups: {
+                                ...prev.startups,
+                                industry: e.target.value,
+                              },
+                            }))
+                          }
                           className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         >
                           <option value="">All Industries</option>
                           <optgroup label="Technology & Digital">
                             <option value="technology">Technology</option>
-                            <option value="information technology">Information Technology</option>
-                            <option value="telecommunications">Telecommunications</option>
+                            <option value="information technology">
+                              Information Technology
+                            </option>
+                            <option value="telecommunications">
+                              Telecommunications
+                            </option>
                             <option value="entertainment">Entertainment</option>
                           </optgroup>
                           <optgroup label="Business & Finance">
                             <option value="finance">Finance</option>
-                            <option value="legal_services">Legal Services</option>
+                            <option value="legal_services">
+                              Legal Services
+                            </option>
                             <option value="real_estate">Real Estate</option>
                           </optgroup>
                           <optgroup label="Healthcare & Education">
@@ -1297,7 +1388,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                           <optgroup label="Consumer & Services">
                             <option value="retail">Retail</option>
                             <option value="hospitality">Hospitality</option>
-                            <option value="transportation">Transportation</option>
+                            <option value="transportation">
+                              Transportation
+                            </option>
                           </optgroup>
                           <optgroup label="Other">
                             <option value="agriculture">Agriculture</option>
@@ -1306,13 +1399,20 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Founded Date</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Founded Date
+                        </label>
                         <select
                           value={filters.startups.foundedDate}
-                          onChange={(e) => setFilters(prev => ({
-                            ...prev,
-                            startups: { ...prev.startups, foundedDate: e.target.value }
-                          }))}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              startups: {
+                                ...prev.startups,
+                                foundedDate: e.target.value,
+                              },
+                            }))
+                          }
                           className="mt-1 block w-full text-black rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         >
                           <option value="">Any Time</option>
@@ -1339,13 +1439,20 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Team Size</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Team Size
+                        </label>
                         <select
                           value={filters.startups.teamSize}
-                          onChange={(e) => setFilters(prev => ({
-                            ...prev,
-                            startups: { ...prev.startups, teamSize: e.target.value }
-                          }))}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              startups: {
+                                ...prev.startups,
+                                teamSize: e.target.value,
+                              },
+                            }))
+                          }
                           className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         >
                           <option value="">Any Size</option>
@@ -1357,13 +1464,20 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Funding Stage</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Funding Stage
+                        </label>
                         <select
                           value={filters.startups.fundingStage}
-                          onChange={(e) => setFilters(prev => ({
-                            ...prev,
-                            startups: { ...prev.startups, fundingStage: e.target.value }
-                          }))}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              startups: {
+                                ...prev.startups,
+                                fundingStage: e.target.value,
+                              },
+                            }))
+                          }
                           className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         >
                           <option value="">Any Stage</option>
@@ -1381,13 +1495,20 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Investment Stage</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Investment Stage
+                        </label>
                         <select
                           value={filters.investors.investmentStage}
-                          onChange={(e) => setFilters(prev => ({
-                            ...prev,
-                            investors: { ...prev.investors, investmentStage: e.target.value }
-                          }))}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              investors: {
+                                ...prev.investors,
+                                investmentStage: e.target.value,
+                              },
+                            }))
+                          }
                           className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         >
                           <option value="">Any Stage</option>
@@ -1401,13 +1522,20 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Investment Range</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Investment Range
+                        </label>
                         <select
                           value={filters.investors.investmentRange}
-                          onChange={(e) => setFilters(prev => ({
-                            ...prev,
-                            investors: { ...prev.investors, investmentRange: e.target.value }
-                          }))}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              investors: {
+                                ...prev.investors,
+                                investmentRange: e.target.value,
+                              },
+                            }))
+                          }
                           className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         >
                           <option value="">Any Range</option>
@@ -1419,24 +1547,35 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Industry</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Preferred Industry
+                        </label>
                         <select
                           value={filters.investors.preferredIndustry}
-                          onChange={(e) => setFilters(prev => ({
-                            ...prev,
-                            investors: { ...prev.investors, preferredIndustry: e.target.value }
-                          }))}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              investors: {
+                                ...prev.investors,
+                                preferredIndustry: e.target.value,
+                              },
+                            }))
+                          }
                           className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         >
                           <option value="">All Industries</option>
                           <optgroup label="Technology & Digital">
                             <option value="technology">Technology</option>
-                            <option value="telecommunications">Telecommunications</option>
+                            <option value="telecommunications">
+                              Telecommunications
+                            </option>
                             <option value="entertainment">Entertainment</option>
                           </optgroup>
                           <optgroup label="Business & Finance">
                             <option value="finance">Finance</option>
-                            <option value="legal_services">Legal Services</option>
+                            <option value="legal_services">
+                              Legal Services
+                            </option>
                             <option value="real_estate">Real Estate</option>
                           </optgroup>
                           <optgroup label="Healthcare & Education">
@@ -1451,7 +1590,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                           <optgroup label="Consumer & Services">
                             <option value="retail">Retail</option>
                             <option value="hospitality">Hospitality</option>
-                            <option value="transportation">Transportation</option>
+                            <option value="transportation">
+                              Transportation
+                            </option>
                           </optgroup>
                           <optgroup label="Other">
                             <option value="agriculture">Agriculture</option>
@@ -1460,13 +1601,20 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Location
+                        </label>
                         <select
                           value={filters.investors.location}
-                          onChange={(e) => setFilters(prev => ({
-                            ...prev,
-                            investors: { ...prev.investors, location: e.target.value }
-                          }))}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              investors: {
+                                ...prev.investors,
+                                location: e.target.value,
+                              },
+                            }))
+                          }
                           className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         >
                           <option value="">Any Location</option>
@@ -1506,8 +1654,19 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     }}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                      />
                     </svg>
                     Apply Filters
                   </button>
@@ -1516,29 +1675,49 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 {/* Active Filters Display */}
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <div className="flex flex-wrap gap-2">
-                    {Object.entries(viewingType === 'startups' ? filters.startups : filters.investors).map(([key, value]) => {
+                    {Object.entries(
+                      viewingType === "startups"
+                        ? filters.startups
+                        : filters.investors
+                    ).map(([key, value]) => {
                       if (!value) return null;
                       return (
-                        <div key={key} className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
-                          <span>{key.replace(/([A-Z])/g, ' $1').trim()}: {value}</span>
+                        <div
+                          key={key}
+                          className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-sm"
+                        >
+                          <span>
+                            {key.replace(/([A-Z])/g, " $1").trim()}: {value}
+                          </span>
                           <button
                             onClick={() => {
-                              if (viewingType === 'startups') {
-                                setFilters(prev => ({
+                              if (viewingType === "startups") {
+                                setFilters((prev) => ({
                                   ...prev,
-                                  startups: { ...prev.startups, [key]: '' }
+                                  startups: { ...prev.startups, [key]: "" },
                                 }));
                               } else {
-                                setFilters(prev => ({
+                                setFilters((prev) => ({
                                   ...prev,
-                                  investors: { ...prev.investors, [key]: '' }
+                                  investors: { ...prev.investors, [key]: "" },
                                 }));
                               }
                             }}
                             className="hover:text-blue-900"
                           >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M6 18L18 6M6 6l12 12"
+                              />
                             </svg>
                           </button>
                         </div>
@@ -1548,27 +1727,6 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 </div>
               </div>
             )}
-
-            <div className="flex gap-2 mt-4">
-              <button
-                onClick={() => setViewingType("startups")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "startups"
-                  ? "bg-white text-blue-600"
-                  : "bg-white/20 text-white hover:bg-white/30"
-                  }`}
-              >
-                Startups
-              </button>
-              <button
-                onClick={() => setViewingType("investors")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "investors"
-                  ? "bg-white text-blue-600"
-                  : "bg-white/20 text-white hover:bg-white/30"
-                  }`}
-              >
-                Investors
-              </button>
-            </div>
           </div>
 
           <div className="h-[calc(100vh-200px)] overflow-y-auto p-4 space-y-4">
@@ -1637,8 +1795,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         </div>
       )}
 
-      {/* Recents Container */}
-      {containerMode === "recents" && (
+      {containerMode === "recents" && showRecents && (
         <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-5 transform transition-all duration-300 ease-in-out animate-slide-in">
           <div className="p-4 bg-gradient-to-b from-blue-600 to-blue-500 relative">
             <button
@@ -1679,19 +1836,21 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <div className="flex gap-2">
               <button
                 onClick={() => setViewingType("startups")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "startups"
-                  ? "bg-white text-blue-600"
-                  : "bg-white/20 text-white hover:bg-white/30"
-                  }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  viewingType === "startups"
+                    ? "bg-white text-blue-600"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
               >
                 Startups
               </button>
               <button
                 onClick={() => setViewingType("investors")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "investors"
-                  ? "bg-white text-blue-600"
-                  : "bg-white/20 text-white hover:bg-white/30"
-                  }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  viewingType === "investors"
+                    ? "bg-white text-blue-600"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
               >
                 Investors
               </button>
@@ -1761,7 +1920,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
       )}
 
       {/* Bookmarks Container */}
-      {containerMode === "bookmarks" && (
+      {containerMode === "bookmarks" && showBookmarks && (
         <Bookmarks
           userId={user}
           mapInstanceRef={mapInstanceRef}
@@ -1820,10 +1979,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => toggleLike(user.id, null, investor.id)}
-                className={`text-2xl transition cursor-pointer ${likedInvestors.includes(investor.id)
-                  ? "text-red-500"
-                  : "text-gray-400 hover:text-red-400"
-                  }`}
+                className={`text-2xl transition cursor-pointer ${
+                  likedInvestors.includes(investor.id)
+                    ? "text-red-500"
+                    : "text-gray-400 hover:text-red-400"
+                }`}
               >
                 <FaHeart />
               </button>
@@ -1832,10 +1992,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </span>
               <button
                 onClick={toggleBookmark}
-                className={`text-2xl transition cursor-pointer ${isCurrentItemBookmarked
-                  ? "text-blue-500"
-                  : "text-gray-400 hover:text-blue-400"
-                  }`}
+                className={`text-2xl transition cursor-pointer ${
+                  isCurrentItemBookmarked
+                    ? "text-blue-500"
+                    : "text-gray-400 hover:text-blue-400"
+                }`}
               >
                 <FaBookmark />
               </button>
@@ -1949,10 +2110,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => toggleLike(user.id, startup.id, null)}
-                className={`text-2xl transition cursor-pointer ${likedStartups.includes(startup.id)
-                  ? "text-red-500"
-                  : "text-gray-400 hover:text-red-400"
-                  }`}
+                className={`text-2xl transition cursor-pointer ${
+                  likedStartups.includes(startup.id)
+                    ? "text-red-500"
+                    : "text-gray-400 hover:text-red-400"
+                }`}
               >
                 <FaHeart />
               </button>
@@ -1961,10 +2123,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </span>
               <button
                 onClick={toggleBookmark}
-                className={`text-2xl transition cursor-pointer ${isCurrentItemBookmarked
-                  ? "text-blue-500"
-                  : "text-gray-400 hover:text-blue-400"
-                  }`}
+                className={`text-2xl transition cursor-pointer ${
+                  isCurrentItemBookmarked
+                    ? "text-blue-500"
+                    : "text-gray-400 hover:text-blue-400"
+                }`}
               >
                 <FaBookmark />
               </button>
