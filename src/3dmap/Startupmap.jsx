@@ -4,7 +4,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
-import startupMarkerIcon from "/public/startup-marker.svg";
+import { Search, X } from "lucide-react";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
@@ -20,6 +20,13 @@ export default function Startupmap({
   const markerRef = useRef(null);
   const geocoderContainerRef = useRef(null);
   const [is3DActive, setIs3DActive] = useState(true);
+  const [startupMarkers, setStartupMarkers] = useState([]);
+  const [investorMarkers, setInvestorMarkers] = useState([]);
+  const [searchInput, setSearchInput] = useState("");
+  const [filteredStartups, setFilteredStartups] = useState([]);
+  const [filteredInvestors, setFilteredInvestors] = useState([]);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const [currentGeojsonBoundary, setCurrentGeojsonBoundary] = useState(null);
 
   const loadStartupMarkers = async (map) => {
     try {
@@ -27,56 +34,75 @@ export default function Startupmap({
         credentials: "include",
       });
       const startups = await response.json();
+      setStartupMarkers(startups);
+      setFilteredStartups(startups);
 
-      startups.forEach((startup) => {
-        if (
-          typeof startup.locationLng === "number" &&
-          typeof startup.locationLat === "number" &&
-          startup.locationLat >= -90 &&
-          startup.locationLat <= 90 &&
-          startup.locationLng >= -180 &&
-          startup.locationLng <= 180
-        ) {
-          // Create a DOM element for the marker
-          const el = document.createElement("div");
-          el.className = "marker-3d";
-          el.style.width = "40px"; // Increased width
-          el.style.height = "40px"; // Increased height
-          el.style.backgroundImage = `url(/location.png)`; // Use relative URL
-          el.style.backgroundSize = "cover";
-          el.style.borderRadius = "50%";
-          el.style.cursor = "pointer";
+      // Render startup markers
+      renderStartupMarkers(map, startups);
 
-          // Add 3D marker effect using CSS transform
-          el.style.transform = "translate(-50%, -50%)";
-          el.style.willChange = "transform";
-
-          // Create a popup
-          const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(
-            `<div style="color: black; font-family: Arial, sans-serif;">
-              <h3 style="margin: 0; color: black;">${startup.companyName}</h3>
-              <p style="margin: 0; color: black;">${startup.locationName}</p>
-            </div>`
-          );
-
-          // Add marker to the map
-          new mapboxgl.Marker({
-            element: el,
-            anchor: "bottom",
-          })
-            .setLngLat([startup.locationLng, startup.locationLat])
-            .setPopup(popup)
-            .addTo(map);
-        } else {
-          console.warn(
-            `Invalid location for startup: ${startup.companyName}`,
-            startup
-          );
-        }
-      });
+      return startups;
     } catch (error) {
       console.error("Failed to load startups:", error);
+      return [];
     }
+  };
+
+  const renderStartupMarkers = (map, startups) => {
+    // Clear existing markers if needed
+    if (window.startupMarkersArray) {
+      window.startupMarkersArray.forEach((marker) => marker.remove());
+    }
+    window.startupMarkersArray = [];
+
+    startups.forEach((startup) => {
+      if (
+        typeof startup.locationLng === "number" &&
+        typeof startup.locationLat === "number" &&
+        startup.locationLat >= -90 &&
+        startup.locationLat <= 90 &&
+        startup.locationLng >= -180 &&
+        startup.locationLng <= 180
+      ) {
+        // Create a DOM element for the marker
+        const el = document.createElement("div");
+        el.className = "marker-3d";
+        el.style.width = "40px"; // Increased width
+        el.style.height = "40px"; // Increased height
+        el.style.backgroundImage = `url(/location.png)`; // Use relative URL
+        el.style.backgroundSize = "cover";
+        el.style.borderRadius = "50%";
+        el.style.cursor = "pointer";
+
+        // Add 3D marker effect using CSS transform
+        el.style.transform = "translate(-50%, -50%)";
+        el.style.willChange = "transform";
+
+        // Create a popup
+        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(
+          `<div style="color: black; font-family: Arial, sans-serif;">
+            <h3 style="margin: 0; color: black;">${startup.companyName}</h3>
+            <p style="margin: 0; color: black;">${startup.locationName}</p>
+          </div>`
+        );
+
+        // Add marker to the map
+        const marker = new mapboxgl.Marker({
+          element: el,
+          anchor: "bottom",
+        })
+          .setLngLat([startup.locationLng, startup.locationLat])
+          .setPopup(popup)
+          .addTo(map);
+
+        window.startupMarkersArray = window.startupMarkersArray || [];
+        window.startupMarkersArray.push(marker);
+      } else {
+        console.warn(
+          `Invalid location for startup: ${startup.companyName}`,
+          startup
+        );
+      }
+    });
   };
 
   const loadInvestorMarkers = async (map) => {
@@ -85,59 +111,78 @@ export default function Startupmap({
         credentials: "include",
       });
       const investors = await response.json();
+      setInvestorMarkers(investors);
+      setFilteredInvestors(investors);
 
-      investors.forEach((investor) => {
-        if (
-          typeof investor.locationLang === "string" &&
-          typeof investor.locationLat === "string" &&
-          parseFloat(investor.locationLat) >= -90 &&
-          parseFloat(investor.locationLat) <= 90 &&
-          parseFloat(investor.locationLang) >= -180 &&
-          parseFloat(investor.locationLang) <= 180
-        ) {
-          // Create a DOM element for the investor 3D marker
-          const el = document.createElement("div");
-          el.className = "investor-marker-3d";
-          el.style.width = "20px";
-          el.style.height = "20px";
-          el.style.backgroundColor = "blue";
-          el.style.borderRadius = "50%";
-          el.style.cursor = "pointer";
+      // Render investor markers
+      renderInvestorMarkers(map, investors);
 
-          // Add 3D marker effect using CSS transform
-          el.style.transform = "translate(-50%, -50%)";
-          el.style.willChange = "transform";
-          el.style.boxShadow = "0 0 10px rgba(0, 0, 255, 0.5)";
-
-          // Create a popup
-          const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(
-            `<div style="color: black; font-family: Arial, sans-serif;">
-                <h3 style="margin: 0; color: black;">${investor.firstname} ${investor.lastname}</h3>
-                <p style="margin: 0; color: black;">${investor.locationName}</p>
-              </div>`
-          );
-
-          new mapboxgl.Marker({
-            element: el,
-            anchor: "bottom",
-            offset: [0, -10],
-          })
-            .setLngLat([
-              parseFloat(investor.locationLang),
-              parseFloat(investor.locationLat),
-            ])
-            .setPopup(popup)
-            .addTo(map);
-        } else {
-          console.warn(
-            `Invalid location for investor: ${investor.firstname} ${investor.lastname}`,
-            investor
-          );
-        }
-      });
+      return investors;
     } catch (error) {
       console.error("Failed to load investors:", error);
+      return [];
     }
+  };
+
+  const renderInvestorMarkers = (map, investors) => {
+    // Clear existing markers if needed
+    if (window.investorMarkersArray) {
+      window.investorMarkersArray.forEach((marker) => marker.remove());
+    }
+    window.investorMarkersArray = [];
+
+    investors.forEach((investor) => {
+      if (
+        typeof investor.locationLang === "string" &&
+        typeof investor.locationLat === "string" &&
+        parseFloat(investor.locationLat) >= -90 &&
+        parseFloat(investor.locationLat) <= 90 &&
+        parseFloat(investor.locationLang) >= -180 &&
+        parseFloat(investor.locationLang) <= 180
+      ) {
+        // Create a DOM element for the investor 3D marker
+        const el = document.createElement("div");
+        el.className = "investor-marker-3d";
+        el.style.width = "20px";
+        el.style.height = "20px";
+        el.style.backgroundColor = "blue";
+        el.style.borderRadius = "50%";
+        el.style.cursor = "pointer";
+
+        // Add 3D marker effect using CSS transform
+        el.style.transform = "translate(-50%, -50%)";
+        el.style.willChange = "transform";
+        el.style.boxShadow = "0 0 10px rgba(0, 0, 255, 0.5)";
+
+        // Create a popup
+        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(
+          `<div style="color: black; font-family: Arial, sans-serif;">
+              <h3 style="margin: 0; color: black;">${investor.firstname} ${investor.lastname}</h3>
+              <p style="margin: 0; color: black;">${investor.locationName}</p>
+            </div>`
+        );
+
+        const marker = new mapboxgl.Marker({
+          element: el,
+          anchor: "bottom",
+          offset: [0, -10],
+        })
+          .setLngLat([
+            parseFloat(investor.locationLang),
+            parseFloat(investor.locationLat),
+          ])
+          .setPopup(popup)
+          .addTo(map);
+
+        window.investorMarkersArray = window.investorMarkersArray || [];
+        window.investorMarkersArray.push(marker);
+      } else {
+        console.warn(
+          `Invalid location for investor: ${investor.firstname} ${investor.lastname}`,
+          investor
+        );
+      }
+    });
   };
 
   // Add default startup marker for Cebu
@@ -328,6 +373,7 @@ export default function Startupmap({
       ]);
     }
   };
+
   // Toggle between 3D and 2D view
   const toggle3DView = () => {
     const map = mapInstanceRef.current;
@@ -354,13 +400,247 @@ export default function Startupmap({
     }
   };
 
+  // Toggle search expanded state
+  const toggleSearchExpanded = () => {
+    setIsSearchExpanded(!isSearchExpanded);
+  };
+
+  // Handle search input change
+  const handleSearchInputChange = (event) => {
+    setSearchInput(event.target.value);
+  };
+
+  // Add boundary for searched location
+  const addBoundaryToMap = async (map, placeName) => {
+    try {
+      // Remove previous boundary if exists
+      if (currentGeojsonBoundary) {
+        if (map.getSource("searched-area-boundary")) {
+          if (map.getLayer("boundary-layer")) {
+            map.removeLayer("boundary-layer");
+          }
+          if (map.getLayer("boundary-fill")) {
+            map.removeLayer("boundary-fill");
+          }
+          map.removeSource("searched-area-boundary");
+        }
+      }
+
+      // Query Mapbox Geocoding API for the place data
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          placeName
+        )}.json?access_token=${
+          mapboxgl.accessToken
+        }&types=place,locality,district,region,country`
+      );
+
+      const data = await response.json();
+
+      if (data.features && data.features.length > 0) {
+        const feature = data.features[0];
+
+        if (feature.bbox) {
+          // If bbox is available, use it to zoom to the area
+          map.fitBounds(
+            [
+              [feature.bbox[0], feature.bbox[1]],
+              [feature.bbox[2], feature.bbox[3]],
+            ],
+            {
+              padding: 50,
+              duration: 1000,
+            }
+          );
+        }
+
+        // If the feature has a polygon, use that for the boundary
+        if (
+          feature.geometry &&
+          (feature.geometry.type === "Polygon" ||
+            feature.geometry.type === "MultiPolygon")
+        ) {
+          const geojson = {
+            type: "Feature",
+            geometry: feature.geometry,
+            properties: {},
+          };
+
+          setCurrentGeojsonBoundary(geojson);
+
+          // Add source and layers for the boundary
+          map.addSource("searched-area-boundary", {
+            type: "geojson",
+            data: geojson,
+          });
+
+          // Add fill layer with transparency
+          map.addLayer({
+            id: "boundary-fill",
+            type: "fill",
+            source: "searched-area-boundary",
+            layout: {},
+            paint: {
+              "fill-color": "#4dabf7",
+              "fill-opacity": 0.2,
+            },
+          });
+
+          // Add outline layer
+          map.addLayer({
+            id: "boundary-layer",
+            type: "line",
+            source: "searched-area-boundary",
+            layout: {},
+            paint: {
+              "line-color": "#4dabf7",
+              "line-width": 3,
+              "line-dasharray": [2, 1],
+            },
+          });
+        } else {
+          // For point features, create a circular boundary
+          if (feature.center) {
+            const [lng, lat] = feature.center;
+
+            // Create a circular polygon using turf.js if available or approximate with a simpler approach
+            // Here using a simpler approximation
+            const radius = 0.05; // Roughly 5km in degrees
+            const points = 64;
+            const polygon = { type: "Polygon", coordinates: [[]] };
+
+            for (let i = 0; i < points; i++) {
+              const angle = (i / points) * (2 * Math.PI);
+              const lat_offset = Math.sin(angle) * radius;
+              const lng_offset = Math.cos(angle) * radius;
+              polygon.coordinates[0].push([lng + lng_offset, lat + lat_offset]);
+            }
+            // Close the polygon
+            polygon.coordinates[0].push(polygon.coordinates[0][0]);
+
+            const geojson = {
+              type: "Feature",
+              geometry: polygon,
+              properties: {},
+            };
+
+            setCurrentGeojsonBoundary(geojson);
+
+            // Add source and layers for the circular boundary
+            map.addSource("searched-area-boundary", {
+              type: "geojson",
+              data: geojson,
+            });
+
+            // Add fill layer with transparency
+            map.addLayer({
+              id: "boundary-fill",
+              type: "fill",
+              source: "searched-area-boundary",
+              layout: {},
+              paint: {
+                "fill-color": "#4dabf7",
+                "fill-opacity": 0.2,
+              },
+            });
+
+            // Add outline layer
+            map.addLayer({
+              id: "boundary-layer",
+              type: "line",
+              source: "searched-area-boundary",
+              layout: {},
+              paint: {
+                "line-color": "#4dabf7",
+                "line-width": 3,
+                "line-dasharray": [2, 1],
+              },
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error adding boundary:", error);
+    }
+  };
+
+  // Handle search submit
+  const handleSearchSubmit = (event) => {
+    event.preventDefault();
+
+    if (!searchInput.trim()) return;
+
+    const map = mapInstanceRef.current;
+    const query = searchInput.trim();
+
+    // Use Mapbox Geocoding API directly
+    fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+        query
+      )}.json?access_token=${mapboxgl.accessToken}`
+    )
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.features && data.features.length > 0) {
+          const [lng, lat] = data.features[0].center;
+          const placeName = data.features[0].place_name;
+
+          // Fly to the location
+          map.flyTo({
+            center: [lng, lat],
+            zoom: 12, // Slightly zoomed out to show more context
+            duration: 2000,
+          });
+
+          // Add boundary of the searched place
+          addBoundaryToMap(map, query);
+
+          // Create a temporary marker at the searched location
+          const el = document.createElement("div");
+          el.className = "search-marker";
+          el.style.width = "20px";
+          el.style.height = "20px";
+          el.style.backgroundColor = "#ff4136";
+          el.style.borderRadius = "50%";
+          el.style.boxShadow = "0 0 10px rgba(255, 65, 54, 0.7)";
+          el.style.transform = "translate(-50%, -50%)";
+
+          // Remove existing search marker if any
+          if (window.searchMarker) {
+            window.searchMarker.remove();
+          }
+
+          // Add new search marker
+          window.searchMarker = new mapboxgl.Marker({
+            element: el,
+          })
+            .setLngLat([lng, lat])
+            .addTo(map);
+
+          // Add a popup with place info
+          new mapboxgl.Popup({ offset: 25 })
+            .setLngLat([lng, lat])
+            .setHTML(
+              `<div style="color: black; font-weight: bold;">${placeName}</div>`
+            )
+            .addTo(map);
+        }
+      })
+      .catch((error) => {
+        console.error("Error searching for location:", error);
+      });
+
+    // Close expanded search after submission
+    setIsSearchExpanded(false);
+  };
+
   useEffect(() => {
     // Initialize map with Cebu as center
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12", // Changed to streets style for better landmark visibility
       center: [123.8854, 10.3157], // Cebu City coordinates
-      zoom: 15, // Adjusted zoom level
+      zoom: 18, // Adjusted zoom level
       pitch: 55, // Adjusted pitch to match image
       bearing: 15, // Slight bearing to match image perspective
       antialias: true, // Smoother edges for 3D buildings
@@ -451,40 +731,103 @@ export default function Startupmap({
         style={{ width: "100%", height: "100%" }}
       />
       <div
-        ref={geocoderContainerRef}
-        className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 w-3/4 max-w-lg"
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          position: "absolute",
-          top: "10px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 10,
-        }}
-      />
+        className={`absolute top-4 left-4 z-10 transition-all duration-300 ease-in-out ${
+          isSearchExpanded ? "w-80" : "w-12"
+        }`}
+      >
+        <div className="bg-white rounded-full shadow-md overflow-hidden border border-gray-300 transition-shadow duration-300 hover:shadow-lg">
+          <div className="flex items-center">
+            {isSearchExpanded ? (
+              <>
+                <div className="flex items-center flex-1 pl-4">
+                  <Search className="h-4 w-4 text-gray-500" />
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={handleSearchInputChange}
+                    placeholder="Search places..."
+                    className="px-3 py-2 w-full text-sm text-gray-800 search-input"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSearchSubmit(e);
+                      }
+                    }}
+                  />
+                </div>
+                <div className="flex items-center pr-2">
+                  <button
+                    onClick={handleSearchSubmit}
+                    className="p-2 text-blue-500 hover:text-blue-600 transition-colors duration-200"
+                    title="Search"
+                  >
+                    <Search className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={toggleSearchExpanded}
+                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                    title="Close"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={toggleSearchExpanded}
+                className="w-full h-full p-3 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors duration-200"
+                title="Expand search"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* 3D Toggle Button */}
       <button
         onClick={toggle3DView}
-        className="absolute bottom-4 left-4 bg-white px-4 py-2 rounded-md shadow-md z-10 font-medium"
-        style={{
-          backgroundColor: "white",
-          color: "#333",
-          padding: "8px 16px",
-          borderRadius: "4px",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
-          zIndex: 10,
-          cursor: "pointer",
-          fontSize: "14px",
-          border: "none",
-          outline: "none",
-        }}
+        className="absolute bottom-4 left-4 bg-white bg-opacity-90 backdrop-blur-sm px-3 py-2 rounded-md shadow-md z-10 flex items-center gap-1 text-sm font-medium text-gray-700 hover:bg-white transition duration-200"
       >
-        {is3DActive ? "2D View" : "3D View"}
+        {is3DActive ? (
+          <>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
+              />
+            </svg>
+            2D
+          </>
+        ) : (
+          <>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={0}
+                d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+              />
+            </svg>
+            3D
+          </>
+        )}
       </button>
-
       {openLogin && (
         <Login
           closeModal={() => setOpenLogin(false)}

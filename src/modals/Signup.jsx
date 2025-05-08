@@ -37,8 +37,8 @@ export default function Signup({ closeModal, openLogin }) {
 
       const data = await response.json();
       console.log("Registration successful:", data);
+      openLogin();
 
-      // Close the modal after successful registration
       closeModal();
     } catch (err) {
       setError(err.message);

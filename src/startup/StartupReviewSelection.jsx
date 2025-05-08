@@ -28,14 +28,12 @@ import {
 } from "lucide-react";
 
 export default function EnhancedStartupReviewSection() {
-  // State Management
   const [startups, setStartups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStartup, setSelectedStartup] = useState(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  // Enhanced Filtering and Pagination
   const [filters, setFilters] = useState({
     search: "",
     industry: "",
@@ -732,9 +730,7 @@ export default function EnhancedStartupReviewSection() {
                       <Map size={14} className="mr-1 text-gray-400" />
                       {startup.city || "N/A"}, {startup.province || ""}
                     </div>
-                    <div className="text-xs text-gray-500">
-                      {startup.country || "N/A"}
-                    </div>
+                    
                   </td>
                   <td className="p-3">
                     <div className="flex items-center text-sm">
@@ -762,7 +758,7 @@ export default function EnhancedStartupReviewSection() {
                         <Eye size={16} />
                       </button>
 
-                      {startup.status !== "Approved" && (
+                      {startup.status === "In Review" && (
                         <>
                           <button
                             onClick={() => handleApprove(startup.id)}
@@ -893,7 +889,7 @@ export default function EnhancedStartupReviewSection() {
                 {selectedStartup.companyName}
               </h2>
               <div className="flex items-center space-x-3">
-                {selectedStartup.status !== "Approved" && (
+                {selectedStartup.status === "In Review" && (
                   <>
                     <button
                       onClick={() => handleReject(selectedStartup.id)}
@@ -935,7 +931,7 @@ export default function EnhancedStartupReviewSection() {
               <div className="flex items-center justify-between mb-6 bg-blue-50 p-3 rounded-lg border border-blue-100">
                 <div className="flex items-center">
                   <Info size={18} className="text-blue-700 mr-2" />
-                  <span className="text-sm text-blue-800">
+                  <span className={`text-sm text-blue-800 ${selectedStartup.status === "Approved" ? 'text-green-500':selectedStartup.status === "Rejected" ? 'text-red-700': ''}`}>
                     Status: <strong>{selectedStartup.status}</strong>
                   </span>
                 </div>
