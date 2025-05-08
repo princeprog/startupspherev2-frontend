@@ -724,7 +724,7 @@ export default function Startupmap({
 
   const SearchComponent = () => (
     <div
-      className={`absolute top-4 left-4 z-10 transition-all duration-300 ease-in-out ${
+      className={`absolute top-4 left-4 z-0 transition-all duration-300 ease-in-out ${
         isSearchExpanded ? "w-96" : "w-12"
       }`}
     >
