@@ -154,6 +154,18 @@ export default function AllStartupDashboard() {
     const fetchRankedStartups = async () => {
       setLoading(true);
       try {
+        // Get all startups for city information
+        const allStartupsResponse = await fetch('http://localhost:8080/startups', {
+          credentials: "include",
+        });
+        
+        if (!allStartupsResponse.ok) {
+          throw new Error("Failed to fetch all startups");
+        }
+        
+        const allStartups = await allStartupsResponse.json();
+
+        // Get rankings
         const industryParam =
           selectedIndustry !== "All" ? `industry=${selectedIndustry}` : "";
         const metricParam = `metric=${rankingMetric}`;
@@ -167,17 +179,31 @@ export default function AllStartupDashboard() {
         }
 
         const data = await response.json();
-        setRankedStartups(data.rankings);
+
+        // Process startups with city information
+        const processedStartups = data.rankings.map(startup => {
+          const matchingStartup = allStartups.find(s => s.id === startup.id);
+          return {
+            ...startup,
+            locationName: matchingStartup?.city || "Unknown"
+          };
+        });
+
+        setRankedStartups(processedStartups);
         setTotalStartups(data.totalCount);
+
+        // Update available regions
+        const uniqueCities = [...new Set(allStartups.map(startup => startup.city))].filter(Boolean);
+        setAvailableRegions(uniqueCities);
 
         if (!industryParam) {
           const uniqueIndustries = [
-            ...new Set(data.rankings.map((startup) => startup.industry)),
+            ...new Set(processedStartups.map((startup) => startup.industry)),
           ];
           setIndustries(uniqueIndustries);
 
           const industryBreakdown = uniqueIndustries.map((industry, index) => {
-            const count = data.rankings.filter(
+            const count = processedStartups.filter(
               (startup) => startup.industry === industry
             ).length;
             return {
@@ -191,7 +217,7 @@ export default function AllStartupDashboard() {
 
         setLoading(false);
       } catch (error) {
-        console.error("Error fetching rankings:", error);
+        console.error("Error fetching data:", error);
         setLoading(false);
       }
     };
@@ -432,9 +458,32 @@ export default function AllStartupDashboard() {
     setReportsLoading(true);
 
     try {
+      // Filter startups based on selected criteria
+      const filteredStartups = rankedStartups.filter((startup) => {
+        const industryMatch =
+          reportFormData.industry === "All Industries" ||
+          startup.industry === reportFormData.industry;
+        
+        const selectedRegion = reportFormData.region.toLowerCase();
+        const startupLocation = startup.locationName?.toLowerCase() || "";
+        
+        const regionMatch =
+          reportFormData.region === "All Regions" ||
+          startupLocation.includes(selectedRegion) ||
+          selectedRegion.includes(startupLocation);
+
+        return industryMatch && regionMatch;
+      });
+
+      if (filteredStartups.length === 0) {
+        toast.warning(`No startups found for the selected criteria. Please try different filters.`);
+        setReportsLoading(false);
+        return;
+      }
+
       // Create PDF
       const doc = new jsPDF();
-      let yPosition = 20; // Initialize yPosition at the start
+      let yPosition = 20;
 
       // Add title
       doc.setFontSize(20);
@@ -462,107 +511,6 @@ export default function AllStartupDashboard() {
       doc.text(`Time Period: ${reportFormData.timePeriod}`, 20, yPosition);
       yPosition += 15;
 
-      // Filter startups based on selected criteria
-      const filteredStartups = rankedStartups.filter((startup) => {
-        const industryMatch =
-          reportFormData.industry === "All Industries" ||
-          startup.industry === reportFormData.industry;
-        const regionMatch =
-          reportFormData.region === "All Regions" ||
-          startup.locationName === reportFormData.region;
-        return industryMatch && regionMatch;
-      });
-
-      // Calculate metrics for filtered startups
-      const metricsData = {};
-      reportFormData.metrics.forEach((metric) => {
-        let value = 0;
-        switch (metric) {
-          case "Growth Rate":
-            value =
-              filteredStartups.reduce(
-                (sum, s) => sum + (s.growthScore || 0),
-                0
-              ) / filteredStartups.length;
-            break;
-          case "Funding Amount":
-            value =
-              filteredStartups.reduce(
-                (sum, s) => sum + (s.metrics?.fundingReceived || 0),
-                0
-              ) / 1000000;
-            break;
-          case "Survival Rate":
-            value =
-              (filteredStartups.filter((s) => s.status === "Active").length /
-                filteredStartups.length) *
-              100;
-            break;
-          case "Employment Data":
-            value =
-              filteredStartups.reduce(
-                (sum, s) => sum + (s.metrics?.numberOfEmployees || 0),
-                0
-              ) / filteredStartups.length;
-            break;
-          case "Investment Rounds":
-            value =
-              filteredStartups.reduce(
-                (sum, s) => sum + (s.metrics?.investmentRounds || 0),
-                0
-              ) / filteredStartups.length;
-            break;
-          case "Foreign Investment":
-            value =
-              filteredStartups.reduce(
-                (sum, s) => sum + (s.metrics?.foreignInvestment || 0),
-                0
-              ) / filteredStartups.length;
-            break;
-          case "Government Support":
-            value =
-              filteredStartups.reduce(
-                (sum, s) => sum + (s.metrics?.governmentSupport || 0),
-                0
-              ) / filteredStartups.length;
-            break;
-          case "Mentorship Data":
-            value =
-              filteredStartups.reduce(
-                (sum, s) => sum + (s.metrics?.mentorshipPrograms || 0),
-                0
-              ) / filteredStartups.length;
-            break;
-          case "Public-Private Partnerships":
-            value =
-              filteredStartups.reduce(
-                (sum, s) => sum + (s.metrics?.publicPrivatePartnerships || 0),
-                0
-              ) / filteredStartups.length;
-            break;
-        }
-        metricsData[metric] = value.toFixed(2);
-      });
-
-      // Add selected metrics with their values
-      if (reportFormData.metrics.length > 0) {
-        doc.setFontSize(14);
-        doc.text("Selected Metrics", 14, yPosition);
-        yPosition += 10;
-        doc.setFontSize(12);
-        Object.entries(metricsData).forEach(([metric, value]) => {
-          const unit =
-            metric === "Funding Amount"
-              ? "M"
-              : metric === "Growth Rate" || metric === "Survival Rate"
-              ? "%"
-              : "";
-          doc.text(`${metric}: ${value}${unit}`, 20, yPosition);
-          yPosition += 10;
-        });
-        yPosition += 5;
-      }
-
       // Add summary statistics
       doc.setFontSize(14);
       doc.text("Summary Statistics", 14, yPosition);
@@ -578,8 +526,10 @@ export default function AllStartupDashboard() {
       // Calculate and add industry distribution
       const industryDistribution = {};
       filteredStartups.forEach((startup) => {
-        industryDistribution[startup.industry] =
-          (industryDistribution[startup.industry] || 0) + 1;
+        if (startup.industry) {
+          industryDistribution[startup.industry] =
+            (industryDistribution[startup.industry] || 0) + 1;
+        }
       });
 
       doc.setFontSize(14);
@@ -593,6 +543,26 @@ export default function AllStartupDashboard() {
       });
       yPosition += 10;
 
+      // Add regional distribution
+      const regionalDistribution = {};
+      filteredStartups.forEach((startup) => {
+        if (startup.locationName) {
+          regionalDistribution[startup.locationName] =
+            (regionalDistribution[startup.locationName] || 0) + 1;
+        }
+      });
+
+      doc.setFontSize(14);
+      doc.text("Regional Distribution", 14, yPosition);
+      yPosition += 10;
+      doc.setFontSize(12);
+      Object.entries(regionalDistribution).forEach(([region, count]) => {
+        const percentage = ((count / filteredStartups.length) * 100).toFixed(1);
+        doc.text(`${region}: ${count} (${percentage}%)`, 20, yPosition);
+        yPosition += 10;
+      });
+      yPosition += 10;
+
       // Add startup details table
       doc.setFontSize(14);
       doc.text("Startup Details", 14, yPosition);
@@ -601,6 +571,7 @@ export default function AllStartupDashboard() {
       const startupTableData = filteredStartups.map((startup) => [
         startup.companyName || "N/A",
         startup.industry || "N/A",
+        startup.locationName || "N/A",
         (startup.overallScore || 0).toFixed(2),
         (startup.growthScore || 0).toFixed(2),
         (startup.investmentScore || 0).toFixed(2),
@@ -613,6 +584,7 @@ export default function AllStartupDashboard() {
           [
             "Company",
             "Industry",
+            "Location",
             "Overall",
             "Growth",
             "Investment",
@@ -625,10 +597,11 @@ export default function AllStartupDashboard() {
         columnStyles: {
           0: { cellWidth: 40 },
           1: { cellWidth: 30 },
-          2: { cellWidth: 20 },
+          2: { cellWidth: 25 },
           3: { cellWidth: 20 },
-          4: { cellWidth: 25 },
+          4: { cellWidth: 20 },
           5: { cellWidth: 25 },
+          6: { cellWidth: 25 },
         },
       });
 
