@@ -22,6 +22,10 @@ export default function Startupadd() {
   const [cities, setCities] = useState([]);
   const [barangays, setBarangays] = useState([]);
   const navigate = useNavigate();
+  const [selectedRegion, setSelectedRegion] = useState(null);
+  const [selectedProvince, setSelectedProvince] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(null);
+  const [selectedBarangay, setSelectedBarangay] = useState(null);
   const [formData, setFormData] = useState({
     companyName: "",
     companyDescription: "",
@@ -495,8 +499,10 @@ export default function Startupadd() {
   }, []);
 
   useEffect(() => {
-    if (formData.region) {
-      fetch(`https://psgc.gitlab.io/api/regions/${formData.region}/provinces/`)
+    if (selectedRegion?.code) {
+      fetch(
+        `https://psgc.gitlab.io/api/regions/${selectedRegion.code}/provinces/`
+      )
         .then((response) => response.json())
         .then((data) => setProvinces(data))
         .catch((error) => console.error("Error fetching provinces:", error));
@@ -505,12 +511,12 @@ export default function Startupadd() {
       setCities([]);
       setBarangays([]);
     }
-  }, [formData.region]);
+  }, [selectedRegion]);
 
   useEffect(() => {
-    if (formData.province) {
+    if (selectedProvince?.code) {
       fetch(
-        `https://psgc.gitlab.io/api/provinces/${formData.province}/cities-municipalities/`
+        `https://psgc.gitlab.io/api/provinces/${selectedProvince.code}/cities-municipalities/`
       )
         .then((response) => response.json())
         .then((data) => setCities(data))
@@ -519,12 +525,12 @@ export default function Startupadd() {
       setCities([]);
       setBarangays([]);
     }
-  }, [formData.province]);
+  }, [selectedProvince]);
 
   useEffect(() => {
-    if (formData.city) {
+    if (selectedCity?.code) {
       fetch(
-        `https://psgc.gitlab.io/api/cities-municipalities/${formData.city}/barangays/`
+        `https://psgc.gitlab.io/api/cities-municipalities/${selectedCity.code}/barangays/`
       )
         .then((response) => response.json())
         .then((data) => setBarangays(data))
@@ -532,7 +538,7 @@ export default function Startupadd() {
     } else {
       setBarangays([]);
     }
-  }, [formData.city]);
+  }, [selectedCity]);
 
   return (
     <div className="bg-gray-100 min-h-screen text-gray-800 relative">
@@ -768,11 +774,15 @@ export default function Startupadd() {
               <select
                 name="region"
                 className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={formData.region}
+                value={selectedRegion?.code || ""}
                 onChange={(e) => {
-                  handleChange(e);
+                  const selectedRegionObj = regions.find(
+                    (r) => r.code === e.target.value
+                  );
+                  setSelectedRegion(selectedRegionObj);
                   setFormData((prev) => ({
                     ...prev,
+                    region: selectedRegionObj?.name || "",
                     province: "",
                     city: "",
                     barangay: "",
@@ -793,16 +803,20 @@ export default function Startupadd() {
               <select
                 name="province"
                 className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={formData.province}
+                value={selectedProvince?.code || ""}
                 onChange={(e) => {
-                  handleChange(e);
+                  const selectedProvinceObj = provinces.find(
+                    (p) => p.code === e.target.value
+                  );
+                  setSelectedProvince(selectedProvinceObj);
                   setFormData((prev) => ({
                     ...prev,
+                    province: selectedProvinceObj?.name || "",
                     city: "",
                     barangay: "",
                   }));
                 }}
-                disabled={!formData.region}
+                disabled={!selectedRegion}
               >
                 <option value="">Select Province</option>
                 {provinces.map((province) => (
@@ -820,15 +834,19 @@ export default function Startupadd() {
               <select
                 name="city"
                 className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={formData.city}
+                value={selectedCity?.code || ""}
                 onChange={(e) => {
-                  handleChange(e);
+                  const selectedCityObj = cities.find(
+                    (c) => c.code === e.target.value
+                  );
+                  setSelectedCity(selectedCityObj);
                   setFormData((prev) => ({
                     ...prev,
+                    city: selectedCityObj?.name || "",
                     barangay: "",
                   }));
                 }}
-                disabled={!formData.province}
+                disabled={!selectedProvince}
               >
                 <option value="">Select City/Municipality</option>
                 {cities.map((city) => (
@@ -844,9 +862,18 @@ export default function Startupadd() {
               <select
                 name="barangay"
                 className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={formData.barangay}
-                onChange={handleChange}
-                disabled={!formData.city}
+                value={selectedBarangay?.code || ""}
+                onChange={(e) => {
+                  const selectedBarangayObj = barangays.find(
+                    (b) => b.code === e.target.value
+                  );
+                  setSelectedBarangay(selectedBarangayObj);
+                  setFormData((prev) => ({
+                    ...prev,
+                    barangay: selectedBarangayObj?.name || "",
+                  }));
+                }}
+                disabled={!selectedCity}
               >
                 <option value="">Select Barangay</option>
                 {barangays.map((barangay) => (

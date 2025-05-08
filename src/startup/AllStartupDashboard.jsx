@@ -325,7 +325,6 @@ export default function AllStartupDashboard() {
           : "0.00";
       doc.text(`Average Score: ${avgScore}`, 20, summaryStartY + 20);
 
-      // Calculate total funding safely
       const totalFunding =
         rankedStartups && rankedStartups.length > 0
           ? (
@@ -337,7 +336,6 @@ export default function AllStartupDashboard() {
           : "0.00";
       doc.text(`Total Funding: ₱${totalFunding}M`, 20, summaryStartY + 30);
 
-      // Add industry breakdown
       doc.setFontSize(14);
       doc.text("Industry Breakdown", 14, summaryStartY + 50);
 
@@ -445,7 +443,11 @@ export default function AllStartupDashboard() {
 
       // Add generation date
       doc.setFontSize(12);
-      doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, yPosition);
+      doc.text(
+        `Generated on: ${new Date().toLocaleDateString()}`,
+        14,
+        yPosition
+      );
       yPosition += 15;
 
       // Add filters
@@ -461,45 +463,82 @@ export default function AllStartupDashboard() {
       yPosition += 15;
 
       // Filter startups based on selected criteria
-      const filteredStartups = rankedStartups.filter(startup => {
-        const industryMatch = reportFormData.industry === "All Industries" || 
-                            startup.industry === reportFormData.industry;
-        const regionMatch = reportFormData.region === "All Regions" || 
-                          startup.locationName === reportFormData.region;
+      const filteredStartups = rankedStartups.filter((startup) => {
+        const industryMatch =
+          reportFormData.industry === "All Industries" ||
+          startup.industry === reportFormData.industry;
+        const regionMatch =
+          reportFormData.region === "All Regions" ||
+          startup.locationName === reportFormData.region;
         return industryMatch && regionMatch;
       });
 
       // Calculate metrics for filtered startups
       const metricsData = {};
-      reportFormData.metrics.forEach(metric => {
+      reportFormData.metrics.forEach((metric) => {
         let value = 0;
-        switch(metric) {
+        switch (metric) {
           case "Growth Rate":
-            value = filteredStartups.reduce((sum, s) => sum + (s.growthScore || 0), 0) / filteredStartups.length;
+            value =
+              filteredStartups.reduce(
+                (sum, s) => sum + (s.growthScore || 0),
+                0
+              ) / filteredStartups.length;
             break;
           case "Funding Amount":
-            value = filteredStartups.reduce((sum, s) => sum + (s.metrics?.fundingReceived || 0), 0) / 1000000;
+            value =
+              filteredStartups.reduce(
+                (sum, s) => sum + (s.metrics?.fundingReceived || 0),
+                0
+              ) / 1000000;
             break;
           case "Survival Rate":
-            value = filteredStartups.filter(s => s.status === "Active").length / filteredStartups.length * 100;
+            value =
+              (filteredStartups.filter((s) => s.status === "Active").length /
+                filteredStartups.length) *
+              100;
             break;
           case "Employment Data":
-            value = filteredStartups.reduce((sum, s) => sum + (s.metrics?.numberOfEmployees || 0), 0) / filteredStartups.length;
+            value =
+              filteredStartups.reduce(
+                (sum, s) => sum + (s.metrics?.numberOfEmployees || 0),
+                0
+              ) / filteredStartups.length;
             break;
           case "Investment Rounds":
-            value = filteredStartups.reduce((sum, s) => sum + (s.metrics?.investmentRounds || 0), 0) / filteredStartups.length;
+            value =
+              filteredStartups.reduce(
+                (sum, s) => sum + (s.metrics?.investmentRounds || 0),
+                0
+              ) / filteredStartups.length;
             break;
           case "Foreign Investment":
-            value = filteredStartups.reduce((sum, s) => sum + (s.metrics?.foreignInvestment || 0), 0) / filteredStartups.length;
+            value =
+              filteredStartups.reduce(
+                (sum, s) => sum + (s.metrics?.foreignInvestment || 0),
+                0
+              ) / filteredStartups.length;
             break;
           case "Government Support":
-            value = filteredStartups.reduce((sum, s) => sum + (s.metrics?.governmentSupport || 0), 0) / filteredStartups.length;
+            value =
+              filteredStartups.reduce(
+                (sum, s) => sum + (s.metrics?.governmentSupport || 0),
+                0
+              ) / filteredStartups.length;
             break;
           case "Mentorship Data":
-            value = filteredStartups.reduce((sum, s) => sum + (s.metrics?.mentorshipPrograms || 0), 0) / filteredStartups.length;
+            value =
+              filteredStartups.reduce(
+                (sum, s) => sum + (s.metrics?.mentorshipPrograms || 0),
+                0
+              ) / filteredStartups.length;
             break;
           case "Public-Private Partnerships":
-            value = filteredStartups.reduce((sum, s) => sum + (s.metrics?.publicPrivatePartnerships || 0), 0) / filteredStartups.length;
+            value =
+              filteredStartups.reduce(
+                (sum, s) => sum + (s.metrics?.publicPrivatePartnerships || 0),
+                0
+              ) / filteredStartups.length;
             break;
         }
         metricsData[metric] = value.toFixed(2);
@@ -512,8 +551,12 @@ export default function AllStartupDashboard() {
         yPosition += 10;
         doc.setFontSize(12);
         Object.entries(metricsData).forEach(([metric, value]) => {
-          const unit = metric === "Funding Amount" ? "M" : 
-                      metric === "Growth Rate" || metric === "Survival Rate" ? "%" : "";
+          const unit =
+            metric === "Funding Amount"
+              ? "M"
+              : metric === "Growth Rate" || metric === "Survival Rate"
+              ? "%"
+              : "";
           doc.text(`${metric}: ${value}${unit}`, 20, yPosition);
           yPosition += 10;
         });
@@ -525,13 +568,18 @@ export default function AllStartupDashboard() {
       doc.text("Summary Statistics", 14, yPosition);
       yPosition += 10;
       doc.setFontSize(12);
-      doc.text(`Total Startups Analyzed: ${filteredStartups.length}`, 20, yPosition);
+      doc.text(
+        `Total Startups Analyzed: ${filteredStartups.length}`,
+        20,
+        yPosition
+      );
       yPosition += 15;
 
       // Calculate and add industry distribution
       const industryDistribution = {};
-      filteredStartups.forEach(startup => {
-        industryDistribution[startup.industry] = (industryDistribution[startup.industry] || 0) + 1;
+      filteredStartups.forEach((startup) => {
+        industryDistribution[startup.industry] =
+          (industryDistribution[startup.industry] || 0) + 1;
       });
 
       doc.setFontSize(14);
@@ -550,20 +598,29 @@ export default function AllStartupDashboard() {
       doc.text("Startup Details", 14, yPosition);
       yPosition += 10;
 
-      const startupTableData = filteredStartups.map(startup => [
-        startup.companyName || 'N/A',
-        startup.industry || 'N/A',
+      const startupTableData = filteredStartups.map((startup) => [
+        startup.companyName || "N/A",
+        startup.industry || "N/A",
         (startup.overallScore || 0).toFixed(2),
         (startup.growthScore || 0).toFixed(2),
         (startup.investmentScore || 0).toFixed(2),
-        (startup.ecosystemScore || 0).toFixed(2)
+        (startup.ecosystemScore || 0).toFixed(2),
       ]);
 
       autoTable(doc, {
         startY: yPosition,
-        head: [['Company', 'Industry', 'Overall', 'Growth', 'Investment', 'Ecosystem']],
+        head: [
+          [
+            "Company",
+            "Industry",
+            "Overall",
+            "Growth",
+            "Investment",
+            "Ecosystem",
+          ],
+        ],
         body: startupTableData,
-        theme: 'grid',
+        theme: "grid",
         headStyles: { fillColor: [79, 70, 229] },
         columnStyles: {
           0: { cellWidth: 40 },
@@ -571,26 +628,35 @@ export default function AllStartupDashboard() {
           2: { cellWidth: 20 },
           3: { cellWidth: 20 },
           4: { cellWidth: 25 },
-          5: { cellWidth: 25 }
-        }
+          5: { cellWidth: 25 },
+        },
       });
 
       // Save the PDF
-      const fileName = `custom-report-${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `custom-report-${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
       doc.save(fileName);
 
       // Add new report to list
       const newReport = {
         id: generatedReports.length + 1,
         title: `Custom Report: ${reportFormData.industry} in ${reportFormData.region}`,
-        description: `Analysis for ${reportFormData.timePeriod} including ${reportFormData.metrics.length} metrics: ${reportFormData.metrics.slice(0, 2).join(", ")}${reportFormData.metrics.length > 2 ? "..." : ""}`,
-        date: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+        description: `Analysis for ${reportFormData.timePeriod} including ${
+          reportFormData.metrics.length
+        } metrics: ${reportFormData.metrics.slice(0, 2).join(", ")}${
+          reportFormData.metrics.length > 2 ? "..." : ""
+        }`,
+        date: new Date().toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+        }),
         type: "pdf",
-        isCustom: true
+        isCustom: true,
       };
 
-      setGeneratedReports(prev => [newReport, ...prev]);
-      setReportFormData(prev => ({ ...prev, metrics: [] }));
+      setGeneratedReports((prev) => [newReport, ...prev]);
+      setReportFormData((prev) => ({ ...prev, metrics: [] }));
       setReportsLoading(false);
       toast.success("Custom report generated successfully!");
     } catch (error) {
@@ -635,11 +701,16 @@ export default function AllStartupDashboard() {
               <p className="text-gray-500 text-sm">Total Funding</p>
               <p className="text-xl text-blue-900 font-bold">
                 ₱
-                {rankedStartups.reduce(
-                  (sum, startup) =>
-                    sum + (startup.metrics?.fundingReceived || 0),
-                  0
-                ) / 1000000}
+                {(
+                  rankedStartups.reduce(
+                    (sum, startup) =>
+                      sum +
+                      (startup.fundingReceived ||
+                        startup.metrics?.fundingReceived ||
+                        0),
+                    0
+                  ) / 1000000
+                ).toFixed(2)}
                 M
               </p>
             </div>

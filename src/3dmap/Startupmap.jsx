@@ -1,10 +1,19 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  Search,
+  X,
+  MapPin,
+  Loader2,
+  Clock,
+  Building,
+  Map as MapIcon,
+} from "lucide-react";
+import debounce from "lodash/debounce";
 import Login from "../modals/Login";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
-import { Search, X } from "lucide-react";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
@@ -27,6 +36,34 @@ export default function Startupmap({
   const [filteredInvestors, setFilteredInvestors] = useState([]);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [currentGeojsonBoundary, setCurrentGeojsonBoundary] = useState(null);
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchTimeoutRef = useRef(null);
+  const suggestionsRef = useRef(null);
+  const [recentSearches, setRecentSearches] = useState([]);
+  const [searchCategory, setSearchCategory] = useState("all"); // all, startup, investor, place
+  const [searchHistory, setSearchHistory] = useState(
+    JSON.parse(localStorage.getItem("mapSearchHistory") || "[]")
+  );
+
+  const saveToSearchHistory = (query, result) => {
+    const newHistory = [
+      {
+        query,
+        result: result.name || result.text,
+        coordinates: result.center,
+        timestamp: new Date().toISOString(),
+        type: result.type || "place",
+      },
+      ...searchHistory.filter(
+        (item) => item.query !== query && searchHistory.length < 5
+      ),
+    ].slice(0, 5);
+
+    setSearchHistory(newHistory);
+    localStorage.setItem("mapSearchHistory", JSON.stringify(newHistory));
+  };
 
   const loadStartupMarkers = async (map) => {
     try {
@@ -403,12 +440,503 @@ export default function Startupmap({
   // Toggle search expanded state
   const toggleSearchExpanded = () => {
     setIsSearchExpanded(!isSearchExpanded);
+    // Only hide suggestions when collapsing the search
+    if (isSearchExpanded) {
+      setShowSuggestions(false);
+    }
   };
+
+  // Fetch search suggestions from Mapbox
+  // Update the fetchSearchSuggestions function
+  const fetchSearchSuggestions = useCallback(
+    async (query) => {
+      if (!query || query.trim().length < 2) {
+        setSearchSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        // Fetch from Mapbox for location data
+        const mapboxResponse = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+            query
+          )}.json?access_token=${
+            mapboxgl.accessToken
+          }&country=PH&types=place,locality,district,neighborhood,address,poi&proximity=123.8854,10.3157&limit=3&autocomplete=true&language=en`
+        );
+
+        const mapboxData = await mapboxResponse.json();
+        let mapboxSuggestions = [];
+
+        if (mapboxData.features) {
+          mapboxSuggestions = mapboxData.features.map((feature) => ({
+            id: feature.id,
+            text: feature.text,
+            name: feature.place_name,
+            center: feature.center,
+            type: "location",
+            category: feature.place_type[0],
+            context: feature.context,
+          }));
+        }
+
+        // Filter startups based on query
+        const filteredStartups =
+          searchCategory !== "investor"
+            ? startupMarkers
+                .filter(
+                  (startup) =>
+                    startup.companyName
+                      .toLowerCase()
+                      .includes(query.toLowerCase()) ||
+                    (startup.locationName &&
+                      startup.locationName
+                        .toLowerCase()
+                        .includes(query.toLowerCase()))
+                )
+                .slice(0, 3)
+                .map((startup) => ({
+                  id: `startup-${startup.id}`,
+                  text: startup.companyName,
+                  name: `${startup.companyName} (${
+                    startup.locationName || "Unknown location"
+                  })`,
+                  center: [startup.locationLng, startup.locationLat],
+                  type: "startup",
+                  data: startup,
+                }))
+            : [];
+
+        // Filter investors based on query
+        const filteredInvestors =
+          searchCategory !== "startup"
+            ? investorMarkers
+                .filter(
+                  (investor) =>
+                    `${investor.firstname} ${investor.lastname}`
+                      .toLowerCase()
+                      .includes(query.toLowerCase()) ||
+                    (investor.locationName &&
+                      investor.locationName
+                        .toLowerCase()
+                        .includes(query.toLowerCase()))
+                )
+                .slice(0, 3)
+                .map((investor) => ({
+                  id: `investor-${investor.id}`,
+                  text: `${investor.firstname} ${investor.lastname}`,
+                  name: `${investor.firstname} ${investor.lastname} (${
+                    investor.locationName || "Unknown location"
+                  })`,
+                  center: [
+                    parseFloat(investor.locationLang),
+                    parseFloat(investor.locationLat),
+                  ],
+                  type: "investor",
+                  data: investor,
+                }))
+            : [];
+
+        // Combine all suggestions based on search category
+        let combinedSuggestions = [];
+
+        if (searchCategory === "all") {
+          combinedSuggestions = [
+            ...filteredStartups,
+            ...filteredInvestors,
+            ...mapboxSuggestions,
+          ];
+        } else if (searchCategory === "startup") {
+          combinedSuggestions = filteredStartups;
+        } else if (searchCategory === "investor") {
+          combinedSuggestions = filteredInvestors;
+        } else if (searchCategory === "place") {
+          combinedSuggestions = mapboxSuggestions;
+        }
+
+        setSearchSuggestions(combinedSuggestions);
+        setShowSuggestions(combinedSuggestions.length > 0);
+      } catch (error) {
+        console.error("Error fetching search suggestions:", error);
+        setSearchSuggestions([]);
+        setShowSuggestions(false);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [searchCategory, startupMarkers, investorMarkers]
+  );
+
+  const debouncedFetchSuggestions = useCallback(
+    debounce((query) => {
+      fetchSearchSuggestions(query);
+    }, 300),
+    [fetchSearchSuggestions]
+  );
 
   // Handle search input change
   const handleSearchInputChange = (event) => {
-    setSearchInput(event.target.value);
+    const query = event.target.value;
+    setSearchInput(query);
+
+    if (!query || query.trim().length < 2) {
+      setShowSuggestions(false);
+      setSearchSuggestions([]);
+      setIsLoading(false);
+      return;
+    }
+
+    // Set loading state immediately
+    setIsLoading(true);
+
+    // Use debounced function
+    debouncedFetchSuggestions(query);
   };
+
+  // Enhanced suggestion click handler
+  const handleSuggestionClick = (suggestion) => {
+    setSearchInput(suggestion.name);
+    setShowSuggestions(false);
+
+    const map = mapInstanceRef.current;
+    const [lng, lat] = suggestion.center;
+
+    // Fly to the location
+    map.flyTo({
+      center: [lng, lat],
+      zoom: suggestion.type === "location" ? 13 : 15, // Zoom closer for startups/investors
+      pitch: is3DActive ? 55 : 0,
+      bearing: is3DActive ? 15 : 0,
+      duration: 2000,
+    });
+
+    // Save to search history
+    saveToSearchHistory(searchInput, suggestion);
+
+    // Add boundary if it's a location
+    if (suggestion.type === "location") {
+      addBoundaryToMap(map, suggestion.name);
+    }
+
+    // Remove existing search marker if any
+    if (window.searchMarker) {
+      window.searchMarker.remove();
+    }
+
+    // Create appropriate marker based on suggestion type
+    const el = document.createElement("div");
+    el.className = "search-marker";
+    el.style.width = "24px";
+    el.style.height = "24px";
+
+    if (suggestion.type === "startup") {
+      el.style.backgroundColor = "#22c55e"; // Green for startups
+      el.style.borderRadius = "50%";
+      el.style.border = "2px solid white";
+    } else if (suggestion.type === "investor") {
+      el.style.backgroundColor = "#3b82f6"; // Blue for investors
+      el.style.borderRadius = "50%";
+      el.style.border = "2px solid white";
+    } else {
+      el.style.backgroundColor = "#ef4444"; // Red for locations
+      el.style.borderRadius = "50%";
+      el.style.border = "2px solid white";
+    }
+
+    el.style.boxShadow = "0 0 10px rgba(0, 0, 0, 0.5)";
+    el.style.transform = "translate(-50%, -50%)";
+
+    // Add new search marker
+    window.searchMarker = new mapboxgl.Marker({
+      element: el,
+    })
+      .setLngLat([lng, lat])
+      .addTo(map);
+
+    // Add a popup with appropriate info
+    let popupContent = "";
+
+    if (suggestion.type === "startup") {
+      popupContent = `
+        <div style="color: black; font-family: Arial, sans-serif;">
+          <h3 style="margin: 0; color: black; font-weight: bold;">${
+            suggestion.data.companyName
+          }</h3>
+          <p style="margin: 0; color: black;">${
+            suggestion.data.locationName || "Location not specified"
+          }</p>
+          ${
+            suggestion.data.industry
+              ? `<p style="margin: 0; color: #666; font-size: 12px;">${suggestion.data.industry}</p>`
+              : ""
+          }
+        </div>
+      `;
+    } else if (suggestion.type === "investor") {
+      popupContent = `
+        <div style="color: black; font-family: Arial, sans-serif;">
+          <h3 style="margin: 0; color: black; font-weight: bold;">${
+            suggestion.data.firstname
+          } ${suggestion.data.lastname}</h3>
+          <p style="margin: 0; color: black;">${
+            suggestion.data.locationName || "Location not specified"
+          }</p>
+          ${
+            suggestion.data.investorType
+              ? `<p style="margin: 0; color: #666; font-size: 12px;">${suggestion.data.investorType}</p>`
+              : ""
+          }
+        </div>
+      `;
+    } else {
+      popupContent = `
+        <div style="color: black; font-family: Arial, sans-serif;">
+          <h3 style="margin: 0; color: black; font-weight: bold;">${
+            suggestion.text
+          }</h3>
+          <p style="margin: 0; color: black;">${suggestion.name.replace(
+            `${suggestion.text}, `,
+            ""
+          )}</p>
+        </div>
+      `;
+    }
+
+    new mapboxgl.Popup({ offset: 25 })
+      .setLngLat([lng, lat])
+      .setHTML(popupContent)
+      .addTo(map);
+  };
+
+  useEffect(() => {
+    const savedHistory = localStorage.getItem("mapSearchHistory");
+    if (savedHistory) {
+      try {
+        setSearchHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error("Error parsing search history:", e);
+        localStorage.removeItem("mapSearchHistory");
+      }
+    }
+  }, []);
+
+  const SearchComponent = () => (
+    <div
+      className={`absolute top-4 left-4 z-10 transition-all duration-300 ease-in-out ${
+        isSearchExpanded ? "w-96" : "w-12"
+      }`}
+    >
+      <div className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 transition-shadow duration-300 hover:shadow-xl">
+        {isSearchExpanded ? (
+          <div className="flex flex-col">
+            <div className="flex items-center border-b border-gray-200">
+              <div className="flex items-center flex-1 px-4 relative">
+                <Search className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={handleSearchInputChange}
+                  placeholder="Search places, startups, or investors..."
+                  className="px-3 py-3 w-full text-sm text-gray-800 search-input focus:outline-none"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSearchSubmit(e);
+                    }
+                  }}
+                />
+                {searchInput && (
+                  <button
+                    onClick={() => setSearchInput("")}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center pr-2">
+                <button
+                  onClick={handleSearchSubmit}
+                  className="p-2 text-blue-500 hover:text-blue-600 transition-colors duration-200"
+                  title="Search"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Search className="h-5 w-5" />
+                  )}
+                </button>
+                <button
+                  onClick={toggleSearchExpanded}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+                  title="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Search category filters */}
+            <div className="flex border-b border-gray-200 px-2 py-1">
+              <button
+                onClick={() => setSearchCategory("all")}
+                className={`px-3 py-1 text-xs rounded-md ${
+                  searchCategory === "all"
+                    ? "bg-blue-100 text-blue-700 font-medium"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setSearchCategory("startup")}
+                className={`px-3 py-1 text-xs rounded-md ${
+                  searchCategory === "startup"
+                    ? "bg-green-100 text-green-700 font-medium"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Startups
+              </button>
+              <button
+                onClick={() => setSearchCategory("investor")}
+                className={`px-3 py-1 text-xs rounded-md ${
+                  searchCategory === "investor"
+                    ? "bg-indigo-100 text-indigo-700 font-medium"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Investors
+              </button>
+              <button
+                onClick={() => setSearchCategory("place")}
+                className={`px-3 py-1 text-xs rounded-md ${
+                  searchCategory === "place"
+                    ? "bg-orange-100 text-orange-700 font-medium"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Places
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={toggleSearchExpanded}
+            className="w-full h-full p-3 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors duration-200"
+            title="Expand search"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+        )}
+
+        {/* Search suggestions dropdown */}
+        {isSearchExpanded &&
+          (showSuggestions || (searchHistory.length > 0 && !searchInput)) && (
+            <div
+              ref={suggestionsRef}
+              className="bg-white border-t border-gray-100 rounded-b-lg shadow-inner max-h-96 overflow-y-auto"
+            >
+              {isLoading ? (
+                <div className="p-4 text-center text-gray-500">
+                  <div className="animate-spin inline-block w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full mr-2"></div>
+                  Searching...
+                </div>
+              ) : searchSuggestions.length > 0 ? (
+                <div>
+                  <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100">
+                    Search Results
+                  </div>
+                  {searchSuggestions.map((suggestion) => (
+                    <div
+                      key={suggestion.id}
+                      className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-2 group border-b border-gray-100 last:border-0"
+                      onClick={() => handleSuggestionClick(suggestion)}
+                    >
+                      {suggestion.type === "startup" ? (
+                        <Building className="h-4 w-4 text-green-500" />
+                      ) : suggestion.type === "investor" ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="text-blue-500"
+                        >
+                          <circle cx="12" cy="8" r="5" />
+                          <path d="M20 21v-2a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v2" />
+                        </svg>
+                      ) : (
+                        <MapPin className="h-4 w-4 text-red-500" />
+                      )}
+                      <div>
+                        <div className="text-sm font-medium text-gray-700">
+                          {suggestion.text}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {suggestion.name.replace(`${suggestion.text}, `, "")}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : searchInput.length >= 2 ? (
+                <div className="p-4 text-center text-gray-500">
+                  No results found
+                </div>
+              ) : searchHistory.length > 0 && !searchInput ? (
+                <div>
+                  <div className="px-3 py-2 text-xs font-medium text-gray-500 border-b border-gray-100 flex justify-between items-center">
+                    <span>Recent Searches</span>
+                    <button
+                      onClick={() => {
+                        localStorage.removeItem("mapSearchHistory");
+                        setSearchHistory([]);
+                      }}
+                      className="text-xs text-blue-500 hover:text-blue-700"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {searchHistory.map((item, index) => (
+                    <div
+                      key={index}
+                      className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center gap-2 group border-b border-gray-100 last:border-0"
+                      onClick={() => {
+                        handleSuggestionClick({
+                          text: item.result,
+                          name: item.result,
+                          center: item.coordinates,
+                          type: item.type,
+                        });
+                      }}
+                    >
+                      <Clock className="h-4 w-4 text-gray-400" />
+                      <div>
+                        <div className="text-sm text-gray-700">
+                          {item.result}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(item.timestamp).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
+      </div>
+    </div>
+  );
 
   // Add boundary for searched location
   const addBoundaryToMap = async (map, placeName) => {
@@ -568,10 +1096,18 @@ export default function Startupmap({
   const handleSearchSubmit = (event) => {
     event.preventDefault();
 
-    if (!searchInput.trim()) return;
+    // Clear any pending search timeouts
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    const query = searchInput.trim();
+    if (!query || query.length < 3) {
+      setShowSuggestions(false);
+      return;
+    }
 
     const map = mapInstanceRef.current;
-    const query = searchInput.trim();
 
     // Use Mapbox Geocoding API directly
     fetch(
@@ -588,7 +1124,7 @@ export default function Startupmap({
           // Fly to the location
           map.flyTo({
             center: [lng, lat],
-            zoom: 12, // Slightly zoomed out to show more context
+            zoom: 12,
             duration: 2000,
           });
 
@@ -630,12 +1166,29 @@ export default function Startupmap({
         console.error("Error searching for location:", error);
       });
 
-    // Close expanded search after submission
-    setIsSearchExpanded(false);
+    // Close expanded search and suggestions after submission
+    setShowSuggestions(false);
+    setIsLoading(false);
   };
 
   useEffect(() => {
-    // Initialize map with Cebu as center
+    const handleClickOutside = (event) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target) &&
+        !event.target.classList.contains("search-input")
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  useEffect(() => {
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12", // Changed to streets style for better landmark visibility
@@ -730,60 +1283,7 @@ export default function Startupmap({
         className="fixed top-0 left-0 w-full h-full z-0"
         style={{ width: "100%", height: "100%" }}
       />
-      <div
-        className={`absolute top-4 left-4 z-10 transition-all duration-300 ease-in-out ${
-          isSearchExpanded ? "w-80" : "w-12"
-        }`}
-      >
-        <div className="bg-white rounded-full shadow-md overflow-hidden border border-gray-300 transition-shadow duration-300 hover:shadow-lg">
-          <div className="flex items-center">
-            {isSearchExpanded ? (
-              <>
-                <div className="flex items-center flex-1 pl-4">
-                  <Search className="h-4 w-4 text-gray-500" />
-                  <input
-                    type="text"
-                    value={searchInput}
-                    onChange={handleSearchInputChange}
-                    placeholder="Search places..."
-                    className="px-3 py-2 w-full text-sm text-gray-800 search-input"
-                    autoFocus
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        handleSearchSubmit(e);
-                      }
-                    }}
-                  />
-                </div>
-                <div className="flex items-center pr-2">
-                  <button
-                    onClick={handleSearchSubmit}
-                    className="p-2 text-blue-500 hover:text-blue-600 transition-colors duration-200"
-                    title="Search"
-                  >
-                    <Search className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={toggleSearchExpanded}
-                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                    title="Close"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-              </>
-            ) : (
-              <button
-                onClick={toggleSearchExpanded}
-                className="w-full h-full p-3 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors duration-200"
-                title="Expand search"
-              >
-                <Search className="h-5 w-5" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <SearchComponent />
 
       {/* 3D Toggle Button */}
       <button
