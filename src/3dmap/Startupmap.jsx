@@ -260,50 +260,381 @@ export default function Startupmap({
   };
 
   // Add 3D buildings to the map - Updated for light color palette like the image
+  // Add 3D buildings to the map - Updated to match the glossy blue style in the image
   const add3DBuildings = (map) => {
-    // Add 3D building layer from Mapbox with light colors
+    // First add ambient occlusion shadow layer for depth
     map.addLayer({
-      id: "3d-buildings",
+      id: "building-ambient-shadows",
       source: "composite",
       "source-layer": "building",
       filter: ["==", "extrude", "true"],
       type: "fill-extrusion",
-      minzoom: 13, // Lower minzoom to show buildings from further away
+      minzoom: 12,
+      layout: {
+        visibility: "visible",
+      },
       paint: {
-        "fill-extrusion-color": [
-          "interpolate",
-          ["linear"],
-          ["get", "height"],
-          0,
-          "#f0f0f0", // Very light gray for small buildings
-          50,
-          "#e8e8e8", // Light gray
-          100,
-          "#e0e0e0", // Slightly darker
-          200,
-          "#d8d8d8", // For taller buildings
+        "fill-extrusion-color": "#000000",
+        "fill-extrusion-height": ["*", ["get", "height"], 1.02],
+        "fill-extrusion-base": ["get", "min_height"],
+        "fill-extrusion-opacity": 0.12,
+        "fill-extrusion-translate": [3, 3],
+        "fill-extrusion-vertical-gradient": false,
+      },
+    });
+
+    // Main building layer with enhanced detail
+    map.addLayer(
+      {
+        id: "3d-buildings",
+        source: "composite",
+        "source-layer": "building",
+        filter: ["==", "extrude", "true"],
+        type: "fill-extrusion",
+        minzoom: 11,
+        paint: {
+          // Enhanced color gradient based on building height and zoom level
+          "fill-extrusion-color": [
+            "interpolate",
+            ["linear"],
+            ["get", "height"],
+            0,
+            "#e6f2ff", // Light blue-white for smallest buildings
+            25,
+            "#d9edff", // Very light blue
+            50,
+            "#cce7ff", // Light blue
+            100,
+            "#b3d9ff", // Moderate blue
+            200,
+            "#99ccff", // Medium blue
+            300,
+            "#80bfff", // Stronger blue
+            400,
+            "#66b3ff", // Deep blue for tall skyscrapers
+            500,
+            "#4da6ff", // Vivid blue for very tall buildings
+          ],
+          // Dynamic height based on zoom level for better visualization
+          "fill-extrusion-height": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            11,
+            ["*", ["get", "height"], 0.7], // Shorter from far away
+            14,
+            ["*", ["get", "height"], 0.9],
+            16,
+            ["*", ["get", "height"], 1.0],
+            18,
+            ["get", "height"], // Actual height when zoomed in
+          ],
+          "fill-extrusion-base": ["get", "min_height"],
+          "fill-extrusion-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            11,
+            0.75,
+            14,
+            0.85,
+            16,
+            0.9,
+          ],
+          "fill-extrusion-vertical-gradient": true,
+        },
+      },
+      "building-ambient-shadows"
+    );
+
+    // Add window patterns for more building detail
+    map.addLayer(
+      {
+        id: "building-windows-pattern",
+        source: "composite",
+        "source-layer": "building",
+        filter: [
+          "all",
+          ["==", "extrude", "true"],
+          [">", ["get", "height"], 20],
         ],
-        "fill-extrusion-height": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          13,
-          0,
-          14,
-          ["get", "height"],
+        type: "fill-extrusion",
+        minzoom: 15,
+        paint: {
+          "fill-extrusion-pattern": "building-windows",
+          "fill-extrusion-height": ["*", ["get", "height"], 0.99],
+          "fill-extrusion-base": ["get", "min_height"],
+          "fill-extrusion-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            15,
+            0.3,
+            18,
+            0.6,
+          ],
+        },
+      },
+      "3d-buildings"
+    );
+
+    // Glass windows effect with enhanced reflection
+    map.addLayer(
+      {
+        id: "3d-buildings-windows",
+        source: "composite",
+        "source-layer": "building",
+        filter: [
+          "all",
+          ["==", "extrude", "true"],
+          [">", ["get", "height"], 30],
         ],
-        "fill-extrusion-base": [
-          "interpolate",
-          ["linear"],
-          ["zoom"],
-          13,
-          0,
-          14,
-          ["get", "min_height"],
+        type: "fill-extrusion",
+        minzoom: 14,
+        paint: {
+          "fill-extrusion-color": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            14,
+            "rgba(200, 230, 255, 0.8)",
+            18,
+            "rgba(220, 240, 255, 0.9)",
+          ],
+          "fill-extrusion-height": ["*", ["get", "height"], 0.98],
+          "fill-extrusion-base": ["*", ["get", "min_height"], 1.01],
+          "fill-extrusion-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            14,
+            0.4,
+            18,
+            0.6,
+          ],
+          "fill-extrusion-vertical-gradient": true,
+        },
+      },
+      "building-windows-pattern"
+    );
+
+    // Add detailed rooftops with texture
+    map.addLayer(
+      {
+        id: "building-rooftops",
+        source: "composite",
+        "source-layer": "building",
+        filter: [
+          "all",
+          ["==", "extrude", "true"],
+          [">", ["get", "height"], 30],
         ],
+        type: "fill-extrusion",
+        minzoom: 14,
+        paint: {
+          "fill-extrusion-color": "#ffffff",
+          "fill-extrusion-height": ["*", ["get", "height"], 1.005],
+          "fill-extrusion-base": ["*", ["get", "height"], 0.995],
+          "fill-extrusion-opacity": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            14,
+            0.4,
+            18,
+            0.7,
+          ],
+          "fill-extrusion-vertical-gradient": false,
+        },
+      },
+      "3d-buildings"
+    );
+
+    // Add rooftop structures (like water tanks, AC units) to larger buildings
+    map.addLayer(
+      {
+        id: "building-rooftop-structures",
+        source: "composite",
+        "source-layer": "building",
+        filter: [
+          "all",
+          ["==", "extrude", "true"],
+          [">", ["get", "height"], 50], // Only for taller buildings
+        ],
+        type: "fill-extrusion",
+        minzoom: 16, // Only visible when zoomed in closely
+        paint: {
+          "fill-extrusion-color": "#d9d9d9", // Light gray for rooftop structures
+          "fill-extrusion-height": ["*", ["get", "height"], 1.08], // 8% taller than the building
+          "fill-extrusion-base": ["*", ["get", "height"], 1.005], // Start just above the roof
+          "fill-extrusion-opacity": 0.9,
+          "fill-extrusion-vertical-gradient": true,
+        },
+      },
+      "building-rooftops"
+    );
+
+    // Enhanced landmark buildings with more detail
+    map.addLayer(
+      {
+        id: "landmark-buildings",
+        source: "composite",
+        "source-layer": "building",
+        filter: [
+          "all",
+          ["==", "extrude", "true"],
+          [">", ["get", "height"], 80], // Only the tallest buildings
+        ],
+        type: "fill-extrusion",
+        minzoom: 12,
+        paint: {
+          "fill-extrusion-color": "#4da6ff", // Special blue color for landmarks
+          "fill-extrusion-height": ["*", ["get", "height"], 1.02], // Slightly taller
+          "fill-extrusion-base": ["get", "min_height"],
+          "fill-extrusion-opacity": 0.9,
+          "fill-extrusion-vertical-gradient": true,
+        },
+      },
+      "building-rooftop-structures"
+    );
+
+    // Add glow effect for landmark buildings
+    map.addLayer(
+      {
+        id: "building-glow",
+        source: "composite",
+        "source-layer": "building",
+        filter: [
+          "all",
+          ["==", "extrude", "true"],
+          [">", ["get", "height"], 100], // Only the tallest buildings get a glow
+        ],
+        type: "fill-extrusion",
+        minzoom: 14,
+        paint: {
+          "fill-extrusion-color": "#99ccff", // Light blue glow
+          "fill-extrusion-height": ["*", ["get", "height"], 1.01],
+          "fill-extrusion-base": ["*", ["get", "min_height"], 0.99],
+          "fill-extrusion-opacity": 0.15,
+          "fill-extrusion-translate": [1, 1],
+          "fill-extrusion-translate-anchor": "viewport",
+          "fill-extrusion-vertical-gradient": true,
+        },
+      },
+      "landmark-buildings"
+    );
+
+    // Create window patterns for buildings
+    createBuildingWindowPatterns(map);
+  };
+
+  const addBuildingLabels = (map) => {
+    // Add building labels layer (would require a data source with building names)
+    // This is a placeholder - you would need actual building name data
+    if (map.getLayer("poi-label")) {
+      map.setLayoutProperty("poi-label", "visibility", "visible");
+      map.setLayoutProperty("poi-label", "text-size", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        15,
+        10,
+        18,
+        14,
+      ]);
+      map.setPaintProperty("poi-label", "text-color", "#333333");
+      map.setPaintProperty("poi-label", "text-halo-color", "#ffffff");
+      map.setPaintProperty("poi-label", "text-halo-width", 1.5);
+    }
+  };
+
+  const addBuildingDetails = (map) => {
+    // Add decorative elements around buildings when zoomed in
+    map.addLayer({
+      id: "building-details",
+      source: "composite",
+      "source-layer": "building",
+      filter: ["all", ["==", "extrude", "true"], [">", ["get", "height"], 30]],
+      type: "line",
+      minzoom: 17,
+      layout: {
+        "line-join": "round",
+        "line-cap": "round",
+      },
+      paint: {
+        "line-color": "#ffffff",
+        "line-width": 1.5,
+        "line-opacity": 0.7,
+      },
+    });
+
+    // Add high-detail window patterns to buildings when very zoomed in
+    map.addLayer({
+      id: "building-high-detail-windows",
+      source: "composite",
+      "source-layer": "building",
+      filter: ["all", ["==", "extrude", "true"], [">", ["get", "height"], 40]],
+      type: "fill-extrusion",
+      minzoom: 18,
+      paint: {
+        "fill-extrusion-pattern": "building-windows-highrise",
+        "fill-extrusion-height": ["*", ["get", "height"], 0.999],
+        "fill-extrusion-base": ["get", "min_height"],
         "fill-extrusion-opacity": 0.8,
       },
     });
+  };
+
+  const createBuildingWindowPatterns = (map) => {
+    // Regular window pattern
+    const regularWindowPattern = {
+      width: 12,
+      height: 12,
+      data: new Uint8Array(12 * 12 * 4),
+    };
+
+    // Create a grid pattern for windows
+    for (let y = 0; y < regularWindowPattern.height; y++) {
+      for (let x = 0; x < regularWindowPattern.width; x++) {
+        const idx = (y * regularWindowPattern.width + x) * 4;
+        const isWindow = x % 3 == 1 && y % 3 == 1;
+
+        regularWindowPattern.data[idx] = 255; // R
+        regularWindowPattern.data[idx + 1] = 255; // G
+        regularWindowPattern.data[idx + 2] = 255; // B
+        regularWindowPattern.data[idx + 3] = isWindow ? 200 : 50; // Alpha
+      }
+    }
+
+    // Add the window pattern to the map
+    if (!map.hasImage("building-windows")) {
+      map.addImage("building-windows", regularWindowPattern);
+    }
+
+    // Create high-rise window pattern (more dense)
+    const highRiseWindowPattern = {
+      width: 16,
+      height: 16,
+      data: new Uint8Array(16 * 16 * 4),
+    };
+
+    // Create a denser grid pattern for high-rise windows
+    for (let y = 0; y < highRiseWindowPattern.height; y++) {
+      for (let x = 0; x < highRiseWindowPattern.width; x++) {
+        const idx = (y * highRiseWindowPattern.width + x) * 4;
+        const isWindow = x % 2 == 0 && y % 2 == 0;
+
+        highRiseWindowPattern.data[idx] = 255; // R
+        highRiseWindowPattern.data[idx + 1] = 255; // G
+        highRiseWindowPattern.data[idx + 2] = 255; // B
+        highRiseWindowPattern.data[idx + 3] = isWindow ? 200 : 30; // Alpha
+      }
+    }
+
+    // Add the high-rise window pattern to the map
+    if (!map.hasImage("building-windows-highrise")) {
+      map.addImage("building-windows-highrise", highRiseWindowPattern);
+    }
   };
 
   // Add water features with enhanced blue color
@@ -1254,8 +1585,14 @@ export default function Startupmap({
         "horizon-blend": 0.2,
       });
 
-      // Add 3D buildings with light colors
+      // Add enhanced 3D buildings with detailed features
       add3DBuildings(map);
+
+      // Add extra building details when zoomed in
+      addBuildingDetails(map);
+
+      // Add building labels when available
+      addBuildingLabels(map);
 
       // Enhance water features
       enhanceWaterFeatures(map);
