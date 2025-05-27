@@ -14,6 +14,117 @@ mapboxgl.accessToken =
   import.meta.env.VITE_MAPBOX_TOKEN ||
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
 
+const PrivacyModal = ({ isOpen, onClose }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-semibold text-gray-800">Privacy & Security</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          <div className="space-y-6">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium text-blue-800 mb-2">Data Protection</h3>
+              <p className="text-blue-700">
+                Your startup data is encrypted and securely stored using industry-standard security measures. We implement strict access controls and regular security audits to ensure your information remains protected.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-800">How We Protect Your Data</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-800">Encryption</h4>
+                    <p className="text-sm text-gray-600">All data is encrypted both in transit and at rest</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-800">Access Control</h4>
+                    <p className="text-sm text-gray-600">Strict access controls and authentication</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-800">Regular Audits</h4>
+                    <p className="text-sm text-gray-600">Continuous security monitoring and updates</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-800">Data Retention</h4>
+                    <p className="text-sm text-gray-600">Clear data retention and deletion policies</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-medium text-gray-800 mb-2">Your Rights</h3>
+              <ul className="list-disc list-inside text-gray-600 space-y-2">
+                <li>Access and download your data at any time</li>
+                <li>Request data deletion or modification</li>
+                <li>Opt-out of data sharing with third parties</li>
+                <li>Receive notifications about data breaches</li>
+              </ul>
+            </div>
+
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Close
+              </button>
+              <a
+                href="/privacy-policy"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                View Full Privacy Policy
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Startupadd() {
   const [selectedTab, setSelectedTab] = useState("Company Information");
   const [startupId, setStartupId] = useState(null);
@@ -70,6 +181,7 @@ export default function Startupadd() {
   const geocoderContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const [uploadedFile, setUploadedFile] = useState(null);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   const resetForm = () => {
     setFormData({
@@ -153,7 +265,10 @@ export default function Startupadd() {
         }
       );
       if (response.ok) {
-        toast.success("File uploaded successfully!");
+        toast.success("Startup added successfully and is waiting for review!");
+        setTimeout(() => {
+          navigate("/startup-dashboard");
+        }, 2000);
       } else {
         const errorData = await response.json();
         toast.error(
@@ -1108,133 +1223,147 @@ export default function Startupadd() {
           </div>
         )}
         {selectedTab === "Upload Data" && (
-          <div>
-            <h2 className="text-lg font-semibold mb-4">
-              Upload Startup Data (CSV)
-            </h2>
-            <div className="mb-4">
-              <h3 className="text-md font-medium mb-2">
-                CSV Upload Instructions
-              </h3>
-              <p className="text-sm text-gray-600">
-                Please upload a CSV file containing your startup's data. The
-                file must include the following columns:
-              </p>
-              <ul className="list-disc list-inside text-sm text-gray-600 mb-2">
-                <li>
-                  <strong>revenue</strong>: Total revenue of the startup.
-                </li>
-                <li>
-                  <strong>annualRevenue</strong>: Annual revenue of the startup.
-                </li>
-                <li>
-                  <strong>paidUpCapital</strong>: Paid-up capital of the
-                  startup.
-                </li>
-                <li>
-                  <strong>numberOfActiveStartups</strong>: Number of active
-                  startups.
-                </li>
-                <li>
-                  <strong>numberOfNewStartupsThisYear</strong>: Number of new
-                  startups this year.
-                </li>
-                <li>
-                  <strong>averageStartupGrowthRate</strong>: Average growth rate
-                  of startups (as a percentage).
-                </li>
-                <li>
-                  <strong>startupSurvivalRate</strong>: Survival rate of
-                  startups (as a percentage).
-                </li>
-                <li>
-                  <strong>totalStartupFundingReceived</strong>: Total funding
-                  received by startups.
-                </li>
-                <li>
-                  <strong>averageFundingPerStartup</strong>: Average funding per
-                  startup.
-                </li>
-                <li>
-                  <strong>numberOfFundingRounds</strong>: Number of funding
-                  rounds.
-                </li>
-                <li>
-                  <strong>numberOfStartupsWithForeignInvestment</strong>: Number
-                  of startups with foreign investment.
-                </li>
-                <li>
-                  <strong>amountOfGovernmentGrantsOrSubsidiesReceived</strong>:
-                  Amount of government grants or subsidies received.
-                </li>
-                <li>
-                  <strong>numberOfStartupIncubatorsOrAccelerators</strong>:
-                  Number of startup incubators or accelerators.
-                </li>
-                <li>
-                  <strong>numberOfStartupsInIncubationPrograms</strong>: Number
-                  of startups in incubation programs.
-                </li>
-                <li>
-                  <strong>numberOfMentorsOrAdvisorsInvolved</strong>: Number of
-                  mentors or advisors involved.
-                </li>
-                <li>
-                  <strong>publicPrivatePartnershipsInvolvingStartups</strong>:
-                  Number of public-private partnerships involving startups.
-                </li>
-              </ul>
-              <button
-                type="button"
-                className="text-[#1D3557] underline text-sm mt-2"
-                onClick={downloadCsvTemplate}
-              >
-                Download CSV Template
-              </button>
-            </div>
-            <div className="mb-4">
-              <h3 className="text-md font-medium mb-2">Privacy Policy</h3>
-              <p className="text-sm text-gray-600">
-                Your data is important to us. The uploaded CSV file will be
-                securely stored and used solely for the purpose of analyzing and
-                displaying your startup's metrics. We implement
-                industry-standard security measures to protect your data and
-                will not share it with third parties without your consent. For
-                more details, please review our full{" "}
-                <a href="/privacy-policy" className="text-[#1D3557] underline">
-                  Privacy Policy
-                </a>
-                .
-              </p>
-            </div>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileUpload}
-              className="mb-4 w-full border border-gray-300 rounded-md px-4 py-2"
-            />
-            <div className="flex justify-between mt-4">
-              <button
-                type="button"
-                className="bg-gray-300 px-6 py-2 rounded-md"
-                onClick={handleBack}
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
-                onClick={handleFileSubmit}
-              >
-                Upload CSV
-              </button>
-              <button
-                type="button"
-                className="bg-gray-300 px-6 py-2 rounded-md hover:bg-gray-400 transition"
-                onClick={() => navigate("/startup-dashboard")} // Navigate to /startup-dashboard
-              >
-                Skip
-              </button>
+          <div className="max-w-4xl mx-auto">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-semibold text-gray-800">Upload Startup Data</h2>
+                <button
+                  type="button"
+                  className="flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100 transition-colors"
+                  onClick={downloadCsvTemplate}
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Download Template
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Left Column - Upload Section */}
+                <div className="space-y-6">
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                    <h3 className="text-lg font-medium text-blue-800 mb-2">Quick Start Guide</h3>
+                    <ol className="list-decimal list-inside space-y-2 text-blue-700">
+                      <li>Download the CSV template</li>
+                      <li>Fill in your startup's data</li>
+                      <li>Upload the completed file</li>
+                      <li>Review and submit</li>
+                    </ol>
+                  </div>
+
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                    <input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      id="csv-upload"
+                    />
+                    <label
+                      htmlFor="csv-upload"
+                      className="cursor-pointer block"
+                    >
+                      <div className="flex flex-col items-center">
+                        <svg className="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <span className="text-gray-600 font-medium">
+                          {uploadedFile ? uploadedFile.name : "Click to upload CSV file"}
+                        </span>
+                        <span className="text-sm text-gray-500 mt-1">
+                          or drag and drop your file here
+                        </span>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="flex justify-between space-x-4">
+                    <button
+                      type="button"
+                      className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-200 transition-colors"
+                      onClick={handleBack}
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleFileSubmit}
+                      disabled={!uploadedFile}
+                    >
+                      Upload CSV
+                    </button>
+                    <button
+                      type="button"
+                      className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-200 transition-colors"
+                      onClick={() => navigate("/startup-dashboard")}
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
+
+                {/* Right Column - Instructions */}
+                <div className="space-y-6">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h3 className="text-lg font-medium text-gray-800 mb-3">Required Data Fields</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-start">
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mr-2">1</span>
+                        <div>
+                          <p className="font-medium text-gray-700">Financial Metrics</p>
+                          <p className="text-sm text-gray-600">Revenue, capital, funding data</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start">
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mr-2">2</span>
+                        <div>
+                          <p className="font-medium text-gray-700">Growth Indicators</p>
+                          <p className="text-sm text-gray-600">Growth rate, survival rate</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start">
+                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-blue-800 text-sm font-medium mr-2">3</span>
+                        <div>
+                          <p className="font-medium text-gray-700">Support Programs</p>
+                          <p className="text-sm text-gray-600">Incubators, mentors, partnerships</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                    <h3 className="text-lg font-medium text-green-800 mb-2">Privacy & Security</h3>
+                    <p className="text-sm text-green-700">
+                      Your data is encrypted and securely stored. We follow industry-standard security practices to protect your information.
+                    </p>
+                    <button
+                      onClick={() => setIsPrivacyModalOpen(true)}
+                      className="text-green-600 hover:text-green-700 text-sm font-medium mt-2 inline-flex items-center"
+                    >
+                      Learn more about our privacy practices
+                      <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {uploadedFile && (
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                      <div className="flex items-center">
+                        <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-blue-700 font-medium">File Ready to Upload</span>
+                      </div>
+                      <p className="text-sm text-blue-600 mt-1">
+                        {uploadedFile.name} ({Math.round(uploadedFile.size / 1024)} KB)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -1249,6 +1378,11 @@ export default function Startupadd() {
           resetForm={resetForm}
         />
       )}
+
+      <PrivacyModal
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
+      />
 
       <ToastContainer />
     </div>
