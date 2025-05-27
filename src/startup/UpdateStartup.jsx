@@ -178,6 +178,116 @@ export default function UpdateStartup() {
     setUploadStatus(null);
   };
 
+  // Update the handleCsvUpload function
+  // Add this utility function at the top of your file
+  // Update the validateCsvData function
+  // Update the validateCsvData function
+  const validateCsvData = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const csvText = event.target.result;
+          const lines = csvText.trim().split("\n");
+
+          // Define valid headers (all possible headers)
+          const validHeaders = [
+            "revenue",
+            "annualrevenue",
+            "paidupcapital",
+            "fundingstage",
+            "businessactivity",
+            "operatinghours",
+            "numberofactivestartups",
+            "numberofnewstartupsthisyear",
+            "averagestartupgrowthrate",
+            "startupsurvivalrate",
+            "totalstartupfundingreceived",
+            "averagefundingperstartup",
+            "numberoffundingrounds",
+            "numberofstartupswithforeigninvestment",
+            "amountofgovernmentgrantsorsubsidiesreceived",
+            "numberofstartupincubatorsoraccelerators",
+            "numberofstartupsinincubationprograms",
+            "numberofmentorsoradvisorsinvolved",
+            "publicprivatepartnershipsinvolvingstartups",
+          ];
+
+          // Get and validate headers
+          const headers = lines[0]
+            .toLowerCase()
+            .trim()
+            .split(",")
+            .map((h) => h.trim());
+
+          // Find which headers are valid
+          const foundHeaders = headers.filter((h) => validHeaders.includes(h));
+
+          if (foundHeaders.length === 0) {
+            reject(
+              "CSV file must contain at least one valid column. Valid columns are: " +
+                validHeaders.join(", ")
+            );
+            return;
+          }
+
+          // Process CSV data
+          const data = lines.slice(1).map((line) => {
+            const values = line.split(",").map((v) => v.trim());
+            const rowData = {};
+
+            headers.forEach((header, index) => {
+              if (validHeaders.includes(header)) {
+                // Handle numeric values appropriately
+                const value = values[index] || "";
+                if (
+                  [
+                    "fundingstage",
+                    "businessactivity",
+                    "operatinghours",
+                  ].includes(header)
+                ) {
+                  rowData[header] = value; // Keep as string
+                } else {
+                  // Convert numeric values but maintain empty strings
+                  rowData[header] = value === "" ? "" : Number(value) || value;
+                }
+              }
+            });
+
+            return rowData;
+          });
+
+          // Create processed CSV
+          const processedCsv = new Blob(
+            [
+              headers.join(",") +
+                "\n" +
+                data
+                  .map((row) =>
+                    headers
+                      .map((h) => (row[h] !== undefined ? row[h] : ""))
+                      .join(",")
+                  )
+                  .join("\n"),
+            ],
+            { type: "text/csv;charset=utf-8;" }
+          );
+
+          resolve({
+            blob: processedCsv,
+            headers: foundHeaders,
+          });
+        } catch (error) {
+          reject("Error processing CSV file: " + error.message);
+        }
+      };
+      reader.onerror = () => reject("Error reading file");
+      reader.readAsText(file);
+    });
+  };
+
+  // Update the handleCsvUpload function
   const handleCsvUpload = async (e) => {
     e.preventDefault();
 
@@ -193,8 +303,11 @@ export default function UpdateStartup() {
     setUploadStatus(null);
 
     try {
+      const { blob, headers } = await validateCsvData(csvFile);
+
       const formData = new FormData();
-      formData.append("file", csvFile);
+      formData.append("file", blob, csvFile.name);
+      formData.append("headers", JSON.stringify(headers)); // Send headers to backend
 
       const response = await fetch(
         `http://localhost:8080/startups/${id}/upload-csv`,
@@ -206,34 +319,32 @@ export default function UpdateStartup() {
       );
 
       if (!response.ok) {
-        const errorText = await response.text(); // Read the error message as text
+        const errorText = await response.text();
         throw new Error(errorText || `Error uploading CSV: ${response.status}`);
       }
 
-      // Handle both JSON and plain text responses
-      const contentType = response.headers.get("Content-Type");
-      let result;
-      if (contentType && contentType.includes("application/json")) {
-        result = await response.json();
-      } else {
-        result = await response.text();
-      }
+      const result = await response.json();
 
       setUploadStatus({
         success: true,
-        message: result.message || result || "CSV data uploaded successfully!",
+        message: `CSV data uploaded successfully! Updated fields: ${headers.join(
+          ", "
+        )}`,
       });
-      setCsvFile(null);
 
-      // Reset file input
+      // Reset file input and state
+      setCsvFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+
+      // Refresh startup data
+      await fetchStartupData();
     } catch (error) {
       console.error("Error uploading CSV:", error);
       setUploadStatus({
         success: false,
-        message: error.message || "Failed to upload CSV. Please try again.",
+        message: error.message,
       });
     } finally {
       setUploading(false);

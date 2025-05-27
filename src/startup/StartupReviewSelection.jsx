@@ -133,6 +133,7 @@ export default function EnhancedStartupReviewSection() {
       // Update local state
       setStartups(startups.filter((startup) => startup.id !== id));
       setActionResult({ success: true, message: successMessage });
+      fetchStartups()
 
       if (selectedStartup && selectedStartup.id === id) {
         setIsPreviewOpen(false);
