@@ -116,20 +116,28 @@ export default function StartupDashboard() {
           throw new Error(`Error deleting startup: ${response.status}`);
         }
 
+        // Update startups state first
         const updatedStartups = startups.filter((startup) => startup.id !== id);
         setStartups(updatedStartups);
 
+        // Update startup IDs
         const updatedIds = startupIds.filter((startupId) => startupId !== id);
         setStartupIds(updatedIds);
 
         setActionSuccess("Startup deleted successfully");
         setTimeout(() => setActionSuccess(null), 3000);
 
+        // Recalculate metrics and update charts
         if (selectedStartup === id) {
+          // If we deleted the currently selected startup, switch to "all"
           setSelectedStartup("all");
-          fetchAllStartupsData();
+          await recalculateAllMetrics(updatedIds, updatedStartups);
         } else if (selectedStartup === "all") {
-          fetchAllStartupsData();
+          // If viewing all startups, recalculate total metrics
+          await recalculateAllMetrics(updatedIds, updatedStartups);
+        } else {
+          // If viewing a different single startup, just update the totals for consistency
+          await recalculateAllMetrics(updatedIds, updatedStartups);
         }
       } catch (error) {
         console.error("Error deleting startup:", error);
@@ -138,6 +146,79 @@ export default function StartupDashboard() {
       } finally {
         setSubmitting(false);
       }
+    }
+  };
+
+  const recalculateAllMetrics = async (ids, updatedStartupsArray) => {
+    if (!ids || ids.length === 0) {
+      setMetrics({ views: 0, likes: 0, bookmarks: 0 });
+      setDonutData({
+        labels: ["No Data"],
+        datasets: [
+          {
+            data: [1],
+            backgroundColor: ["#cccccc"],
+            borderWidth: 0,
+          },
+        ],
+      });
+      setEngagementData({
+        labels: months,
+        datasets: [
+          {
+            label: "Views",
+            data: Array(12).fill(0),
+            borderColor: "#f59e0b",
+            fill: false,
+          },
+          {
+            label: "Bookmarks",
+            data: Array(12).fill(0),
+            borderColor: "#10b981",
+            fill: false,
+          },
+          {
+            label: "Likes",
+            data: Array(12).fill(0),
+            borderColor: "#3b82f6",
+            fill: false,
+          },
+        ],
+      });
+      return;
+    }
+
+    try {
+      // Recalculate total metrics
+      const totalMetrics = await fetchTotalMetrics(ids);
+
+      if (totalMetrics) {
+        // Update donut chart for all startups view
+        const colors = updatedStartupsArray.map(
+          (_, index) =>
+            `hsl(${(index * 360) / updatedStartupsArray.length}, 70%, 50%)`
+        );
+
+        const startupMetrics = updatedStartupsArray.map((startup) => {
+          return startup.likes || 1; // Use existing likes or default to 1
+        });
+
+        setDonutData({
+          labels: updatedStartupsArray.map((startup) => startup.companyName),
+          datasets: [
+            {
+              data: startupMetrics,
+              backgroundColor: colors,
+              borderWidth: 0,
+            },
+          ],
+        });
+      }
+
+      // Refresh engagement data
+      await fetchAllStartupsEngagementData();
+    } catch (error) {
+      console.error("Error recalculating metrics after deletion:", error);
     }
   };
 
@@ -490,8 +571,9 @@ export default function StartupDashboard() {
       );
 
       const startupMetrics = startups.map((startup) => {
-        const startupLikes = startup.likes || 1;
-        return startupLikes;
+        // Use existing likes from startup object, or default to 1 if not available
+        const startupLikes = startup.likes !== undefined ? startup.likes : 1;
+        return Math.max(startupLikes, 1); // Ensure minimum value of 1 for chart display
       });
 
       setDonutData({

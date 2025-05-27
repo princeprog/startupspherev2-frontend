@@ -1,8 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { 
-  ArrowLeft, Save, X, Building, Mail, Phone, Globe, MapPin, 
-  Calendar, Users, Briefcase, Facebook, Twitter, Instagram, Linkedin, Upload
+import {
+  ArrowLeft,
+  Save,
+  X,
+  Building,
+  Mail,
+  Phone,
+  Globe,
+  MapPin,
+  Calendar,
+  Users,
+  Briefcase,
+  Facebook,
+  Twitter,
+  Instagram,
+  Linkedin,
+  Upload,
 } from "lucide-react";
 import Startupmap from "../3dmap/Startupmap"; // Import the map component
 
@@ -12,9 +26,9 @@ export default function UpdateStartup() {
   const location = useLocation();
   const mapInstanceRef = useRef(null);
   const fileInputRef = useRef(null);
-  
+
   const initialStartupData = location.state?.startup || {};
-  
+
   const [formData, setFormData] = useState({
     companyName: "",
     companyDescription: "",
@@ -37,9 +51,9 @@ export default function UpdateStartup() {
     locationLat: null,
     locationLng: null,
     locationName: "",
-    ...initialStartupData
+    ...initialStartupData,
   });
-  
+
   const [loading, setLoading] = useState(!initialStartupData.id);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -55,9 +69,9 @@ export default function UpdateStartup() {
       try {
         const date = new Date(formData.foundedDate);
         if (!isNaN(date.getTime())) {
-          setFormData(prev => ({
+          setFormData((prev) => ({
             ...prev,
-            foundedDate: date.toISOString().split('T')[0]
+            foundedDate: date.toISOString().split("T")[0],
           }));
         }
       } catch (e) {
@@ -85,19 +99,19 @@ export default function UpdateStartup() {
       }
 
       const data = await response.json();
-      
+
       let formattedData = { ...data };
       if (data.foundedDate) {
         try {
           const date = new Date(data.foundedDate);
           if (!isNaN(date.getTime())) {
-            formattedData.foundedDate = date.toISOString().split('T')[0];
+            formattedData.foundedDate = date.toISOString().split("T")[0];
           }
         } catch (e) {
           console.error("Error formatting date:", e);
         }
       }
-      
+
       setFormData(formattedData);
     } catch (error) {
       console.error("Error fetching startup data:", error);
@@ -129,7 +143,7 @@ export default function UpdateStartup() {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    
+
     try {
       const response = await fetch(`http://localhost:8080/startups/${id}`, {
         method: "PUT",
@@ -145,12 +159,11 @@ export default function UpdateStartup() {
       }
 
       setSuccess("Startup updated successfully!");
-      
+
       // Wait a bit before navigating back
       setTimeout(() => {
         navigate("/startup-dashboard");
       }, 2000);
-      
     } catch (error) {
       console.error("Error updating startup:", error);
       setError("Failed to update startup. Please try again.");
@@ -167,30 +180,36 @@ export default function UpdateStartup() {
 
   const handleCsvUpload = async (e) => {
     e.preventDefault();
-  
+
     if (!csvFile) {
-      setUploadStatus({ success: false, message: "Please select a CSV file to upload." });
+      setUploadStatus({
+        success: false,
+        message: "Please select a CSV file to upload.",
+      });
       return;
     }
-  
+
     setUploading(true);
     setUploadStatus(null);
-  
+
     try {
       const formData = new FormData();
       formData.append("file", csvFile);
-  
-      const response = await fetch(`http://localhost:8080/startups/${id}/upload-csv`, {
-        method: "PUT",
-        body: formData,
-        credentials: "include",
-      });
-  
+
+      const response = await fetch(
+        `http://localhost:8080/startups/${id}/upload-csv`,
+        {
+          method: "PUT",
+          body: formData,
+          credentials: "include",
+        }
+      );
+
       if (!response.ok) {
         const errorText = await response.text(); // Read the error message as text
         throw new Error(errorText || `Error uploading CSV: ${response.status}`);
       }
-  
+
       // Handle both JSON and plain text responses
       const contentType = response.headers.get("Content-Type");
       let result;
@@ -199,13 +218,13 @@ export default function UpdateStartup() {
       } else {
         result = await response.text();
       }
-  
+
       setUploadStatus({
         success: true,
         message: result.message || result || "CSV data uploaded successfully!",
       });
       setCsvFile(null);
-  
+
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -230,8 +249,8 @@ export default function UpdateStartup() {
   }
 
   const renderFormSection = () => {
-    switch(activeSection) {
-      case 'basic':
+    switch (activeSection) {
+      case "basic":
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
@@ -266,12 +285,16 @@ export default function UpdateStartup() {
                 required
                 className="select bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
               >
-                <option value="">Industry</option>
+                <option value="" disabled>
+                  Select Industry
+                </option>
                 <option value="Agriculture">Agriculture</option>
                 <option value="Construction">Construction</option>
                 <option value="Education">Education</option>
                 <option value="Healthcare">Healthcare</option>
-                <option value="Information Technology">Information Technology</option>
+                <option value="Information Technology">
+                  Information Technology
+                </option>
                 <option value="Manufacturing">Manufacturing</option>
                 <option value="Retail">Retail</option>
               </select>
@@ -306,20 +329,26 @@ export default function UpdateStartup() {
                 onChange={handleInputChange}
                 className="select bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
               >
-                <option value="">Type of Company</option>
+                <option value="" disabled>
+                  Select Type of Company
+                </option>
                 <option value="Sole Proprietorship">Sole Proprietorship</option>
                 <option value="Partnership">Partnership</option>
                 <option value="Corporation (Inc.)">Corporation (Inc.)</option>
-                <option value="Limited Liability Company (LLC)">Limited Liability Company (LLC)</option>
+                <option value="Limited Liability Company (LLC)">
+                  Limited Liability Company (LLC)
+                </option>
                 <option value="Cooperative (Co-op)">Cooperative (Co-op)</option>
-                <option value="Nonprofit Organization">Nonprofit Organization</option>
+                <option value="Nonprofit Organization">
+                  Nonprofit Organization
+                </option>
                 <option value="Franchise">Franchise</option>
               </select>
             </div>
           </div>
         );
-      
-      case 'contact':
+
+      case "contact":
         return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -355,7 +384,7 @@ export default function UpdateStartup() {
                 className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
               />
             </div>
-            
+
             <div>
               <input
                 type="url"
@@ -401,8 +430,8 @@ export default function UpdateStartup() {
             </div>
           </div>
         );
-      
-      case 'location':
+
+      case "location":
         return (
           <div className="flex flex-col md:flex-row h-full">
             {isSidebarVisible && (
@@ -416,7 +445,7 @@ export default function UpdateStartup() {
                     onChange={handleInputChange}
                     className="input bg-gray-300 text-black border-gray-200 w-full p-2 rounded"
                   />
-                  
+
                   <input
                     type="text"
                     name="streetAddress"
@@ -425,7 +454,7 @@ export default function UpdateStartup() {
                     onChange={handleInputChange}
                     className="input bg-gray-300 text-black border-gray-200 w-full p-2 rounded"
                   />
-                  
+
                   <input
                     type="text"
                     name="city"
@@ -434,7 +463,7 @@ export default function UpdateStartup() {
                     onChange={handleInputChange}
                     className="input bg-gray-300 text-black border-gray-200 w-full p-2 rounded"
                   />
-                  
+
                   <input
                     type="text"
                     name="province"
@@ -443,7 +472,7 @@ export default function UpdateStartup() {
                     onChange={handleInputChange}
                     className="input bg-gray-300 text-black border-gray-200 w-full p-2 rounded"
                   />
-                  
+
                   <input
                     type="text"
                     name="postalCode"
@@ -452,16 +481,7 @@ export default function UpdateStartup() {
                     onChange={handleInputChange}
                     className="input bg-gray-300 text-black border-gray-200 w-full p-2 rounded"
                   />
-                  
-                  <input
-                    type="text"
-                    name="country"
-                    placeholder="Country"
-                    value={formData.country || ""}
-                    onChange={handleInputChange}
-                    className="input bg-gray-300 text-black border-gray-200 w-full p-2 rounded"
-                  />
-                  
+
                   <div className="flex space-x-2">
                     <input
                       type="number"
@@ -472,7 +492,7 @@ export default function UpdateStartup() {
                       readOnly
                       className="input bg-gray-200 text-black border-gray-200 w-1/2 p-2 rounded"
                     />
-                    
+
                     <input
                       type="number"
                       name="locationLng"
@@ -490,7 +510,7 @@ export default function UpdateStartup() {
                   >
                     Set Company Location on Map
                   </button>
-                  
+
                   {formData.locationLat && (
                     <p className="text-sm text-gray-600">
                       Selected Location: ({formData.locationLat.toFixed(4)},{" "}
@@ -500,29 +520,39 @@ export default function UpdateStartup() {
                 </div>
               </div>
             )}
-            
+
             {/* Map always shows in location tab, but takes full width when sidebar is hidden */}
-            <div className={`${isSidebarVisible ? 'md:w-2/3' : 'w-full'} h-96 rounded-lg overflow-hidden`}>
-              <Startupmap 
-                mapInstanceRef={mapInstanceRef} 
-                onMapClick={handleMapClick} 
-                initialLocation={formData.locationLat && formData.locationLng ? 
-                  { lat: formData.locationLat, lng: formData.locationLng } : null}
+            <div
+              className={`${
+                isSidebarVisible ? "md:w-2/3" : "w-full"
+              } h-96 rounded-lg overflow-hidden`}
+            >
+              <Startupmap
+                mapInstanceRef={mapInstanceRef}
+                onMapClick={handleMapClick}
+                initialLocation={
+                  formData.locationLat && formData.locationLng
+                    ? { lat: formData.locationLat, lng: formData.locationLng }
+                    : null
+                }
               />
             </div>
           </div>
         );
-        
-      case 'upload':
+
+      case "upload":
         return (
           <div className="flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Upload Data via CSV</h2>
-              
+              <h2 className="text-xl font-semibold text-gray-800 mb-4">
+                Upload Data via CSV
+              </h2>
+
               <p className="text-gray-600 mb-6">
-                Upload a CSV file to update or add data to this startup. Make sure your CSV follows the required format.
+                Upload a CSV file to update or add data to this startup. Make
+                sure your CSV follows the required format.
               </p>
-              
+
               <div className="mb-6">
                 <label className="block mb-2 text-sm font-medium text-gray-700">
                   Select CSV File
@@ -532,16 +562,17 @@ export default function UpdateStartup() {
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                       <Upload className="w-10 h-10 mb-3 text-gray-500" />
                       <p className="mb-2 text-sm text-gray-500">
-                        <span className="font-semibold">Click to upload</span> or drag and drop
+                        <span className="font-semibold">Click to upload</span>{" "}
+                        or drag and drop
                       </p>
                       <p className="text-xs text-gray-500">CSV files only</p>
                     </div>
-                    <input 
+                    <input
                       ref={fileInputRef}
-                      type="file" 
-                      accept=".csv" 
-                      className="hidden" 
-                      onChange={handleFileChange} 
+                      type="file"
+                      accept=".csv"
+                      className="hidden"
+                      onChange={handleFileChange}
                     />
                   </label>
                 </div>
@@ -551,18 +582,26 @@ export default function UpdateStartup() {
                   </p>
                 )}
               </div>
-              
+
               {uploadStatus && (
-                <div className={`p-4 mb-4 rounded-lg ${uploadStatus.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                <div
+                  className={`p-4 mb-4 rounded-lg ${
+                    uploadStatus.success
+                      ? "bg-green-50 text-green-700"
+                      : "bg-red-50 text-red-700"
+                  }`}
+                >
                   <p className="text-sm font-medium">{uploadStatus.message}</p>
                 </div>
               )}
-              
+
               <button
                 onClick={handleCsvUpload}
                 disabled={!csvFile || uploading}
                 className={`w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                  !csvFile || uploading ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
+                  !csvFile || uploading
+                    ? "bg-indigo-400 cursor-not-allowed"
+                    : "bg-indigo-600 hover:bg-indigo-700"
                 }`}
               >
                 {uploading ? (
@@ -580,7 +619,7 @@ export default function UpdateStartup() {
             </div>
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -597,7 +636,7 @@ export default function UpdateStartup() {
             <ArrowLeft className="h-5 w-5 mr-2" />
             <span className="font-medium">Back to Dashboard</span>
           </button>
-          
+
           <h1 className="text-xl font-bold text-indigo-600">
             Update Startup: {formData.companyName}
           </h1>
