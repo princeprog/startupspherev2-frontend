@@ -28,6 +28,8 @@ import {
   Zap,
   BarChart2,
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -43,6 +45,9 @@ export default function AllStartupDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedIndustry, setSelectedIndustry] = useState("All");
   const [rankingMetric, setRankingMetric] = useState("overall");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [topStartups, setTopStartups] = useState([]);
   const [rankedStartups, setRankedStartups] = useState([]);
@@ -64,7 +69,17 @@ export default function AllStartupDashboard() {
     industry: "All Industries",
     region: "All Regions",
     timePeriod: "2025 (YTD)",
-    metrics: [],
+    metrics: [
+      "Growth Rate",
+      "Funding Amount",
+      "Survival Rate",
+      "Employment Data",
+      "Investment Rounds",
+      "Foreign Investment",
+      "Government Support",
+      "Mentorship Data",
+      "Public-Private Partnerships"
+    ],
   });
   const [availableRegions, setAvailableRegions] = useState([]);
 
@@ -88,6 +103,10 @@ export default function AllStartupDashboard() {
     } catch (error) {
       console.error("Error fetching role:", error);
     }
+  };
+
+  const refreshDashboard = () => {
+    setRefreshTrigger(prev => prev + 1);
   };
 
   useEffect(() => {
@@ -124,7 +143,7 @@ export default function AllStartupDashboard() {
 
     fetchDashboardAnalytics();
     fetchRole();
-  }, []);
+  }, [refreshTrigger]);
 
   useEffect(() => {
     const fetchTopStartups = async () => {
@@ -148,7 +167,7 @@ export default function AllStartupDashboard() {
     };
 
     fetchTopStartups();
-  }, [selectedIndustry]);
+  }, [selectedIndustry, refreshTrigger]);
 
   useEffect(() => {
     const fetchRankedStartups = async () => {
@@ -223,7 +242,7 @@ export default function AllStartupDashboard() {
     };
 
     fetchRankedStartups();
-  }, [selectedIndustry, rankingMetric]);
+  }, [selectedIndustry, rankingMetric, refreshTrigger]);
 
   useEffect(() => {
     if (activeTab === "reports") {
@@ -448,6 +467,7 @@ export default function AllStartupDashboard() {
       }.pdf`;
       doc.save(fileName);
       toast.success("Report downloaded successfully!");
+      refreshDashboard();
     } catch (error) {
       console.error("Error generating PDF:", error);
       toast.error("Failed to generate PDF. Please try again.");
@@ -632,6 +652,7 @@ export default function AllStartupDashboard() {
       setReportFormData((prev) => ({ ...prev, metrics: [] }));
       setReportsLoading(false);
       toast.success("Custom report generated successfully!");
+      refreshDashboard();
     } catch (error) {
       console.error("Error generating custom report:", error);
       setReportsLoading(false);
@@ -642,6 +663,95 @@ export default function AllStartupDashboard() {
   useEffect(() => {
     closeSidebar();
   }, [closeSidebar]);
+
+  // Add this function to handle pagination
+  const paginate = (array, page_size, page_number) => {
+    return array.slice((page_number - 1) * page_size, page_number * page_size);
+  };
+
+  // Calculate total pages
+  const totalPages = Math.ceil(rankedStartups.length / itemsPerPage);
+  const currentStartups = paginate(rankedStartups, itemsPerPage, currentPage);
+
+  // Update the PaginationControls component
+  const PaginationControls = () => {
+    return (
+      <div className="flex items-center space-x-2 mt-4">
+        <button
+          onClick={() => setCurrentPage(1)}
+          disabled={currentPage === 1}
+          className={`p-2 rounded ${
+            currentPage === 1
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-blue-600 hover:bg-blue-50"
+          }`}
+        >
+          <ChevronLeft size={16} className="ml-[-14px]" />
+        </button>
+
+        <button
+          onClick={() => setCurrentPage(currentPage - 1)}
+          disabled={currentPage === 1}
+          className={`p-2 rounded ${
+            currentPage === 1
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-blue-600 hover:bg-blue-50"
+          }`}
+        ></button>
+
+        <div className="flex space-x-1">
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            let pageNum;
+            if (totalPages <= 5) {
+              pageNum = i + 1;
+            } else if (currentPage <= 3) {
+              pageNum = i + 1;
+            } else if (currentPage >= totalPages - 2) {
+              pageNum = totalPages - 4 + i;
+            } else {
+              pageNum = currentPage - 2 + i;
+            }
+
+            return (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(pageNum)}
+                className={`w-8 h-8 flex items-center justify-center rounded ${
+                  currentPage === pageNum
+                    ? "bg-blue-600 text-white"
+                    : "hover:bg-blue-50 text-gray-700"
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          onClick={() => setCurrentPage(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className={`p-2 rounded ${
+            currentPage === totalPages
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-blue-600 hover:bg-blue-50"
+          }`}
+        ></button>
+
+        <button
+          onClick={() => setCurrentPage(totalPages)}
+          disabled={currentPage === totalPages}
+          className={`p-2 rounded ${
+            currentPage === totalPages
+              ? "text-gray-400 cursor-not-allowed"
+              : "text-blue-600 hover:bg-blue-50"
+          }`}
+        >
+          <ChevronRight size={16} className="ml-[-14px]" />
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
@@ -986,7 +1096,10 @@ export default function AllStartupDashboard() {
                 <select
                   className="border rounded p-2 text-sm w-30 text-blue-900"
                   value={selectedIndustry}
-                  onChange={(e) => setSelectedIndustry(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedIndustry(e.target.value);
+                    setCurrentPage(1); // Reset to first page when filter changes
+                  }}
                 >
                   <option className="text-blue-900" value="All">
                     All Industries
@@ -1004,7 +1117,10 @@ export default function AllStartupDashboard() {
                 <select
                   className="border rounded p-2 text-sm text-blue-900"
                   value={rankingMetric}
-                  onChange={(e) => setRankingMetric(e.target.value)}
+                  onChange={(e) => {
+                    setRankingMetric(e.target.value);
+                    setCurrentPage(1); // Reset to first page when metric changes
+                  }}
                 >
                   <option className="text-blue-900" value="overall">
                     Overall Score
@@ -1029,86 +1145,89 @@ export default function AllStartupDashboard() {
               {loading ? (
                 <div className="text-center py-6">Loading rankings...</div>
               ) : (
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Rank
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Startup
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Industry
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Overall Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Growth Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Investment Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ecosystem Score
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Engagement Score
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {rankedStartups.map((startup, index) => (
-                      <tr key={startup.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                              <span className="text-indigo-700 font-medium">
-                                {index + 1}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {startup.companyName}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            {startup.industry}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {startup.overallScore}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {startup.growthScore}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {startup.investmentScore}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {startup.ecosystemScore}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {startup.engagementScore}
-                          </div>
-                        </td>
+                <>
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Rank
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Startup
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Industry
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Overall Score
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Growth Score
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Investment Score
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Ecosystem Score
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Engagement Score
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {currentStartups.map((startup, index) => (
+                        <tr key={startup.id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                                <span className="text-indigo-700 font-medium">
+                                  {(currentPage - 1) * itemsPerPage + index + 1}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">
+                              {startup.companyName}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                              {startup.industry}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {startup.overallScore}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {startup.growthScore}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {startup.investmentScore}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {startup.ecosystemScore}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              {startup.engagementScore}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <PaginationControls />
+                </>
               )}
             </div>
           </div>
