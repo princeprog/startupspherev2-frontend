@@ -18,8 +18,8 @@ const PrivacyModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-gray-300">
         <div className="p-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold text-gray-800">Privacy & Security</h2>
@@ -107,16 +107,10 @@ const PrivacyModal = ({ isOpen, onClose }) => {
             <div className="flex justify-end space-x-4">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                className="px-4 py-2 text-gray-600 hover:text-blue-800 transition-colors"
               >
                 Close
               </button>
-              <a
-                href="/privacy-policy"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-              >
-                View Full Privacy Policy
-              </a>
             </div>
           </div>
         </div>
@@ -182,6 +176,9 @@ export default function Startupadd() {
   const mapInstanceRef = useRef(null);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingStatus, setLoadingStatus] = useState("");
 
   const resetForm = () => {
     setFormData({
@@ -253,9 +250,27 @@ export default function Startupadd() {
       toast.error("Please complete the startup form and submit it first.");
       return;
     }
+
+    setIsLoading(true);
+    setLoadingProgress(0);
+    setLoadingStatus("Preparing to upload data...");
+
     const formData = new FormData();
     formData.append("file", uploadedFile);
+
     try {
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setLoadingProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return prev;
+          }
+          return prev + 10;
+        });
+      }, 500);
+
+      setLoadingStatus("Uploading CSV data...");
       const response = await fetch(
         `http://localhost:8080/startups/${startupId}/upload-csv`,
         {
@@ -264,20 +279,27 @@ export default function Startupadd() {
           credentials: "include",
         }
       );
+
+      clearInterval(progressInterval);
+      setLoadingProgress(100);
+      setLoadingStatus("Finalizing startup data...");
+
       if (response.ok) {
         toast.success("Startup added successfully and is waiting for review!");
         setTimeout(() => {
           navigate("/startup-dashboard");
-        }, 2000);
+        }, 1500);
       } else {
         const errorData = await response.json();
         toast.error(
           `Failed to upload file: ${errorData.message || "Unknown error"}`
         );
+        setIsLoading(false);
       }
     } catch (error) {
       console.error("Error uploading file:", error);
       toast.error("An error occurred while uploading the file.");
+      setIsLoading(false);
     }
   };
 
@@ -654,6 +676,57 @@ export default function Startupadd() {
       setBarangays([]);
     }
   }, [selectedCity]);
+
+  const LoadingModal = () => {
+    if (!isLoading) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-white/30">
+        <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4 border border-gray-200">
+          <div className="text-center">
+            <div className="mb-4">
+              <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+            </div>
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Processing Your Startup</h2>
+            <p className="text-gray-600 mb-4">{loadingStatus}</p>
+            <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+              <div 
+                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
+                style={{ width: `${loadingProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-sm text-gray-500">Please wait while we process your startup information...</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const handleSkip = () => {
+    setIsLoading(true);
+    setLoadingProgress(0);
+    setLoadingStatus("Preparing to redirect...");
+
+    // Simulate progress updates
+    const progressInterval = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return prev;
+        }
+        return prev + 30;
+      });
+    }, 300);
+
+    setTimeout(() => {
+      clearInterval(progressInterval);
+      setLoadingProgress(100);
+      setLoadingStatus("Redirecting to dashboard...");
+      setTimeout(() => {
+        navigate("/startup-dashboard");
+      }, 1000);
+    }, 1000);
+  };
 
   return (
     <div className="bg-gray-100 min-h-screen text-gray-800 relative">
@@ -1297,7 +1370,7 @@ export default function Startupadd() {
                     <button
                       type="button"
                       className="flex-1 bg-gray-100 text-gray-700 px-6 py-3 rounded-md hover:bg-gray-200 transition-colors"
-                      onClick={() => navigate("/startup-dashboard")}
+                      onClick={handleSkip}
                     >
                       Skip
                     </button>
@@ -1333,7 +1406,7 @@ export default function Startupadd() {
                     </div>
                   </div>
 
-                  <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                  <div className=" bg-green-50 rounded-lg p-4 border border-green-100">
                     <h3 className="text-lg font-medium text-green-800 mb-2">Privacy & Security</h3>
                     <p className="text-sm text-green-700">
                       Your data is encrypted and securely stored. We follow industry-standard security practices to protect your information.
@@ -1384,6 +1457,7 @@ export default function Startupadd() {
         onClose={() => setIsPrivacyModalOpen(false)}
       />
 
+      <LoadingModal />
       <ToastContainer />
     </div>
   );
