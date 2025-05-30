@@ -138,8 +138,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
       if (response.ok) {
         console.log("Logout successful");
         setIsAuthenticated(false);
-        setUser(null); 
-        setCurrentUser(null); 
+        setUser(null);
+        setCurrentUser(null);
         setLikedStartups([]);
         setLikedInvestors([]);
 
@@ -150,7 +150,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         document.cookie =
           "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         setUserDetails(null);
-        navigate("/")
+        navigate("/");
       } else {
         console.error("Failed to logout");
       }
@@ -1042,7 +1042,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       <button
                         onClick={() => {
                           setShowRecents(false);
-                          setShowSearchContainer(false)
+                          setShowSearchContainer(false);
                           setShowBookmarks(false);
                           navigate("/all-startup-dashboard");
                         }}
@@ -1367,14 +1367,17 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                             <option value="telecommunications">
                               Telecommunications
                             </option>
+                            <option value="financial technology">
+                              Financial Technology
+                            </option>
                             <option value="entertainment">Entertainment</option>
                           </optgroup>
                           <optgroup label="Business & Finance">
                             <option value="finance">Finance</option>
-                            <option value="legal_services">
+                            <option value="legal services">
                               Legal Services
                             </option>
-                            <option value="real_estate">Real Estate</option>
+                            <option value="real estate">Real Estate</option>
                           </optgroup>
                           <optgroup label="Healthcare & Education">
                             <option value="healthcare">Healthcare</option>
@@ -1481,12 +1484,12 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                           className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                         >
                           <option value="">Any Stage</option>
-                          <option value="bootstrapped">Bootstrapped</option>
-                          <option value="seed">Seed</option>
-                          <option value="series_a">Series A</option>
-                          <option value="series_b">Series B</option>
-                          <option value="series_c">Series C</option>
-                          <option value="public">Public</option>
+                          <option value="Bootstrapped">Bootstrapped</option>
+                          <option value="Seed">Seed</option>
+                          <option value="Series A">Series A</option>
+                          <option value="Series B">Series B</option>
+                          <option value="Series C">Series C</option>
+                          <option value="Public">Public</option>
                         </select>
                       </div>
                     </div>

@@ -34,6 +34,7 @@ export default function StartupDashboard() {
   const [startupIds, setStartupIds] = useState([]);
   const [startups, setStartups] = useState([]);
   const [selectedStartup, setSelectedStartup] = useState("all");
+  const [logoUrls, setLogoUrls] = useState({});
 
   const [metrics, setMetrics] = useState({
     views: 0,
@@ -78,6 +79,28 @@ export default function StartupDashboard() {
       },
     ],
   });
+
+  const fetchCompanyLogo = async (startupId) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8080/startups/${startupId}/photo`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        setLogoUrls((prev) => ({
+          ...prev,
+          [startupId]: imageUrl,
+        }));
+      }
+    } catch (error) {
+      console.error(`Error fetching logo for startup ${startupId}:`, error);
+    }
+  };
 
   const [engagementData, setEngagementData] = useState({
     labels: months,
@@ -895,18 +918,22 @@ export default function StartupDashboard() {
 
       try {
         const ids = await fetchStartupIds();
+        const startupsData = await fetchStartups();
 
-        await fetchStartups();
+        // Fetch logos for all startups
+        if (startupsData && startupsData.length > 0) {
+          startupsData.forEach((startup) => {
+            fetchCompanyLogo(startup.id);
+          });
+        }
 
         if (ids && ids.length > 0) {
           await fetchAllStartupsData();
-        } else {
-          console.log("No startup IDs found, skipping metrics fetch");
-          setLoading(false);
         }
       } catch (error) {
         console.error("Error during initialization:", error);
         setError("Failed to initialize dashboard. Please try again later.");
+      } finally {
         setLoading(false);
       }
     };
@@ -1236,10 +1263,25 @@ export default function StartupDashboard() {
                       <div className="flex items-center gap-3">
                         <div className="avatar">
                           <div className="mask mask-squircle h-12 w-12">
-                            <img
-                              src="https://img.daisyui.com/images/profile/demo/2@94.webp"
-                              alt="Company Logo"
-                            />
+                            {logoUrls[st.id] ? (
+                              <img
+                                src={logoUrls[st.id]}
+                                alt={`${st.companyName} logo`}
+                                className="object-cover"
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src =
+                                    "https://via.placeholder.com/100?text=No+Logo";
+                                }}
+                              />
+                            ) : (
+                              <div className="bg-gray-200 h-full w-full flex items-center justify-center">
+                                <span className="text-gray-500 text-xs">
+                                  {st.companyName?.charAt(0)?.toUpperCase() ||
+                                    "?"}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div>

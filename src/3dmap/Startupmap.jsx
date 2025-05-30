@@ -259,10 +259,44 @@ export default function Startupmap({
       .addTo(map);
   };
 
-  // Add 3D buildings to the map - Updated for light color palette like the image
-  // Add 3D buildings to the map - Updated to match the glossy blue style in the image
+  // First, create and add the window pattern image
+  const createBuildingPattern = (map) => {
+    const patternSize = 32;
+    const canvas = document.createElement("canvas");
+    canvas.width = patternSize;
+    canvas.height = patternSize;
+    const ctx = canvas.getContext("2d");
+
+    // Fill background
+    ctx.fillStyle = "rgba(255, 255, 255, 0.1)";
+    ctx.fillRect(0, 0, patternSize, patternSize);
+
+    // Draw window pattern
+    ctx.fillStyle = "rgba(200, 220, 255, 0.8)";
+    const windowSize = 4;
+    const gap = 4;
+
+    for (let y = gap; y < patternSize - windowSize; y += windowSize + gap) {
+      for (let x = gap; x < patternSize - windowSize; x += windowSize + gap) {
+        ctx.fillRect(x, y, windowSize, windowSize);
+      }
+    }
+
+    // Add the pattern to the map
+    map.addImage("building-windows", {
+      width: patternSize,
+      height: patternSize,
+      data: new Uint8Array(
+        ctx.getImageData(0, 0, patternSize, patternSize).data
+      ),
+    });
+  };
+
+  // Add 3D buildings to the map - Fixed filter expressions
   const add3DBuildings = (map) => {
     // First add ambient occlusion shadow layer for depth
+    createBuildingPattern(map);
+
     map.addLayer({
       id: "building-ambient-shadows",
       source: "composite",
@@ -275,8 +309,8 @@ export default function Startupmap({
       },
       paint: {
         "fill-extrusion-color": "#000000",
-        "fill-extrusion-height": ["*", ["get", "height"], 1.02],
-        "fill-extrusion-base": ["get", "min_height"],
+        "fill-extrusion-height": ["*", ["to-number", ["get", "height"]], 1.02],
+        "fill-extrusion-base": ["to-number", ["get", "min_height"]],
         "fill-extrusion-opacity": 0.12,
         "fill-extrusion-translate": [3, 3],
         "fill-extrusion-vertical-gradient": false,
@@ -297,7 +331,7 @@ export default function Startupmap({
           "fill-extrusion-color": [
             "interpolate",
             ["linear"],
-            ["get", "height"],
+            ["to-number", ["get", "height"]],
             0,
             "#e6f2ff", // Light blue-white for smallest buildings
             25,
@@ -321,15 +355,15 @@ export default function Startupmap({
             ["linear"],
             ["zoom"],
             11,
-            ["*", ["get", "height"], 0.7], // Shorter from far away
+            ["*", ["to-number", ["get", "height"]], 0.7], // Shorter from far away
             14,
-            ["*", ["get", "height"], 0.9],
+            ["*", ["to-number", ["get", "height"]], 0.9],
             16,
-            ["*", ["get", "height"], 1.0],
+            ["*", ["to-number", ["get", "height"]], 1.0],
             18,
-            ["get", "height"], // Actual height when zoomed in
+            ["to-number", ["get", "height"]], // Actual height when zoomed in
           ],
-          "fill-extrusion-base": ["get", "min_height"],
+          "fill-extrusion-base": ["to-number", ["get", "min_height"]],
           "fill-extrusion-opacity": [
             "interpolate",
             ["linear"],
@@ -348,35 +382,32 @@ export default function Startupmap({
     );
 
     // Add window patterns for more building detail
-    map.addLayer(
-      {
-        id: "building-windows-pattern",
-        source: "composite",
-        "source-layer": "building",
-        filter: [
-          "all",
-          ["==", "extrude", "true"],
-          [">", ["get", "height"], 20],
+    map.addLayer({
+      id: "building-windows-pattern",
+      source: "composite",
+      "source-layer": "building",
+      filter: [
+        "all",
+        ["==", "extrude", "true"],
+        [">=", ["to-number", ["get", "height"]], 20],
+      ],
+      type: "fill-extrusion",
+      minzoom: 15,
+      paint: {
+        "fill-extrusion-pattern": "building-windows",
+        "fill-extrusion-height": ["*", ["to-number", ["get", "height"]], 0.99],
+        "fill-extrusion-base": ["to-number", ["get", "min_height"]],
+        "fill-extrusion-opacity": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          15,
+          0.3,
+          18,
+          0.6,
         ],
-        type: "fill-extrusion",
-        minzoom: 15,
-        paint: {
-          "fill-extrusion-pattern": "building-windows",
-          "fill-extrusion-height": ["*", ["get", "height"], 0.99],
-          "fill-extrusion-base": ["get", "min_height"],
-          "fill-extrusion-opacity": [
-            "interpolate",
-            ["linear"],
-            ["zoom"],
-            15,
-            0.3,
-            18,
-            0.6,
-          ],
-        },
       },
-      "3d-buildings"
-    );
+    });
 
     // Glass windows effect with enhanced reflection
     map.addLayer(
@@ -387,7 +418,7 @@ export default function Startupmap({
         filter: [
           "all",
           ["==", "extrude", "true"],
-          [">", ["get", "height"], 30],
+          [">", ["to-number", ["get", "height"]], 30],
         ],
         type: "fill-extrusion",
         minzoom: 14,
@@ -401,8 +432,16 @@ export default function Startupmap({
             18,
             "rgba(220, 240, 255, 0.9)",
           ],
-          "fill-extrusion-height": ["*", ["get", "height"], 0.98],
-          "fill-extrusion-base": ["*", ["get", "min_height"], 1.01],
+          "fill-extrusion-height": [
+            "*",
+            ["to-number", ["get", "height"]],
+            0.98,
+          ],
+          "fill-extrusion-base": [
+            "*",
+            ["to-number", ["get", "min_height"]],
+            1.01,
+          ],
           "fill-extrusion-opacity": [
             "interpolate",
             ["linear"],
@@ -427,14 +466,18 @@ export default function Startupmap({
         filter: [
           "all",
           ["==", "extrude", "true"],
-          [">", ["get", "height"], 30],
+          [">", ["to-number", ["get", "height"]], 30],
         ],
         type: "fill-extrusion",
         minzoom: 14,
         paint: {
           "fill-extrusion-color": "#ffffff",
-          "fill-extrusion-height": ["*", ["get", "height"], 1.005],
-          "fill-extrusion-base": ["*", ["get", "height"], 0.995],
+          "fill-extrusion-height": [
+            "*",
+            ["to-number", ["get", "height"]],
+            1.005,
+          ],
+          "fill-extrusion-base": ["*", ["to-number", ["get", "height"]], 0.995],
           "fill-extrusion-opacity": [
             "interpolate",
             ["linear"],
@@ -459,14 +502,18 @@ export default function Startupmap({
         filter: [
           "all",
           ["==", "extrude", "true"],
-          [">", ["get", "height"], 50], // Only for taller buildings
+          [">", ["to-number", ["get", "height"]], 50], // Only for taller buildings
         ],
         type: "fill-extrusion",
         minzoom: 16, // Only visible when zoomed in closely
         paint: {
           "fill-extrusion-color": "#d9d9d9", // Light gray for rooftop structures
-          "fill-extrusion-height": ["*", ["get", "height"], 1.08], // 8% taller than the building
-          "fill-extrusion-base": ["*", ["get", "height"], 1.005], // Start just above the roof
+          "fill-extrusion-height": [
+            "*",
+            ["to-number", ["get", "height"]],
+            1.08,
+          ], // 8% taller than the building
+          "fill-extrusion-base": ["*", ["to-number", ["get", "height"]], 1.005], // Start just above the roof
           "fill-extrusion-opacity": 0.9,
           "fill-extrusion-vertical-gradient": true,
         },
@@ -483,14 +530,18 @@ export default function Startupmap({
         filter: [
           "all",
           ["==", "extrude", "true"],
-          [">", ["get", "height"], 80], // Only the tallest buildings
+          [">", ["to-number", ["get", "height"]], 80], // Only the tallest buildings
         ],
         type: "fill-extrusion",
         minzoom: 12,
         paint: {
           "fill-extrusion-color": "#4da6ff", // Special blue color for landmarks
-          "fill-extrusion-height": ["*", ["get", "height"], 1.02], // Slightly taller
-          "fill-extrusion-base": ["get", "min_height"],
+          "fill-extrusion-height": [
+            "*",
+            ["to-number", ["get", "height"]],
+            1.02,
+          ], // Slightly taller
+          "fill-extrusion-base": ["to-number", ["get", "min_height"]],
           "fill-extrusion-opacity": 0.9,
           "fill-extrusion-vertical-gradient": true,
         },
@@ -507,14 +558,22 @@ export default function Startupmap({
         filter: [
           "all",
           ["==", "extrude", "true"],
-          [">", ["get", "height"], 100], // Only the tallest buildings get a glow
+          [">", ["to-number", ["get", "height"]], 100], // Only the tallest buildings get a glow
         ],
         type: "fill-extrusion",
         minzoom: 14,
         paint: {
           "fill-extrusion-color": "#99ccff", // Light blue glow
-          "fill-extrusion-height": ["*", ["get", "height"], 1.01],
-          "fill-extrusion-base": ["*", ["get", "min_height"], 0.99],
+          "fill-extrusion-height": [
+            "*",
+            ["to-number", ["get", "height"]],
+            1.01,
+          ],
+          "fill-extrusion-base": [
+            "*",
+            ["to-number", ["get", "min_height"]],
+            0.99,
+          ],
           "fill-extrusion-opacity": 0.15,
           "fill-extrusion-translate": [1, 1],
           "fill-extrusion-translate-anchor": "viewport",
@@ -523,9 +582,6 @@ export default function Startupmap({
       },
       "landmark-buildings"
     );
-
-    // Create window patterns for buildings
-    createBuildingWindowPatterns(map);
   };
 
   const addBuildingLabels = (map) => {
