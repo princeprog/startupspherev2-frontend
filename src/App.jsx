@@ -45,6 +45,7 @@ function App() {
         </Route>
         </Route>
         <Route path="/add-startup" element={<Startupadd />} />
+        
       </Routes>
     </SidebarProvider>
   );
