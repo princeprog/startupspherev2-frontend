@@ -18,6 +18,7 @@ import { MdClose, MdOutlineLink, MdLocationOn } from "react-icons/md";
 import { FaRegHeart, FaRegBookmark } from "react-icons/fa";
 import { BsCalendarEvent, BsPeople, BsBriefcase } from "react-icons/bs";
 import { HiOutlineMail } from "react-icons/hi";
+import { FaBell } from "react-icons/fa";
 
 export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const [showFilters, setShowFilters] = useState(false);
   const [showRecents, setShowRecents] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
+  const [notificationActiveIndex, setNotificationActiveIndex] = useState("All");
   const [filters, setFilters] = useState({
     startups: {
       industry: "",
@@ -44,9 +46,12 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     },
   });
   const [startups, setStartups] = useState([]);
+  const [notificationsCount, setNotificationsCount] = useState(null);
+  const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [startup, setStartup] = useState(null);
   const [investors, setInvestors] = useState([]);
+  const [newNotifications, setNewNotifications] = useState([]);
   const [investor, setInvestor] = useState(null); // New state for viewing an investor
   const [viewingType, setViewingType] = useState("startups"); // Toggle between startups and investors
   const [viewingStartup, setViewingStartup] = useState(null); // New state for viewing mode
@@ -61,8 +66,92 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loadingImage, setLoadingImage] = useState(false); // New state for image loading
   const [isCurrentItemBookmarked, setIsCurrentItemBookmarked] = useState(false);
+  const [notificationTooltip, setNotificationTooltip] = useState(false);
+  const notificationTabs = ["All", "New", "Viewed"];
 
-  // Fetch user on mount or when user details are updated
+  const markAsViewed = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:8080/notifications/${id}/view`,{
+        method:'PUT',
+        credentials:'include'
+      })
+
+      const data = await response.json();
+      if(response.ok){
+        console.log("marked as viewed: ",data.data)
+      }else{
+        console.log(data)
+      }
+    } catch (error) {
+      console.log(error)
+    }
+  };
+
+  const fetchNewNotifications = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/notifications/new", {
+        credentials: "include",
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        console.log(data.data);
+        setNewNotifications(data.data);
+      } else {
+        console.log(data);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    const fetchNotificationsCount = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:8080/notifications/count",
+          {
+            credentials: "include",
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setNotificationsCount(data.data);
+          console.log(data.data);
+        } else {
+          console.log("Failed fetching notifications count");
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    fetchNotificationsCount();
+  }, []);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await fetch("http://localhost:8080/notifications", {
+          credentials: "include",
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          console.log("Notifications: ", data);
+          setNotifications(data.data);
+        } else {
+          console.log(data);
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    fetchNotifications();
+  }, []);
+
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
@@ -1111,7 +1200,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           <div className="relative">
             <div
               className="avatar avatar-placeholder cursor-pointer rounded-full hover:ring-2 hover:ring-blue-900 transition-all duration-200"
-              onClick={() => setShowTooltip((prev) => !prev)}
+              onClick={() => {
+                setShowTooltip((prev) => !prev);
+                setNotificationTooltip(false);
+              }}
             >
               <div className="bg-gradient-to-br from-blue-400 to-blue-700 text-white w-12 rounded-full flex items-center justify-center shadow-md">
                 <span className="text-lg font-semibold">
@@ -1126,16 +1218,113 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </div>
             </div>
 
+            {notificationTooltip && (
+              <div className="absolute top-14 right-0 px-4 py-2 w-76 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+                <h1 className="text-black font-semibold">Notification</h1>
+                <div className="flex items-center text-black text-sm py-2">
+                  {notificationTabs.map((noti, index) => (
+                    <div
+                      key={index}
+                      onClick={() => {
+                        setNotificationActiveIndex(noti);
+                        if (noti === "New") {
+                          fetchNewNotifications();
+                        }
+                      }}
+                      className={`border-0 font-semibold mr-4 cursor-pointer px-4 ${
+                        notificationActiveIndex === noti
+                          ? "rounded-4xl bg-[#9ACBD0] text-[#3A59D1]"
+                          : ""
+                      }`}
+                    >
+                      {noti}
+                    </div>
+                  ))}
+                </div>
+                {notificationActiveIndex === "All" &&
+                Array.isArray(notifications) &&
+                notifications.length > 0
+                  ? notifications.map((noti, index) => (
+                      <div
+                        key={index}
+                        className="py-2 flex transition 0.5s hover:bg-gray-200 cursor-pointer hover:rounded-xl items-center text-black px-1 border-b border-gray-100 last:border-0"
+                      >
+                        <div className="avatar">
+                          <div className="w-10 rounded-full">
+                            <img
+                              src={`http://localhost:8080/startups/${noti.startup.id}/photo`}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-sm">
+                          <span className="font-semibold">
+                            {noti.startup.companyName}
+                          </span>
+                        </p>
+                      </div>
+                    ))
+                  : notificationActiveIndex === "All" && (
+                      <div className="py-2 text-sm text-gray-500">
+                        No notifications
+                      </div>
+                    )}
+
+                {notificationActiveIndex === "New" &&
+                newNotifications.length > 0
+                  ? newNotifications.map((noti, index) => (
+                      <div
+                        key={index}
+                        className="py-2 cursor-pointer transition 0.5s hover:bg-gray-200 flex items-center text-black px-1 border-b border-gray-100 last:border-0"
+                        onClick={()=>markAsViewed(noti.id)}
+                      >
+                        <div className="avatar">
+                          <div className="w-10 rounded-full">
+                            <img
+                              src={`http://localhost:8080/startups/${noti.startup.id}/photo`}
+                            />
+                          </div>
+                        </div>
+                        <p className="text-sm">
+                          <span className="font-semibold">
+                            {noti.startup.companyName}
+                          </span>
+                        </p>
+                      </div>
+                    ))
+                  : notificationActiveIndex === "New" && (
+                      <div className="py-2 text-sm text-gray-500">
+                        No new notifications
+                      </div>
+                    )}
+              </div>
+            )}
+
             {showTooltip && (
-              <div className="cursor-pointer absolute top-14 right-0 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+              <div className="absolute top-14 right-0 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
                 {isAuthenticated ? (
                   <>
-                    <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
-                      <div className="text-sm font-semibold text-gray-900">
-                        {currentUser?.firstname} {currentUser?.lastname}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900">
+                          {currentUser?.firstname} {currentUser?.lastname}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {currentUser?.email}
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {currentUser?.email}
+                      <div className="relative">
+                        <FaBell
+                          onClick={() => {
+                            setNotificationTooltip((prev) => !prev);
+                            setShowTooltip((prev) => !prev);
+                          }}
+                          className="text-black text-2xl cursor-pointer"
+                        />
+                        {notificationsCount > 0 && (
+                          <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center rounded-full font-medium">
+                            {notificationsCount}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <button
