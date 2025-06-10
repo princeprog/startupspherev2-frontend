@@ -119,7 +119,7 @@ export default function EnhancedStartupReviewSection() {
     try {
       setIsActionLoading(true);
       const response = await fetch(
-        `http://localhost:8080/startups/${id}/${action}`,
+        `http://localhost:8080/notifications/startups/${id}/${action}`,
         {
           method: "PUT",
           credentials: "include",

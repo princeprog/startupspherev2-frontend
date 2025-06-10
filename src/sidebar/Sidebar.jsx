@@ -67,31 +67,47 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const [loadingImage, setLoadingImage] = useState(false); // New state for image loading
   const [isCurrentItemBookmarked, setIsCurrentItemBookmarked] = useState(false);
   const [notificationTooltip, setNotificationTooltip] = useState(false);
-  const notificationTabs = ["All", "New", "Viewed"];
+  const notificationTabs = ["All", "New"];
+  const [loadingNotification, setLoadingNotification] = useState(false);
 
   const markAsViewed = async (id) => {
     try {
-      const response = await fetch(`http://localhost:8080/notifications/${id}/view`,{
-        method:'PUT',
-        credentials:'include'
-      })
+      const response = await fetch(
+        `http://localhost:8080/notifications/${id}/view`,
+        {
+          method: "PUT",
+          credentials: "include",
+        }
+      );
 
       const data = await response.json();
-      if(response.ok){
-        console.log("marked as viewed: ",data.data)
-      }else{
-        console.log(data)
+      if (response.ok) {
+        console.log("marked as viewed: ", data.data);
+      } else {
+        console.log(data);
       }
     } catch (error) {
-      console.log(error)
+      console.log(error);
     }
   };
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchNewNotifications();
+      fetchNotificationsCount();
+      fetchNotifications();
+    }
+  }, [isAuthenticated]);
+
   const fetchNewNotifications = async () => {
+    setLoadingNotification(true);
     try {
-      const response = await fetch("http://localhost:8080/notifications/new", {
-        credentials: "include",
-      });
+      const response = await fetch(
+        "http://localhost:8080/notifications/my/new",
+        {
+          credentials: "include",
+        }
+      );
 
       const data = await response.json();
       if (response.ok) {
@@ -102,55 +118,51 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
       }
     } catch (error) {
       console.log(error);
+    } finally {
+      setLoadingNotification(false);
     }
   };
 
-  useEffect(() => {
-    const fetchNotificationsCount = async () => {
-      try {
-        const response = await fetch(
-          "http://localhost:8080/notifications/count",
-          {
-            credentials: "include",
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          setNotificationsCount(data.data);
-          console.log(data.data);
-        } else {
-          console.log("Failed fetching notifications count");
-        }
-      } catch (error) {
-        console.log(error);
-      }
-    };
-
-    fetchNotificationsCount();
-  }, []);
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        const response = await fetch("http://localhost:8080/notifications", {
+  const fetchNotificationsCount = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:8080/notifications/new/count",
+        {
           credentials: "include",
-        });
-
-        const data = await response.json();
-        if (response.ok) {
-          console.log("Notifications: ", data);
-          setNotifications(data.data);
-        } else {
-          console.log(data);
         }
-      } catch (error) {
-        console.log(error);
-      }
-    };
+      );
 
-    fetchNotifications();
-  }, []);
+      if (response.ok) {
+        const data = await response.json();
+        setNotificationsCount(data.data);
+        console.log(data.data);
+      } else {
+        console.log("Failed fetching notifications count");
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {}, []);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/notifications/my", {
+        credentials: "include",
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        console.log("Notifications: ", data);
+        setNotifications(data.data);
+      } else {
+        console.log(data);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   useEffect(() => {
     const fetchCurrentUser = async () => {
@@ -1203,6 +1215,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               onClick={() => {
                 setShowTooltip((prev) => !prev);
                 setNotificationTooltip(false);
+                setNotificationActiveIndex("All");
+                fetchNotificationsCount();
               }}
             >
               <div className="bg-gradient-to-br from-blue-400 to-blue-700 text-white w-12 rounded-full flex items-center justify-center shadow-md">
@@ -1231,7 +1245,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                           fetchNewNotifications();
                         }
                       }}
-                      className={`border-0 font-semibold mr-4 cursor-pointer px-4 ${
+                      className={`border-0 font-semibold mr-4 cursor-pointer px-4 hover:bg-gray-200 rounded-4xl ${
                         notificationActiveIndex === noti
                           ? "rounded-4xl bg-[#9ACBD0] text-[#3A59D1]"
                           : ""
@@ -1246,20 +1260,31 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 notifications.length > 0
                   ? notifications.map((noti, index) => (
                       <div
+                        onClick={fetchNotificationsCount}
                         key={index}
                         className="py-2 flex transition 0.5s hover:bg-gray-200 cursor-pointer hover:rounded-xl items-center text-black px-1 border-b border-gray-100 last:border-0"
                       >
-                        <div className="avatar">
-                          <div className="w-10 rounded-full">
-                            <img
-                              src={`http://localhost:8080/startups/${noti.startup.id}/photo`}
-                            />
-                          </div>
+                        <div className="mask mask-squircle h-12 w-12">
+                          {noti.startup.photo ? (
+                            <div className="avatar">
+                              <div className="w-10 rounded-full">
+                                <img
+                                  src={`http://localhost:8080/startups/${noti.startup.id}/photo`}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-200 h-full w-10 rounded-4xl flex items-center justify-center">
+                              <span className="text-gray-500 text-xs">
+                                {noti.startup.companyName
+                                  ?.charAt(0)
+                                  ?.toUpperCase() || "?"}
+                              </span>
+                            </div>
+                          )}
                         </div>
                         <p className="text-sm">
-                          <span className="font-semibold">
-                            {noti.startup.companyName}
-                          </span>
+                          <span className="">{noti.remarks}</span>
                         </p>
                       </div>
                     ))
@@ -1269,33 +1294,40 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       </div>
                     )}
 
-                {notificationActiveIndex === "New" &&
-                newNotifications.length > 0
-                  ? newNotifications.map((noti, index) => (
-                      <div
-                        key={index}
-                        className="py-2 cursor-pointer transition 0.5s hover:bg-gray-200 flex items-center text-black px-1 border-b border-gray-100 last:border-0"
-                        onClick={()=>markAsViewed(noti.id)}
-                      >
-                        <div className="avatar">
-                          <div className="w-10 rounded-full">
-                            <img
-                              src={`http://localhost:8080/startups/${noti.startup.id}/photo`}
-                            />
-                          </div>
+                {notificationActiveIndex === "New" && loadingNotification ? (
+                  <div className="flex justify-center p-4">
+                    <span className="loading loading-spinner loading-md text-gray-500"></span>
+                  </div>
+                ) : notificationActiveIndex === "New" &&
+                  newNotifications.length > 0 ? (
+                  newNotifications.map((noti, index) => (
+                    <div
+                      key={index}
+                      className="py-2 cursor-pointer transition 0.5s hover:bg-gray-200 flex items-center text-black px-1 border-b border-gray-100 last:border-0"
+                      onClick={() => {
+                        markAsViewed(noti.id);
+                        fetchNotificationsCount();
+                      }}
+                    >
+                      <div className="avatar">
+                        <div className="w-10 rounded-full">
+                          <img
+                            src={`http://localhost:8080/startups/${noti.startup.id}/photo`}
+                          />
                         </div>
-                        <p className="text-sm">
-                          <span className="font-semibold">
-                            {noti.startup.companyName}
-                          </span>
-                        </p>
                       </div>
-                    ))
-                  : notificationActiveIndex === "New" && (
-                      <div className="py-2 text-sm text-gray-500">
-                        No new notifications
-                      </div>
-                    )}
+                      <p className="text-sm">
+                        <span className="font-semibold">{noti.remarks}</span>
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  notificationActiveIndex === "New" && (
+                    <div className="py-2 text-sm text-gray-500">
+                      No new notifications
+                    </div>
+                  )
+                )}
               </div>
             )}
 
@@ -2390,6 +2422,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             localStorage.setItem("user", JSON.stringify(userData));
             setUserDetails(userData);
             await fetchUserLikes();
+            await fetchNotificationsCount();
+            await fetchNotifications();
           }}
         />
       )}
