@@ -26,7 +26,6 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
         throw new Error(errorData.description || "Failed to login");
       }
 
-      // Fetch user details after successful login
       const userResponse = await fetch("http://localhost:8080/users/me", {
         method: "GET",
         headers: {
