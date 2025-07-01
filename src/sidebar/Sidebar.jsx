@@ -1264,7 +1264,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                         key={index}
                         className="py-2 flex transition 0.5s hover:bg-gray-200 cursor-pointer hover:rounded-xl items-center text-black px-1 border-b border-gray-100 last:border-0"
                       >
-                        <div className="mask mask-squircle h-12 w-12">
+                        <div className="mask mask-squircle h-10 w-12">
                           {noti.startup.photo ? (
                             <div className="avatar">
                               <div className="w-10 rounded-full">
@@ -1310,14 +1310,28 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       }}
                     >
                       <div className="avatar">
-                        <div className="w-10 rounded-full">
-                          <img
-                            src={`http://localhost:8080/startups/${noti.startup.id}/photo`}
-                          />
+                        <div className="mask mask-squircle h-10 w-10">
+                          {noti.startup.photo ? (
+                            <div className="avatar">
+                              <div className="w-10 rounded-full">
+                                <img
+                                  src={`http://localhost:8080/startups/${noti.startup.id}/photo`}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-200 h-full w-10 rounded-4xl flex items-center justify-center">
+                              <span className="text-gray-500 text-xs">
+                                {noti.startup.companyName
+                                  ?.charAt(0)
+                                  ?.toUpperCase() || "?"}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <p className="text-sm">
-                        <span className="font-semibold">{noti.remarks}</span>
+                        <span className="">{noti.remarks}</span>
                       </p>
                     </div>
                   ))
