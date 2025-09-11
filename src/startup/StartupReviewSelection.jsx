@@ -86,7 +86,7 @@ export default function EnhancedStartupReviewSection() {
       setLoading(true);
       setError(null);
       const response = await fetch(
-        "http://localhost:8080/startups/email-verified",
+        `${import.meta.env.VITE_BACKEND_URL}/startups/email-verified`,
         { credentials: "include" }
       );
 
@@ -119,7 +119,7 @@ export default function EnhancedStartupReviewSection() {
     try {
       setIsActionLoading(true);
       const response = await fetch(
-        `http://localhost:8080/notifications/startups/${id}/${action}`,
+        `${import.meta.env.VITE_BACKEND_URL}/notifications/startups/${id}/${action}`,
         {
           method: "PUT",
           credentials: "include",

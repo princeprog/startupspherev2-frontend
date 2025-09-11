@@ -90,7 +90,7 @@ export default function UpdateStartup() {
   const fetchStartupData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/startups/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${id}`, {
         credentials: "include",
       });
 
@@ -145,7 +145,7 @@ export default function UpdateStartup() {
     setError(null);
 
     try {
-      const response = await fetch(`http://localhost:8080/startups/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -310,7 +310,7 @@ export default function UpdateStartup() {
       formData.append("headers", JSON.stringify(headers)); // Send headers to backend
 
       const response = await fetch(
-        `http://localhost:8080/startups/${id}/upload-csv`,
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/upload-csv`,
         {
           method: "PUT",
           body: formData,

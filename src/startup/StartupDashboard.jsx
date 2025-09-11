@@ -286,7 +286,7 @@ export default function StartupDashboard() {
     try {
       setError(null);
       const response = await fetch(
-        "http://localhost:8080/startups/my-startups/details",
+        `${import.meta.env.VITE_BACKEND_URL}/startups/my-startups/details`,
         {
           credentials: "include",
         }
@@ -332,7 +332,7 @@ export default function StartupDashboard() {
 
       for (const id of ids) {
         promises.push(
-          fetch(`http://localhost:8080/api/likes/count/startup/${id}`, {
+          fetch(`${import.meta.env.VITE_BACKEND_URL}/api/likes/count/startup/${id}`, {
             credentials: "include",
           })
             .then((response) => {
@@ -350,7 +350,7 @@ export default function StartupDashboard() {
 
       for (const id of ids) {
         promises.push(
-          fetch(`http://localhost:8080/api/bookmarks/count/startup/${id}`, {
+          fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/count/startup/${id}`, {
             credentials: "include",
           })
             .then((response) => {
@@ -368,7 +368,7 @@ export default function StartupDashboard() {
 
       for (const id of ids) {
         promises.push(
-          fetch(`http://localhost:8080/startups/${id}/view-count`, {
+          fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${id}/view-count`, {
             credentials: "include",
           })
             .then((response) => {
@@ -474,19 +474,19 @@ export default function StartupDashboard() {
             const [likesResponse, bookmarksResponse, viewsResponse] =
               await Promise.all([
                 fetch(
-                  `http://localhost:8080/api/likes/count/startup/${startup.id}`,
+                  `${import.meta.env.VITE_BACKEND_URL}/api/likes/count/startup/${startup.id}`,
                   {
                     credentials: "include",
                   }
                 ),
                 fetch(
-                  `http://localhost:8080/api/bookmarks/count/startup/${startup.id}`,
+                  `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/count/startup/${startup.id}`,
                   {
                     credentials: "include",
                   }
                 ),
                 fetch(
-                  `http://localhost:8080/startups/${startup.id}/view-count`,
+                  `${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id}/view-count`,
                   {
                     credentials: "include",
                   }
@@ -530,14 +530,14 @@ export default function StartupDashboard() {
       setError(null);
       const [viewsResponse, likesResponse, bookmarksResponse] =
         await Promise.all([
-          fetch(`http://localhost:8080/startups/${startupId}/view-count`, {
+          fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/view-count`, {
             credentials: "include",
           }),
-          fetch(`http://localhost:8080/api/likes/count/startup/${startupId}`, {
+          fetch(`${import.meta.env.VITE_BACKEND_URL}/api/likes/count/startup/${startupId}`, {
             credentials: "include",
           }),
           fetch(
-            `http://localhost:8080/api/bookmarks/count/startup/${startupId}`,
+            `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/count/startup/${startupId}`,
             {
               credentials: "include",
             }
@@ -629,19 +629,19 @@ export default function StartupDashboard() {
       const [viewsResponse, bookmarksResponse, likesResponse] =
         await Promise.all([
           fetch(
-            "http://localhost:8080/api/views/grouped-by-month/logged-in-user-startups",
+            `${import.meta.env.VITE_BACKEND_URL}/api/views/grouped-by-month/logged-in-user-startups`,
             {
               credentials: "include",
             }
           ),
           fetch(
-            "http://localhost:8080/api/bookmarks/grouped-by-month/logged-in-user-startups",
+            `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/grouped-by-month/logged-in-user-startups`,
             {
               credentials: "include",
             }
           ),
           fetch(
-            "http://localhost:8080/api/likes/grouped-by-month/logged-in-user-startups",
+            `${import.meta.env.VITE_BACKEND_URL}/api/likes/grouped-by-month/logged-in-user-startups`,
             {
               credentials: "include",
             }
@@ -671,17 +671,17 @@ export default function StartupDashboard() {
       setError(null);
       const [viewsResponse, bookmarksResponse, likesResponse] =
         await Promise.all([
-          fetch(`http://localhost:8080/api/views/count-by-month/${startupId}`, {
+          fetch(`${import.meta.env.VITE_BACKEND_URL}/api/views/count-by-month/${startupId}`, {
             credentials: "include",
           }),
           fetch(
-            `http://localhost:8080/api/bookmarks/grouped-by-month/startup/${startupId}`,
+            `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/grouped-by-month/startup/${startupId}`,
             {
               credentials: "include",
             }
           ),
           fetch(
-            `http://localhost:8080/api/likes/grouped-by-month/startup/${startupId}`,
+            `${import.meta.env.VITE_BACKEND_URL}/api/likes/grouped-by-month/startup/${startupId}`,
             {
               credentials: "include",
             }
@@ -781,7 +781,7 @@ export default function StartupDashboard() {
   const handleUpdateStartup = async (id) => {
     setSubmitting(true);
     try {
-      const response = await fetch(`http://localhost:8080/startups/${id}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

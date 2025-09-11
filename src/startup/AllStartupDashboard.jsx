@@ -115,7 +115,7 @@ export default function AllStartupDashboard() {
       setDashboardLoading(true);
       try {
         const response = await fetch(
-          "http://localhost:8080/api/rankings/dashboard-analytics",
+          `${import.meta.env.VITE_BACKEND_URL}/api/rankings/dashboard-analytics`,
           {
             credentials: "include",
           }
@@ -150,7 +150,7 @@ export default function AllStartupDashboard() {
     const fetchTopStartups = async () => {
       try {
         const response = await fetch(
-          `http://localhost:8080/api/rankings/top?limit=5${
+          `${import.meta.env.VITE_BACKEND_URL}/api/rankings/top?limit=5${
             selectedIndustry !== "All" ? `&industry=${selectedIndustry}` : ""
           }`,
           {
@@ -176,7 +176,7 @@ export default function AllStartupDashboard() {
       try {
         // Get all startups for city information
         const allStartupsResponse = await fetch(
-          "http://localhost:8080/startups",
+          `${import.meta.env.VITE_BACKEND_URL}/startups`,
           {
             credentials: "include",
           }
@@ -192,7 +192,7 @@ export default function AllStartupDashboard() {
         const industryParam =
           selectedIndustry !== "All" ? `industry=${selectedIndustry}` : "";
         const metricParam = `metric=${rankingMetric}`;
-        const url = `http://localhost:8080/api/rankings?${industryParam}&${metricParam}`;
+        const url = `${import.meta.env.VITE_BACKEND_URL}/api/rankings?${industryParam}&${metricParam}`;
 
         const response = await fetch(url, {
           credentials: "include",
