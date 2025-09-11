@@ -155,6 +155,14 @@ export default function Startupadd() {
     fundingStage: "",
     operatingHours: "",
     businessActivity: "",
+    isGovernmentRegistered: "",      // yes/no
+    registrationAgency: "",          // DTI, SEC, CDA, BIR, other
+    registrationNumber: "",          // registration/certificate number
+    registrationDate: null,          // date
+    otherRegistrationAgency: "",     // if "other"
+    businessLicenseNumber: "",       // business license number
+    tin: "",                         // TIN
+    registrationCertificate: null,   // file (certificate upload)
   });
 
   const [verificationModal, setVerificationModal] = useState(false);
@@ -272,7 +280,7 @@ export default function Startupadd() {
 
       setLoadingStatus("Uploading CSV data...");
       const response = await fetch(
-        `http://localhost:8080/startups/${startupId}/upload-csv`,
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-csv`,
         {
           method: "PUT",
           body: formData,
@@ -385,6 +393,7 @@ export default function Startupadd() {
     }
   }, [selectedTab]);
 
+  // Update validation for Company Information
   const validateCompanyInformation = () => {
     if (!formData.companyName) return toast.error("Company Name is required.");
     if (!formData.companyDescription)
@@ -395,6 +404,36 @@ export default function Startupadd() {
     if (!formData.typeOfCompany)
       return toast.error("Type of Company is required.");
     if (!formData.industry) return toast.error("Industry is required.");
+    // Registration validation
+    if (formData.isGovernmentRegistered === "") {
+      return toast.error("Please specify if your startup is registered with a government agency.");
+    }
+    if (formData.isGovernmentRegistered === "yes") {
+      if (!formData.registrationAgency) {
+        return toast.error("Please select the registration agency.");
+      }
+      if (
+        formData.registrationAgency === "other" &&
+        !formData.otherRegistrationAgency
+      ) {
+        return toast.error("Please specify the other registration agency.");
+      }
+      if (!formData.registrationNumber) {
+        return toast.error("Registration number is required.");
+      }
+      if (!formData.registrationDate) {
+        return toast.error("Registration date is required.");
+      }
+      if (!formData.businessLicenseNumber) {
+        return toast.error("Business license number is required.");
+      }
+      if (!formData.tin) {
+        return toast.error("TIN is required.");
+      }
+      if (!formData.registrationCertificate) {
+        return toast.error("Registration certificate file is required.");
+      }
+    }
     return "";
   };
 
@@ -513,12 +552,15 @@ export default function Startupadd() {
     }
 
     try {
-      const response = await fetch("http://localhost:8080/startups", {
+      // Prepare a copy of formData without the registrationCertificate file for JSON POST
+      const { registrationCertificate, ...startupData } = formData;
+
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(startupData),
         credentials: "include",
       });
 
@@ -529,12 +571,40 @@ export default function Startupadd() {
         setStartupId(startupId);
         setUploadedFile(null);
 
+        // Upload registration certificate if present
+        if (formData.registrationCertificate) {
+          const certFormData = new FormData();
+          certFormData.append("file", formData.registrationCertificate);
+          try {
+            const certResponse = await fetch(
+              `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-registration-certificate`,
+              {
+                method: "PUT",
+                body: certFormData,
+                credentials: "include",
+              }
+            );
+            if (!certResponse.ok) {
+              const certError = await certResponse.json();
+              toast.error(
+                certError.message ||
+                  "Failed to upload registration certificate."
+              );
+            } else {
+              toast.success("Registration certificate uploaded successfully!");
+            }
+          } catch (err) {
+            toast.error("Error uploading registration certificate.");
+          }
+        }
+
+        // Upload company logo if present
         if (uploadedImage) {
           const imageFormData = new FormData();
           imageFormData.append("photo", uploadedImage);
           try {
             const imageResponse = await fetch(
-              `http://localhost:8080/startups/${startupId}/upload-photo`,
+              `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-photo`,
               {
                 method: "PUT",
                 body: imageFormData,
@@ -565,8 +635,9 @@ export default function Startupadd() {
           }
         }
 
+        // Send verification email
         const emailResponse = await fetch(
-          "http://localhost:8080/startups/send-verification-email",
+          `${import.meta.env.VITE_BACKEND_URL}/startups/send-verification-email`,
           {
             method: "POST",
             headers: {
@@ -857,6 +928,184 @@ export default function Startupadd() {
                 <option value="telecommunications">Telecommunications</option>
               </select>
             </div>
+
+            {/* Government Registration Section */}
+            <div>
+              <label className="block mb-1 text-sm font-medium">
+                Is your startup registered with a government agency? <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="isGovernmentRegistered"
+                className="w-full border border-gray-300 rounded-md px-4 py-2"
+                value={formData.isGovernmentRegistered}
+                onChange={e => {
+                  const value = e.target.value === "true" ? true : e.target.value === "false" ? false : "";
+                  setFormData(prev => ({
+                    ...prev,
+                    isGovernmentRegistered: value,
+                    registrationAgency: "",
+                    otherRegistrationAgency: "",
+                    registrationNumber: "",
+                    registrationDate: null,
+                    businessLicenseNumber: "",
+                    tin: "",
+                    registrationCertificate: null,
+                  }));
+                }}
+              >
+                <option value="">Select an option</option>
+                <option value={true}>Yes</option>
+                <option value={false}>No</option>
+              </select>
+            </div>
+
+            {/* Registration Agency (conditional) */}
+            {formData.isGovernmentRegistered && (
+              <div>
+                <label className="block mb-1 text-sm font-medium">
+                  Registration Agency <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="registrationAgency"
+                  className="w-full border border-gray-300 rounded-md px-4 py-2"
+                  value={formData.registrationAgency}
+                  onChange={e =>
+                    setFormData(prev => ({
+                      ...prev,
+                      registrationAgency: e.target.value,
+                      otherRegistrationAgency: "",
+                    }))
+                  }
+                >
+                  <option value="">Select agency</option>
+                  <option value="DTI">DTI (Department of Trade and Industry)</option>
+                  <option value="SEC">SEC (Securities and Exchange Commission)</option>
+                  <option value="CDA">CDA (Cooperative Development Authority)</option>
+                  <option value="BIR">BIR (Bureau of Internal Revenue)</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            )}
+
+            {/* Other Registration Agency (conditional) */}
+            {formData.isGovernmentRegistered &&
+              formData.registrationAgency === "other" && (
+                <div>
+                  <label className="block mb-1 text-sm font-medium">
+                    Please specify the agency <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="otherRegistrationAgency"
+                    className="w-full border border-gray-300 rounded-md px-4 py-2"
+                    placeholder="Enter agency name"
+                    value={formData.otherRegistrationAgency}
+                    onChange={handleChange}
+                  />
+                </div>
+              )}
+
+            {/* Registration Number */}
+            {formData.isGovernmentRegistered && (
+              <div>
+                <label className="block mb-1 text-sm font-medium">
+                  Registration Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="registrationNumber"
+                  className="w-full border border-gray-300 rounded-md px-4 py-2"
+                  placeholder="Enter registration/certificate number"
+                  value={formData.registrationNumber}
+                  onChange={handleChange}
+                />
+              </div>
+            )}
+
+            {/* Registration Date */}
+            {formData.isGovernmentRegistered && (
+              <div>
+                <label className="block mb-1 text-sm font-medium">
+                  Registration Date <span className="text-red-500">*</span>
+                </label>
+                <DatePicker
+                  selected={
+                    formData.registrationDate
+                      ? new Date(formData.registrationDate)
+                      : null
+                  }
+                  onChange={date =>
+                    setFormData(prev => ({
+                      ...prev,
+                      registrationDate: date ? date.toISOString().split("T")[0] : null,
+                    }))
+                  }
+                  placeholderText="Select registration date"
+                  className="w-full border border-gray-300 rounded-md px-4 py-2"
+                  maxDate={new Date()}
+                />
+              </div>
+            )}
+
+            {/* Business License Number */}
+            {formData.isGovernmentRegistered && (
+              <div>
+                <label className="block mb-1 text-sm font-medium">
+                  Business License Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="businessLicenseNumber"
+                  className="w-full border border-gray-300 rounded-md px-4 py-2"
+                  placeholder="Enter business license number"
+                  value={formData.businessLicenseNumber}
+                  onChange={handleChange}
+                />
+              </div>
+            )}
+
+            {/* TIN */}
+            {formData.isGovernmentRegistered && (
+              <div>
+                <label className="block mb-1 text-sm font-medium">
+                  TIN <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="tin"
+                  className="w-full border border-gray-300 rounded-md px-4 py-2"
+                  placeholder="Enter TIN"
+                  value={formData.tin}
+                  onChange={handleChange}
+                />
+              </div>
+            )}
+
+            {/* Registration Certificate Upload */}
+            {formData.isGovernmentRegistered && (
+              <div className="col-span-2">
+                <label className="block mb-1 text-sm font-medium">
+                  Registration Certificate <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf,image/*"
+                  onChange={e => {
+                    const file = e.target.files[0];
+                    setFormData(prev => ({
+                      ...prev,
+                      registrationCertificate: file || null,
+                    }));
+                  }}
+                  className="w-full border border-gray-300 rounded-md px-4 py-2"
+                />
+                {formData.registrationCertificate && (
+                  <span className="text-sm text-gray-600 mt-1 block">
+                    {formData.registrationCertificate.name}
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="col-span-2">
               <label className="block mb-1 text-sm font-medium">

@@ -67,7 +67,7 @@ export default function Startupmap({
 
   const loadStartupMarkers = async (map) => {
     try {
-      const response = await fetch("http://localhost:8080/startups/approved", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/approved`, {
         credentials: "include",
       });
       const startups = await response.json();
@@ -144,7 +144,7 @@ export default function Startupmap({
 
   const loadInvestorMarkers = async (map) => {
     try {
-      const response = await fetch("http://localhost:8080/investors", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/investors`, {
         credentials: "include",
       });
       const investors = await response.json();

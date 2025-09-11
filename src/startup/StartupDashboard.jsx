@@ -83,7 +83,7 @@ export default function StartupDashboard() {
   const fetchCompanyLogo = async (startupId) => {
     try {
       const response = await fetch(
-        `http://localhost:8080/startups/${startupId}/photo`,
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/photo`,
         {
           credentials: "include",
         }
@@ -130,7 +130,7 @@ export default function StartupDashboard() {
     if (window.confirm("Are you sure you want to delete this startup?")) {
       setSubmitting(true);
       try {
-        const response = await fetch(`http://localhost:8080/startups/${id}`, {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${id}`, {
           method: "DELETE",
           credentials: "include",
         });
@@ -253,7 +253,7 @@ export default function StartupDashboard() {
     try {
       setError(null);
       const response = await fetch(
-        "http://localhost:8080/startups/my-startups",
+        `${import.meta.env.VITE_BACKEND_URL}/startups/my-startups`,
         {
           credentials: "include",
         }
