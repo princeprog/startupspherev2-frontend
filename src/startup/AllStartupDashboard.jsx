@@ -90,7 +90,7 @@ export default function AllStartupDashboard() {
 
   const fetchRole = async () => {
     try {
-      const response = await fetch("http://localhost:8080/users/me/role", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/users/me/role`, {
         credentials: "include",
       });
 

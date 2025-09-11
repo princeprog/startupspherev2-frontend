@@ -73,7 +73,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const markAsViewed = async (id) => {
     try {
       const response = await fetch(
-        `http://localhost:8080/notifications/${id}/view`,
+        `${import.meta.env.VITE_BACKEND_URL}/notifications/${id}/view`,
         {
           method: "PUT",
           credentials: "include",
@@ -103,7 +103,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     setLoadingNotification(true);
     try {
       const response = await fetch(
-        "http://localhost:8080/notifications/my/new",
+        `${import.meta.env.VITE_BACKEND_URL}/notifications/my/new`,
         {
           credentials: "include",
         }
@@ -126,7 +126,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const fetchNotificationsCount = async () => {
     try {
       const response = await fetch(
-        "http://localhost:8080/notifications/new/count",
+        `${import.meta.env.VITE_BACKEND_URL}/notifications/new/count`,
         {
           credentials: "include",
         }
@@ -148,7 +148,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch("http://localhost:8080/notifications/my", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/notifications/my`, {
         credentials: "include",
       });
 
@@ -167,7 +167,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
-        const response = await fetch("http://localhost:8080/users/me", {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/users/me`, {
           method: "GET",
           credentials: "include",
         });
@@ -231,7 +231,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
   const logout = async () => {
     try {
-      const response = await fetch("http://localhost:8080/auth/logout", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -262,7 +262,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
   const checkAuthentication = async () => {
     try {
-      const response = await fetch("http://localhost:8080/auth/check", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/check`, {
         method: "GET",
         credentials: "include",
       });
@@ -286,7 +286,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const fetchStartups = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8080/startups/approved", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/approved`, {
         credentials: "include",
       });
       const data = await response.json();
@@ -307,7 +307,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const fetchInvestors = async () => {
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:8080/investors", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/investors`, {
         credentials: "include",
       });
       const data = await response.json();
@@ -334,8 +334,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     try {
       const endpoint =
         viewingType === "startups"
-          ? `http://localhost:8080/startups/search`
-          : `http://localhost:8080/investors/search`;
+          ? `${import.meta.env.VITE_BACKEND_URL}/startups/search`
+          : `${import.meta.env.VITE_BACKEND_URL}/investors/search`;
 
       const response = await fetch(`${endpoint}?query=${searchQuery}`, {
         credentials: "include",
@@ -385,7 +385,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
   const addView = async (id) => {
     try {
-      const response = await fetch("http://localhost:8080/api/views", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/views`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -425,7 +425,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     setLoadingImage(true); // Start loading animation
 
     // Fetch the startup image
-    fetch(`http://localhost:8080/startups/${startup.id}/photo`, {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id}/photo`, {
       method: "GET",
       credentials: "include",
     })
@@ -463,7 +463,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
       });
 
     // Increment views and other logic
-    fetch(`http://localhost:8080/startups/${startup.id}/increment-views`, {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id}/increment-views`, {
       method: "PUT",
       credentials: "include",
     })
@@ -509,7 +509,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     setContainerMode(null);
 
     // Increment views on the backend by sending a PUT request
-    fetch(`http://localhost:8080/investors/${investor.id}/increment-views`, {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/investors/${investor.id}/increment-views`, {
       method: "PUT",
       credentials: "include", // Include credentials to support session cookies
     })
@@ -518,7 +518,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           console.log("Views incremented successfully");
 
           // After incrementing views, fetch the updated view count
-          fetch(`http://localhost:8080/investors/${investor.id}/views`, {
+          fetch(`${import.meta.env.VITE_BACKEND_URL}/investors/${investor.id}/views`, {
             method: "GET",
             credentials: "include", // Include credentials to support session cookies
           })
@@ -584,7 +584,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     if (!user || !user.id) return;
 
     try {
-      const response = await fetch("http://localhost:8080/api/likes", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/likes`, {
         method: "GET",
         credentials: "include",
       });
@@ -617,7 +617,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     const payload = { userId, startupId, investorId };
 
     try {
-      const response = await fetch("http://localhost:8080/api/likes", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/likes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -668,7 +668,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     if (!user || (!startup && !investor)) return;
 
     try {
-      const response = await fetch("http://localhost:8080/api/bookmarks", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bookmarks`, {
         method: "GET",
         credentials: "include",
       });
@@ -706,7 +706,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
       if (isCurrentItemBookmarked) {
         // If already bookmarked, remove it
         const checkResponse = await fetch(
-          "http://localhost:8080/api/bookmarks",
+          `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks`,
           {
             method: "GET",
             credentials: "include",
@@ -723,7 +723,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
           if (existingBookmark) {
             const deleteResponse = await fetch(
-              `http://localhost:8080/api/bookmarks/${existingBookmark.id}`,
+              `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/${existingBookmark.id}`,
               {
                 method: "DELETE",
                 credentials: "include",
@@ -752,7 +752,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         }
       } else {
         // If not bookmarked, add it
-        const addResponse = await fetch("http://localhost:8080/api/bookmarks", {
+        const addResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bookmarks`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -784,7 +784,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const [investorLikeCounts, setInvestorLikeCounts] = useState({});
 
   useEffect(() => {
-    fetch("http://localhost:8080/api/likes", {
+    fetch(`${import.meta.env.VITE_BACKEND_URL}/api/likes`, {
       credentials: "include",
     })
       .then((res) => res.json())
@@ -1269,7 +1269,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                             <div className="avatar">
                               <div className="w-10 rounded-full">
                                 <img
-                                  src={`http://localhost:8080/startups/${noti.startup.id}/photo`}
+                                  src={`${import.meta.env.VITE_BACKEND_URL}/startups/${noti.startup.id}/photo`}
                                 />
                               </div>
                             </div>
@@ -1315,7 +1315,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                             <div className="avatar">
                               <div className="w-10 rounded-full">
                                 <img
-                                  src={`http://localhost:8080/startups/${noti.startup.id}/photo`}
+                                  src={`${import.meta.env.VITE_BACKEND_URL}/startups/${noti.startup.id}/photo`}
                                 />
                               </div>
                             </div>

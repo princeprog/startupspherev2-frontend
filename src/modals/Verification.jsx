@@ -13,7 +13,7 @@ export default function Verification({ setVerificationModal, setSelectedTab, sta
     }
 
     try {
-      const response = await fetch("http://localhost:8080/startups/verify-email", {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/verify-email`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,7 +44,7 @@ export default function Verification({ setVerificationModal, setSelectedTab, sta
 
   const handleClose = async () => {
     try {
-      const response = await fetch(`http://localhost:8080/startups/${startupId}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",

@@ -20,7 +20,7 @@ const Bookmarks = ({
       const bookmarkId = item.id;
       console.log("Using bookmarkId:", bookmarkId);
       
-      const response = await fetch(`http://localhost:8080/api/bookmarks/${bookmarkId}`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/${bookmarkId}`, {
         method: 'DELETE',
         credentials: 'include',
         headers: {
@@ -52,7 +52,7 @@ const Bookmarks = ({
     console.log("Fetching bookmarks for user:", userId);
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/bookmarks', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bookmarks`, {
         method: 'GET',
         credentials: 'include',
         headers: {
