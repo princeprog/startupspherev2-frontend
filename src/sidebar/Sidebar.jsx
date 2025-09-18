@@ -148,9 +148,12 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
   const fetchNotifications = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/notifications/my`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/notifications/my`,
+        {
+          credentials: "include",
+        }
+      );
 
       const data = await response.json();
       if (response.ok) {
@@ -167,10 +170,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   useEffect(() => {
     const fetchCurrentUser = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/users/me`, {
-          method: "GET",
-          credentials: "include",
-        });
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/users/me`,
+          {
+            method: "GET",
+            credentials: "include",
+          }
+        );
 
         if (response.ok) {
           const data = await response.json();
@@ -231,10 +237,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
   const logout = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/auth/logout`,
+        {
+          method: "POST",
+          credentials: "include",
+        }
+      );
 
       if (response.ok) {
         console.log("Logout successful");
@@ -262,10 +271,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
   const checkAuthentication = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/check`, {
-        method: "GET",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/auth/check`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
       const data = await response.json();
       if (response.ok && data) {
         console.log("User is authenticated: ", data);
@@ -286,9 +298,12 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const fetchStartups = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/approved`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/approved`,
+        {
+          credentials: "include",
+        }
+      );
       const data = await response.json();
       if (!response.ok) {
         throw new Error("Network response was not ok: ", data);
@@ -307,9 +322,12 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const fetchInvestors = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/investors`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/investors`,
+        {
+          credentials: "include",
+        }
+      );
       const data = await response.json();
       console.log("Fetched investors:", data); // Verify the `investorId` field is present
 
@@ -385,14 +403,17 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
   const addView = async (id) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/views`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id: id }),
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/views`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: id }),
+          credentials: "include",
+        }
+      );
 
       if (response.ok) {
         console.log("View added successfully");
@@ -463,10 +484,15 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
       });
 
     // Increment views and other logic
-    fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id}/increment-views`, {
-      method: "PUT",
-      credentials: "include",
-    })
+    fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/startups/${
+        startup.id
+      }/increment-views`,
+      {
+        method: "PUT",
+        credentials: "include",
+      }
+    )
       .then((response) => {
         if (response.ok) {
           console.log("Views incremented successfully");
@@ -509,19 +535,29 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     setContainerMode(null);
 
     // Increment views on the backend by sending a PUT request
-    fetch(`${import.meta.env.VITE_BACKEND_URL}/investors/${investor.id}/increment-views`, {
-      method: "PUT",
-      credentials: "include", // Include credentials to support session cookies
-    })
+    fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/investors/${
+        investor.id
+      }/increment-views`,
+      {
+        method: "PUT",
+        credentials: "include", // Include credentials to support session cookies
+      }
+    )
       .then((response) => {
         if (response.ok) {
           console.log("Views incremented successfully");
 
           // After incrementing views, fetch the updated view count
-          fetch(`${import.meta.env.VITE_BACKEND_URL}/investors/${investor.id}/views`, {
-            method: "GET",
-            credentials: "include", // Include credentials to support session cookies
-          })
+          fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/investors/${
+              investor.id
+            }/views`,
+            {
+              method: "GET",
+              credentials: "include", // Include credentials to support session cookies
+            }
+          )
             .then((response) => response.json())
             .then((views) => {
               console.log("Updated views count:", views);
@@ -584,10 +620,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     if (!user || !user.id) return;
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/likes`, {
-        method: "GET",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/likes`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
 
       if (response.ok) {
         const likesData = await response.json();
@@ -617,12 +656,15 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     const payload = { userId, startupId, investorId };
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/likes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/likes`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (response.ok) {
         const result = await response.json();
@@ -668,10 +710,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     if (!user || (!startup && !investor)) return;
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bookmarks`, {
-        method: "GET",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
 
       if (response.ok) {
         const bookmarks = await response.json();
@@ -723,7 +768,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
           if (existingBookmark) {
             const deleteResponse = await fetch(
-              `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/${existingBookmark.id}`,
+              `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/${
+                existingBookmark.id
+              }`,
               {
                 method: "DELETE",
                 credentials: "include",
@@ -752,14 +799,17 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
         }
       } else {
         // If not bookmarked, add it
-        const addResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/bookmarks`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        });
+        const addResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify(payload),
+          }
+        );
 
         if (addResponse.ok) {
           const result = await addResponse.json();
@@ -991,7 +1041,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           {/* Logo */}
           <div className="flex justify-center items-center py-6 border-b border-gray-200">
             <button
-              onClick={() => (window.location.href = "http://localhost:5173/")}
+              onClick={() => (window.location.href = "https://localhost:5173/")}
               className="group relative flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
             >
               <img
@@ -1155,6 +1205,27 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                         </span>
                       </button>
                     </li>
+
+                    <li className="flex justify-center">
+                      <button
+                        className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
+                        onClick={() =>
+                          navigate('/notifications')
+                        }
+                      >
+                        <div className="relative">
+                          <FaBell className="h-6 w-6 opacity-80 group-hover:opacity-100" />
+                          {notificationsCount > 0 && (
+                            <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full font-medium">
+                              {notificationsCount}
+                            </div>
+                          )}
+                        </div>
+                        <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
+                          Notifications
+                        </span>
+                      </button>
+                    </li>
                   </>
                 )}
               </ul>
@@ -1233,115 +1304,240 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             </div>
 
             {notificationTooltip && (
-              <div className="absolute top-14 right-0 px-4 py-2 w-76 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
-                <h1 className="text-black font-semibold">Notification</h1>
-                <div className="flex items-center text-black text-sm py-2">
-                  {notificationTabs.map((noti, index) => (
-                    <div
+              <div className="absolute top-14 right-0 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+                {/* Header with title */}
+                <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white flex justify-between items-center">
+                  <h3 className="text-sm font-semibold text-gray-900">
+                    Notifications
+                  </h3>
+                  <button
+                    onClick={() => navigate("/notifications")}
+                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    View all
+                  </button>
+                </div>
+
+                {/* Notification Tabs */}
+                <div className="flex border-b border-gray-100">
+                  {notificationTabs.map((tab, index) => (
+                    <button
                       key={index}
                       onClick={() => {
-                        setNotificationActiveIndex(noti);
-                        if (noti === "New") {
+                        setNotificationActiveIndex(tab);
+                        if (tab === "New") {
                           fetchNewNotifications();
                         }
                       }}
-                      className={`border-0 font-semibold mr-4 cursor-pointer px-4 hover:bg-gray-200 rounded-4xl ${
-                        notificationActiveIndex === noti
-                          ? "rounded-4xl bg-[#9ACBD0] text-[#3A59D1]"
-                          : ""
+                      className={`flex-1 py-2 text-sm font-medium text-center ${
+                        notificationActiveIndex === tab
+                          ? "text-blue-600 border-b-2 border-blue-600"
+                          : "text-gray-500 hover:text-gray-700"
                       }`}
                     >
-                      {noti}
-                    </div>
+                      {tab}
+                      {tab === "New" && notificationsCount > 0 && (
+                        <span className="ml-1.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-600">
+                          {notificationsCount}
+                        </span>
+                      )}
+                    </button>
                   ))}
                 </div>
-                {notificationActiveIndex === "All" &&
-                Array.isArray(notifications) &&
-                notifications.length > 0
-                  ? notifications.map((noti, index) => (
-                      <div
-                        onClick={fetchNotificationsCount}
-                        key={index}
-                        className="py-2 flex transition 0.5s hover:bg-gray-200 cursor-pointer hover:rounded-xl items-center text-black px-1 border-b border-gray-100 last:border-0"
-                      >
-                        <div className="mask mask-squircle h-10 w-12">
-                          {noti.startup.photo ? (
-                            <div className="avatar">
-                              <div className="w-10 rounded-full">
-                                <img
-                                  src={`${import.meta.env.VITE_BACKEND_URL}/startups/${noti.startup.id}/photo`}
-                                />
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="bg-gray-200 h-full w-10 rounded-4xl flex items-center justify-center">
-                              <span className="text-gray-500 text-xs">
-                                {noti.startup.companyName
-                                  ?.charAt(0)
-                                  ?.toUpperCase() || "?"}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-sm">
-                          <span className="">{noti.remarks}</span>
-                        </p>
-                      </div>
-                    ))
-                  : notificationActiveIndex === "All" && (
-                      <div className="py-2 text-sm text-gray-500">
-                        No notifications
-                      </div>
-                    )}
 
-                {notificationActiveIndex === "New" && loadingNotification ? (
-                  <div className="flex justify-center p-4">
-                    <span className="loading loading-spinner loading-md text-gray-500"></span>
-                  </div>
-                ) : notificationActiveIndex === "New" &&
-                  newNotifications.length > 0 ? (
-                  newNotifications.map((noti, index) => (
-                    <div
-                      key={index}
-                      className="py-2 cursor-pointer transition 0.5s hover:bg-gray-200 flex items-center text-black px-1 border-b border-gray-100 last:border-0"
-                      onClick={() => {
-                        markAsViewed(noti.id);
-                        fetchNotificationsCount();
-                      }}
-                    >
-                      <div className="avatar">
-                        <div className="mask mask-squircle h-10 w-10">
-                          {noti.startup.photo ? (
-                            <div className="avatar">
-                              <div className="w-10 rounded-full">
+                {/* Notification Content Area */}
+                <div className="max-h-[350px] overflow-y-auto">
+                  {/* Loading State */}
+                  {notificationActiveIndex === "New" && loadingNotification && (
+                    <div className="flex justify-center p-4">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                    </div>
+                  )}
+
+                  {/* All Notifications Tab */}
+                  {notificationActiveIndex === "All" &&
+                  Array.isArray(notifications) &&
+                  notifications.length > 0 ? (
+                    <div className="divide-y divide-gray-100">
+                      {notifications.map((noti, index) => (
+                        <div
+                          onClick={() => {
+                            fetchNotificationsCount();
+                            if (!noti.viewed) markAsViewed(noti.id);
+                          }}
+                          key={index}
+                          className={`p-3 flex items-start hover:bg-gray-50 transition-colors cursor-pointer ${
+                            !noti.viewed ? "bg-blue-50" : ""
+                          }`}
+                        >
+                          {/* Avatar/Icon */}
+                          <div className="flex-shrink-0 mr-3">
+                            {noti.startup?.photo ? (
+                              <div className="relative">
                                 <img
-                                  src={`${import.meta.env.VITE_BACKEND_URL}/startups/${noti.startup.id}/photo`}
+                                  src={`${
+                                    import.meta.env.VITE_BACKEND_URL
+                                  }/startups/${noti.startup.id}/photo`}
+                                  alt={noti.startup.companyName}
+                                  className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = `https://ui-avatars.com/api/?name=${noti.startup.companyName}&background=random`;
+                                  }}
                                 />
+                                {!noti.viewed && (
+                                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
+                                )}
                               </div>
-                            </div>
-                          ) : (
-                            <div className="bg-gray-200 h-full w-10 rounded-4xl flex items-center justify-center">
-                              <span className="text-gray-500 text-xs">
-                                {noti.startup.companyName
-                                  ?.charAt(0)
-                                  ?.toUpperCase() || "?"}
-                              </span>
-                            </div>
-                          )}
+                            ) : (
+                              <div className="relative">
+                                <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                                  <span className="text-sm font-medium">
+                                    {noti.startup?.companyName?.charAt(0)?.toUpperCase() ||
+                                      "?"}
+                                  </span>
+                                </div>
+                                {!noti.viewed && (
+                                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-900 font-medium mb-0.5">
+                              {noti.startup?.companyName || "Unknown"}
+                            </p>
+                            <p className="text-xs text-gray-600 line-clamp-2">
+                              {noti.remarks}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {new Date(noti.createdAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
                         </div>
+                      ))}
+                    </div>
+                  ) : notificationActiveIndex === "All" ? (
+                    <div className="py-8 text-center">
+                      <div className="mx-auto h-12 w-12 text-gray-400 mb-3 flex items-center justify-center rounded-full bg-gray-100">
+                        <FaBell className="h-6 w-6" />
                       </div>
-                      <p className="text-sm">
-                        <span className="">{noti.remarks}</span>
+                      <p className="text-sm text-gray-500">No notifications</p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        We'll notify you when something arrives
                       </p>
                     </div>
-                  ))
-                ) : (
-                  notificationActiveIndex === "New" && (
-                    <div className="py-2 text-sm text-gray-500">
-                      No new notifications
+                  ) : null}
+
+                  {/* New Notifications Tab */}
+                  {notificationActiveIndex === "New" &&
+                    !loadingNotification &&
+                    newNotifications.length > 0 ? (
+                    <div className="divide-y divide-gray-100">
+                      {newNotifications.map((noti, index) => (
+                        <div
+                          key={index}
+                          className="p-3 flex items-start hover:bg-gray-50 transition-colors cursor-pointer bg-blue-50"
+                          onClick={() => {
+                            markAsViewed(noti.id);
+                            fetchNotificationsCount();
+                          }}
+                        >
+                          {/* Avatar/Icon */}
+                          <div className="flex-shrink-0 mr-3">
+                            {noti.startup?.photo ? (
+                              <div className="relative">
+                                <img
+                                  src={`${
+                                    import.meta.env.VITE_BACKEND_URL
+                                  }/startups/${noti.startup.id}/photo`}
+                                  alt={noti.startup.companyName}
+                                  className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = `https://ui-avatars.com/api/?name=${noti.startup.companyName}&background=random`;
+                                  }}
+                                />
+                                <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                                  <span className="text-sm font-medium">
+                                    {noti.startup?.companyName?.charAt(0)?.toUpperCase() ||
+                                      "?"}
+                                  </span>
+                                </div>
+                                <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-900 font-medium mb-0.5">
+                              {noti.startup?.companyName || "Unknown"}
+                            </p>
+                            <p className="text-xs text-gray-600 line-clamp-2">
+                              {noti.remarks}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {new Date(noti.createdAt).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  )
-                )}
+                  ) : notificationActiveIndex === "New" && !loadingNotification ? (
+                    <div className="py-8 text-center">
+                      <div className="mx-auto h-12 w-12 text-gray-400 mb-3 flex items-center justify-center rounded-full bg-gray-100">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-6 w-6"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      </div>
+                      <p className="text-sm text-gray-500">You're all caught up!</p>
+                      <p className="text-xs text-gray-400 mt-1">No new notifications</p>
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Footer with link to full notifications page */}
+                {(notificationActiveIndex === "All" &&
+                  Array.isArray(notifications) &&
+                  notifications.length > 3) ||
+                (notificationActiveIndex === "New" && newNotifications.length > 3) ? (
+                  <div className="border-t border-gray-100 p-2 text-center">
+                    <button
+                      onClick={() => navigate("/notifications")}
+                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      See all notifications
+                    </button>
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -1519,6 +1715,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
+                  strokeWidth="2"
                 >
                   <path
                     strokeLinecap="round"

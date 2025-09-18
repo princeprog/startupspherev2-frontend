@@ -7,14 +7,15 @@ import StartupDashboard from "./startup/StartupDashboard";
 import AllStartupDashboard from "./startup/AllStartupDashboard";
 import UpdateStartup from "./startup/UpdateStartup";
 import ProtectedRoute from "./security/ProtectedRoute";
-import { SidebarProvider } from './context/SidebarContext';
+import { SidebarProvider } from "./context/SidebarContext";
+import Notification from "./Notifications/Notification";
 
 function App() {
   const mapInstanceRef = useRef(null);
-  const [user, setUser] = useState(null); 
+  const [user, setUser] = useState(null);
 
   const handleLoginSuccess = (userData) => {
-    setUser(userData); 
+    setUser(userData);
   };
 
   return (
@@ -23,8 +24,8 @@ function App() {
         <Route
           path="/"
           element={
-          <Sidebar mapInstanceRef={mapInstanceRef} setUserDetails={setUser} />
-        }
+            <Sidebar mapInstanceRef={mapInstanceRef} setUserDetails={setUser} />
+          }
         >
           <Route
             index
@@ -35,17 +36,20 @@ function App() {
               />
             }
           />
-        <Route element={<ProtectedRoute />}>
+          <Route element={<ProtectedRoute />}>
             <Route path="/startup-dashboard" element={<StartupDashboard />} />
             <Route
-            path="/all-startup-dashboard"
-            element={<AllStartupDashboard />}
-          />
+              path="/all-startup-dashboard"
+              element={<AllStartupDashboard />}
+            />
+            <Route 
+              path="/notifications"
+              element={<Notification/>}
+            />
             <Route path="/update-startup/:id" element={<UpdateStartup />} />
-        </Route>
+          </Route>
         </Route>
         <Route path="/add-startup" element={<Startupadd />} />
-        
       </Routes>
     </SidebarProvider>
   );
