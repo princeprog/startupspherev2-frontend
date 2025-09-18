@@ -2356,6 +2356,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                             {investor.locationName || "Location not specified"}
                           </span>
                         </div>
+
                       </div>
                     </div>
                   </div>
@@ -2371,6 +2372,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                     strokeWidth="2"
+
                   >
                     <path
                       strokeLinecap="round"
@@ -2394,6 +2396,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     viewBox="0 0 24 24"
                     stroke="currentColor"
                     strokeWidth="2"
+
                   >
                     <path
                       strokeLinecap="round"
@@ -2637,7 +2640,6 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             </h3>
             <p className="text-sm text-gray-500">{investor.title || "Investor"}</p>
           </div>
-
           {/* Contact and Social Links */}
           <div className="px-4 py-3 border-b border-gray-200">
             <h4 className="text-sm font-medium text-gray-900 mb-2">Contact</h4>
