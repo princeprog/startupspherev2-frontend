@@ -1133,7 +1133,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z"
+                        d="M21 21l-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"
                       />
                     </svg>
                     <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
@@ -1485,6 +1485,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
+                                    strokeWidth="2"
                                   >
                                     <path
                                       strokeLinecap="round"
@@ -1930,7 +1931,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      d="M21 21l-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"
                     />
                   </svg>
                 </div>
@@ -2223,13 +2224,17 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100 group"
                   >
                     <div className="flex items-start">
-                      {/* Startup Icon/Logo */}
+                      {/* Startup Icon/Logo - UPDATED to use the photo endpoint */}
                       <div className="mr-3 flex-shrink-0">
-                        <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 group-hover:bg-blue-200 transition-colors">
-                          <span className="text-lg font-medium">
-                            {startup.companyName?.charAt(0)?.toUpperCase() || "S"}
-                          </span>
-                        </div>
+                        <img
+                          src={`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id}/photo`}
+                          alt={startup.companyName}
+                          className="h-12 w-12 rounded-lg object-cover border border-gray-200"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(startup.companyName)}&background=0D8ABC&color=fff&size=128&bold=true`;
+                          }}
+                        />
                       </div>
                       
                       {/* Startup Details */}
@@ -2248,30 +2253,16 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                         </p>
                         
                         <div className="flex items-center text-xs text-gray-500">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-3 w-3 mr-1"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            strokeWidth="2"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                            />
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                            />
-                          </svg>
-                          <span className="truncate">
-                            {startup.locationName || startup.city || "Location not specified"}
-                          </span>
+                          <div className="flex items-center">
+                            <MdLocationOn className="mr-1 h-4 w-4 text-gray-500" />
+                            <span className="truncate">
+                              {startup.locationName || startup.city || "Location not specified"}
+                            </span>
+                          </div>
+                          <div className="flex items-center">
+                            <BsCalendarEvent className="mr-1 h-3.5 w-3.5 text-gray-500" />
+                            <span>Est. {new Date(startup.foundedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2286,6 +2277,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
+                      strokeWidth="2"
                     >
                       <path
                         strokeLinecap="round"
@@ -2308,6 +2300,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
+                      strokeWidth="2"
                     >
                       <path
                         strokeLinecap="round"
@@ -2357,30 +2350,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       </p>
                       
                       <div className="flex items-center text-xs text-gray-500">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-3 w-3 mr-1"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          strokeWidth="2"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
-                        <span>
-                          {investor.locationName || "Location not specified"}
-                        </span>
+                        <div className="flex items-center">
+                          <MdLocationOn className="mr-1 h-4 w-4 text-gray-500" />
+                          <span>
+                            {investor.locationName || "Location not specified"}
+                          </span>
+                        </div>
+
                       </div>
                     </div>
                   </div>
@@ -2395,6 +2371,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
+                    strokeWidth="2"
+
                   >
                     <path
                       strokeLinecap="round"
@@ -2417,6 +2395,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
+                    strokeWidth="2"
+
                   >
                     <path
                       strokeLinecap="round"
@@ -2506,17 +2486,26 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     onClick={() => handleStartupClick(startup)}
                     className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-500">
-                        {startup.locationName}
-                      </span>
-                      <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
-                        {startup.industry}
-                      </span>
+                    <div className="flex items-center mb-2">
+                      {/* Add startup image */}
+                      <img
+                        src={`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id}/photo`}
+                        alt={startup.companyName}
+                        className="h-10 w-10 rounded-lg object-cover border border-gray-200 mr-3"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(startup.companyName)}&background=0D8ABC&color=fff`;
+                        }}
+                      />
+                      <div>
+                        <h3 className="text-md font-semibold text-gray-900">
+                          {startup.companyName}
+                        </h3>
+                        <span className="text-xs text-gray-500">
+                          {startup.locationName}
+                        </span>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {startup.companyName}
-                    </h3>
                     <p className="text-sm text-gray-600 line-clamp-2">
                       {startup.companyDescription}
                     </p>
@@ -2534,17 +2523,30 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   onClick={() => handleInvestorClick(investor)}
                   className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-500">
-                      {investor.locationName}
-                    </span>
-                    <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
-                      {investor.gender}
-                    </span>
+                  <div className="flex items-center mb-2">
+                    {/* Add investor image */}
+                    <img
+                      src={`${
+                        import.meta.env.VITE_BACKEND_URL
+                      }/investors/${investor.investorId}/photo`}
+                      alt={investor.firstname + " " + investor.lastname}
+                      className="h-10 w-10 rounded-full object-cover border border-gray-200 mr-3"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                          investor.firstname + " " + investor.lastname
+                        )}&background=random`;
+                      }}
+                    />
+                    <div>
+                      <h3 className="text-md font-semibold text-gray-900">
+                        {investor.firstname} {investor.lastname}
+                      </h3>
+                      <span className="text-xs text-gray-500">
+                        {investor.locationName}
+                      </span>
+                    </div>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {investor.firstname} {investor.lastname}
-                  </h3>
                   <p className="text-sm text-gray-600 line-clamp-2">
                     {investor.biography}
                   </p>
@@ -2572,79 +2574,209 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
       {/* Investor Details Container */}
       {investor && !viewingStartup && (
-        <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-20 transform transition-all duration-300 ease-in-out animate-slide-in">
-          <div>
-            <div className="flex justify-end p-4 border-b border-gray-200">
-              <button
-                className="cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
-                onClick={() => {
-                  const container = document.querySelector(".animate-slide-in");
-                  if (container) {
-                    container.classList.add("animate-slide-out");
-                    setTimeout(() => {
-                      setInvestor(null);
-                      setShowSearchContainer(true);
-                    }, 300);
-                  } else {
+        <div className="absolute left-20 top-0 h-screen w-[420px] bg-white shadow-xl z-20 transform transition-all duration-300 ease-in-out animate-slide-in overflow-y-auto">
+          {/* Header with Back Button and Actions */}
+          <div className="sticky top-0 z-30 bg-white border-b border-gray-200 flex justify-between items-center p-4">
+            <button
+              className="flex items-center text-gray-600 hover:text-blue-600 transition-colors"
+              onClick={() => {
+                const container = document.querySelector(".animate-slide-in");
+                if (container) {
+                  container.classList.add("animate-slide-out");
+                  setTimeout(() => {
                     setInvestor(null);
                     setShowSearchContainer(true);
-                  }
-                }}
+                  }, 300);
+                } else {
+                  setInvestor(null);
+                  setShowSearchContainer(true);
+                }
+              }}
+            >
+              <MdKeyboardReturn className="h-5 w-5 mr-1" />
+              <span className="text-sm font-medium">Back to Search</span>
+            </button>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleBookmark}
+                className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
+                  isCurrentItemBookmarked ? "text-blue-500" : "text-gray-500"
+                }`}
+                title={isCurrentItemBookmarked ? "Remove Bookmark" : "Add Bookmark"}
               >
-                <MdKeyboardReturn className="h-6 w-6" />
+                {isCurrentItemBookmarked ? <FaBookmark className="h-5 w-5" /> : <FaRegBookmark className="h-5 w-5" />}
+              </button>
+              <button
+                onClick={() => toggleLike(user?.id, investor.id, null)}
+                className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
+                  likedInvestors?.includes(investor.id) ? "text-red-500" : "text-gray-500"
+                }`}
+                title={likedInvestors?.includes(investor.id) ? "Unlike" : "Like"}
+              >
+                {likedInvestors?.includes(investor.id) ? <FaHeart className="h-5 w-5" /> : <FaRegHeart className="h-5 w-5" />}
               </button>
             </div>
-            <button
-              onClick={toggleBookmark}
-              className={`text-2xl transition cursor-pointer ${
-                isCurrentItemBookmarked
-                  ? "text-blue-500"
-                  : "text-gray-400 hover:text-blue-400"
-              }`}
-            >
-              <FaBookmark />
-            </button>
-
-            <div className="flex items-center text-gray-700">
-              <FaRegEye className="mr-2 text-xl" />
-              <span className="text-sm">{investor.views || 0} views</span>
+          </div>
+          
+          {/* Investor Avatar and Basic Info */}
+          <div className="flex flex-col items-center py-6 border-b border-gray-200">
+            <div className="relative">
+              {loadingImage ? (
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+              ) : (
+                <img
+                  src={
+                    investor.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(investor.firstname + ' ' + investor.lastname)}&background=0D8ABC&color=fff&size=128&bold=true`
+                  }
+                  alt={`${investor.firstname} ${investor.lastname}`}
+                  className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-md"
+                />
+              )}
             </div>
 
-            <div className="pt-4 space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-900">About</h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  {investor.biography}
-                </p>
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  className="cursor-pointer flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  onClick={() => {
-                    if (
-                      investor &&
-                      investor.locationLang &&
-                      investor.locationLat
-                    ) {
-                      mapInstanceRef.current.flyTo({
-                        center: [
-                          parseFloat(investor.locationLang),
-                          parseFloat(investor.locationLat),
-                        ],
-                        zoom: 14,
-                        essential: true,
-                      });
-                      setViewingInvestor(investor);
-                      setInvestor(null);
-                    }
-                  }}
+            <h3 className="mt-4 text-xl font-semibold text-gray-900">
+              {investor.firstname} {investor.lastname}
+            </h3>
+            <p className="text-sm text-gray-500">{investor.title || "Investor"}</p>
+          </div>
+          {/* Contact and Social Links */}
+          <div className="px-4 py-3 border-b border-gray-200">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Contact</h4>
+            
+            <div className="flex flex-col gap-2">
+              {investor.email && (
+                <a
+                  href={`mailto:${investor.email}`}
+                  className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
                 >
-                  Preview Location
-                </button>
-                <button className="cursor-pointer flex-1 py-2 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                  Update Location
-                </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2 text-gray-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16 12v2a4 4 0 01-8 0v-2m8-4V7a4 4 0 00-8 0v1"
+                    />
+                  </svg>
+                  {investor.email}
+                </a>
+              )}
+              
+              {investor.phone && (
+                <a
+                  href={`tel:${investor.phone}`}
+                  className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2 text-gray-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 7v4l3 3 4-4-3-3V7a4 4 0 00-4-4H3zm18 0v4l-3 3-4-4 3-3V7a4 4 0 014-4h1a4 4 0 014 4z"
+                    />
+                  </svg>
+                  {investor.phone}
+                </a>
+              )}
+              
+              {investor.linkedIn && (
+                <a
+                  href={investor.linkedIn}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2 text-gray-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16 8a6 6 0 10-8 0 6 6 0 008 0zM2 12c0-2.21.895-4.21 2.343-5.657M22 12c0 2.21-.895 4.21-2.343 5.657M4.343 6.343A9.958 9.958 0 002 12m20 0a9.958 9.958 0 00-2.343-5.657"
+                    />
+                  </svg>
+                  LinkedIn
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* About and Preferences */}
+          <div className="px-4 py-3">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">About</h4>
+            <p className="text-gray-700 text-sm leading-relaxed mb-4">
+              {investor.biography || "No biography available."}
+            </p>
+            
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Preferences</h4>
+            <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 mr-2 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 7v4l3 3 4-4-3-3V7a4 4 0 00-4-4H3zm18 0v4l-3 3-4-4 3-3V7a4 4 0 014-4h1a4 4 0 014 4z"
+                  />
+                </svg>
+                <span>{investor.industryFocus || "Any industry"}</span>
+              </div>
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 mr-2 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>{investor.investmentStage || "Any stage"}</span>
+              </div>
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 mr-2 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 16v-4l3-3 4 4-3 3v4a4 4 0 01-4 4H3a4 4 0 01-4-4zM21 8v4l-3 3-4-4 3-3V4a4 4 0 014-4h1a4 4 0 014 4z"
+                  />
+                </svg>
+                <span>{investor.locationPreference || "Any location"}</span>
               </div>
             </div>
           </div>
@@ -2653,10 +2785,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
       {/* Startup Details Container */}
       {startup && !viewingStartup && (
-        <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-20 transform transition-all duration-300 ease-in-out animate-slide-in">
-          <div className="flex justify-end p-4 border-b border-gray-200">
+        <div className="absolute left-20 top-0 h-screen w-[420px] bg-white shadow-xl z-20 transform transition-all duration-300 ease-in-out animate-slide-in overflow-y-auto">
+          {/* Header with Back Button and Actions */}
+          <div className="sticky top-0 z-30 bg-white border-b border-gray-200 flex justify-between items-center p-4">
             <button
-              className="text-gray-500 hover:text-gray-700 transition-colors"
+              className="flex items-center text-gray-600 hover:text-blue-600 transition-colors"
               onClick={() => {
                 const container = document.querySelector(".animate-slide-in");
                 if (container) {
@@ -2671,111 +2804,144 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 }
               }}
             >
-              <MdKeyboardReturn className="h-6 w-6" />
+              <MdKeyboardReturn className="h-5 w-5 mr-1" />
+              <span className="text-sm font-medium">Back to Search</span>
             </button>
-          </div>
-
-          <div className="h-52 bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-            {loadingImage ? (
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-            ) : (
-              <img
-                src={
-                  startup.imageUrl ||
-                  "https://via.placeholder.com/300x200?text=No+Image"
-                }
-                alt={startup.companyName}
-                className="w-full h-full object-cover"
-              />
-            )}
-          </div>
-
-          <div className="p-4 space-y-4">
-            <div className="space-y-1">
-              <h1 className="text-xl font-semibold text-gray-900">
-                {startup.companyName}
-              </h1>
-              <p className="flex items-center text-gray-600 text-sm">
-                <CiLocationOn className="mr-1" />
-                {startup.locationName}
-              </p>
-              <a
-                href={startup.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center text-blue-600 text-sm hover:underline"
-              >
-                <CiGlobe className="mr-1 text-gray-700" />
-                {startup.website}
-              </a>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => toggleLike(user.id, startup.id, null)}
-                className={`text-2xl transition cursor-pointer ${
-                  likedStartups.includes(startup.id)
-                    ? "text-red-500"
-                    : "text-gray-400 hover:text-red-400"
-                }`}
-              >
-                <FaHeart />
-              </button>
-              <span className="text-sm text-gray-700">
-                {startupLikeCounts[startup.id] || 0}
-              </span>
+            
+            <div className="flex items-center gap-2">
               <button
                 onClick={toggleBookmark}
-                className={`text-2xl transition cursor-pointer ${
-                  isCurrentItemBookmarked
-                    ? "text-blue-500"
-                    : "text-gray-400 hover:text-blue-400"
+                className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
+                  isCurrentItemBookmarked ? "text-blue-500" : "text-gray-500"
                 }`}
+                title={isCurrentItemBookmarked ? "Remove Bookmark" : "Add Bookmark"}
               >
-                <FaBookmark />
+                {isCurrentItemBookmarked ? <FaBookmark className="h-5 w-5" /> : <FaRegBookmark className="h-5 w-5" />}
+              </button>
+              <button
+                onClick={() => toggleLike(user?.id, startup.id, null)}
+                className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
+                  likedStartups?.includes(startup.id) ? "text-red-500" : "text-gray-500"
+                }`}
+                title={likedStartups?.includes(startup.id) ? "Unlike" : "Like"}
+              >
+                {likedStartups?.includes(startup.id) ? <FaHeart className="h-5 w-5" /> : <FaRegHeart className="h-5 w-5" />}
               </button>
             </div>
-
-            <div className="pt-4 space-y-4 text-sm text-gray-800">
-              <div>
-                <p className="font-semibold">{startup.foundedDate}</p>
-                <p className="text-gray-500">Established</p>
+          </div>
+          
+          {/* Company Banner and Logo */}
+          <div className="relative">
+            <div className="h-40 bg-gradient-to-r from-blue-500 to-blue-700 overflow-hidden">
+              {/* Abstract pattern background */}
+              <div className="absolute inset-0 opacity-30">
+                <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+                  <defs>
+                    <pattern id="pattern" width="40" height="40" patternUnits="userSpaceOnUse">
+                      <path d="M0 20 L40 20 M20 0 L20 40" stroke="white" strokeWidth="1" fill="none" />
+                    </pattern>
+                  </defs>
+                  <rect width="100%" height="100%" fill="url(#pattern)" />
+                </svg>
               </div>
-
-              <div>
-                <p className="font-medium">About:</p>
-                <p className="text-gray-600">{startup.companyDescription}</p>
+            </div>
+            
+            {/* Logo overlay - UPDATED to use photo endpoint directly */}
+            <div className="absolute -bottom-14 left-6 h-28 w-28 bg-white rounded-xl shadow-lg flex items-center justify-center p-2 border-4 border-white">
+              {loadingImage ? (
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              ) : (
+                <img
+                  src={`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id}/photo`}
+                  alt={startup.companyName}
+                  className="w-full h-full object-cover rounded-md"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(startup.companyName)}&background=0D8ABC&color=fff&size=128&bold=true`;
+                  }}
+                />
+              )}
+            </div>
+            
+            {/* Stats overlay */}
+            <div className="absolute -bottom-2 right-4 flex space-x-3 text-white">
+              <div className="flex items-center gap-1 bg-black/30 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
+                <FaRegEye className="h-4 w-4" />
+                <span>{startup.viewsCount || 0}</span>
               </div>
-
-              <div>
-                <p className="font-medium">Industry:</p>
-                <p className="text-gray-600">{startup.industry}</p>
+              <div className="flex items-center gap-1 bg-black/30 backdrop-blur-sm px-3 py-1 rounded-full text-sm">
+                <FaHeart className="h-4 w-4" />
+                <span>{startupLikeCounts?.[startup.id] || 0}</span>
               </div>
-
-              <div>
-                <p className="font-medium">Contact Info:</p>
-                <p className="text-gray-600">{startup.contactEmail}</p>
+            </div>
+          </div>
+          
+          {/* Company Name and Quick Info */}
+          <div className="mt-16 px-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">{startup.companyName}</h1>
+            
+            <div className="flex flex-wrap gap-2 mb-3">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                {startup.industry?.charAt(0).toUpperCase() + startup.industry?.slice(1) || "Industry"}
+              </span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                {startup.fundingStage?.charAt(0).toUpperCase() + startup.fundingStage?.slice(1) || "Funding Stage"}
+              </span>
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                {startup.typeOfCompany?.charAt(0).toUpperCase() + startup.typeOfCompany?.slice(1) || "Company Type"}
+              </span>
+            </div>
+            
+            <div className="flex items-center gap-3 text-sm text-gray-600 mb-2">
+              <div className="flex items-center">
+                <MdLocationOn className="h-4 w-4 text-gray-500 mr-1" />
+                <span>{startup.locationName || `${startup.city}, ${startup.province}`}</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="font-medium">Funds Raised:</p>
-                  <p className="text-gray-600">None</p>
+              <div className="flex items-center">
+                <BsCalendarEvent className="h-3.5 w-3.5 text-gray-500 mr-1" />
+                <span>Est. {new Date(startup.foundedDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}</span>
+              </div>
+            </div>
+            
+            {/* Key Metrics */}
+            <div className="grid grid-cols-3 gap-4 py-4 border-t border-b border-gray-200 my-4">
+              <div className="text-center">
+                <p className="text-xs text-gray-500">Team Size</p>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                  <BsPeople className="h-4 w-4 text-blue-500" />
+                  <p className="font-semibold text-gray-800">{startup.numberOfEmployees}</p>
                 </div>
-                <div>
-                  <p className="font-medium">Funding Rounds:</p>
-                  <p className="text-gray-600">0</p>
+              </div>
+              <div className="text-center border-x border-gray-200">
+                <p className="text-xs text-gray-500">Hours</p>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-500">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <p className="font-semibold text-gray-800">{startup.operatingHours}</p>
                 </div>
-                <div>
-                  <p className="font-medium">Investors:</p>
-                  <p className="text-gray-600">0</p>
-                </div>
-                <div>
-                  <p className="font-medium">Team Size:</p>
-                  <p className="text-gray-600">{startup.numberOfEmployees}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-500">Status</p>
+                <div className="flex items-center justify-center gap-1 mt-1">
+                  <span className="relative flex h-2.5 w-2.5 mt-0.5">
+                    <span className="absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 animate-ping"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                  </span>
+                  <p className="font-semibold text-gray-800">{startup.status}</p>
                 </div>
               </div>
             </div>
+            
+            {/* About Section */}
+            <div className="space-y-4 mb-6">
+              <h2 className="text-lg font-semibold text-gray-900">About</h2>
+              <p className="text-gray-700 leading-relaxed">{startup.companyDescription || "No description provided."}</p>
+            </div>
+            
+            {/* Contact and Links Section */}
+            
           </div>
         </div>
       )}
