@@ -69,6 +69,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const [notificationTooltip, setNotificationTooltip] = useState(false);
   const notificationTabs = ["All", "New"];
   const [loadingNotification, setLoadingNotification] = useState(false);
+  const [adminSubmissions, setAdminSubmissions] = useState([]);
+  const [adminSubmissionsCount, setAdminSubmissionsCount] = useState(0);
+  const [notificationAdminTab, setNotificationAdminTab] = useState(false);
 
   const markAsViewed = async (id) => {
     try {
@@ -91,13 +94,58 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     }
   };
 
+  // First, update the fetchAdminSubmissions function to properly check for ROLE_ADMIN
+  const fetchAdminSubmissions = async () => {
+    if (!currentUser || currentUser.role !== "ROLE_ADMIN") return;
+
+    try {
+      setLoadingNotification(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/submitted`,
+        {
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setAdminSubmissions(data);
+        setAdminSubmissionsCount(data.length);
+      } else {
+        console.error("Failed to fetch admin submissions");
+      }
+    } catch (error) {
+      console.error("Error fetching admin submissions:", error);
+    } finally {
+      setLoadingNotification(false);
+    }
+  };
+
+  // Update the useEffect to check for ROLE_ADMIN
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchNotifications();
+      fetchNotificationsCount();
+
+      // Only fetch admin submissions if the user is an admin
+      if (currentUser && currentUser.role === "ROLE_ADMIN") {
+        fetchAdminSubmissions();
+      }
+    }
+  }, [isAuthenticated, currentUser?.role]);
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchNewNotifications();
       fetchNotificationsCount();
       fetchNotifications();
+
+      // Add admin submissions fetch if user is admin
+      if (currentUser && currentUser.role === "ADMIN") {
+        fetchAdminSubmissions();
+      }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentUser?.role]);
 
   const fetchNewNotifications = async () => {
     setLoadingNotification(true);
@@ -1206,26 +1254,27 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       </button>
                     </li>
 
-                    <li className="flex justify-center">
-                      <button
-                        className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
-                        onClick={() =>
-                          navigate('/notifications')
-                        }
-                      >
-                        <div className="relative">
-                          <FaBell className="h-6 w-6 opacity-80 group-hover:opacity-100" />
-                          {notificationsCount > 0 && (
-                            <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full font-medium">
-                              {notificationsCount}
-                            </div>
-                          )}
-                        </div>
-                        <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
-                          Notifications
-                        </span>
-                      </button>
-                    </li>
+                    {/* Notifications Bell - Only show for non-admin users */}
+                    {currentUser?.role !== "ROLE_ADMIN" && (
+                      <li className="flex justify-center">
+                        <button
+                          className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
+                          onClick={() => navigate("/notifications")}
+                        >
+                          <div className="relative">
+                            <FaBell className="h-6 w-6 opacity-80 group-hover:opacity-100" />
+                            {notificationsCount > 0 && (
+                              <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full font-medium">
+                                {notificationsCount}
+                              </div>
+                            )}
+                          </div>
+                          <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
+                            Notifications
+                          </span>
+                        </button>
+                      </li>
+                    )}
                   </>
                 )}
               </ul>
@@ -1304,240 +1353,456 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             </div>
 
             {notificationTooltip && (
-              <div className="absolute top-14 right-0 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
-                {/* Header with title */}
-                <div className="px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white flex justify-between items-center">
+              <div className="absolute top-14 right-0 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
+                {/* Header - Different for admin vs regular users */}
+                <div
+                  className={`px-4 py-3 border-b border-gray-100 ${
+                    currentUser?.role === "ROLE_ADMIN"
+                      ? "bg-gradient-to-r from-amber-50 to-white"
+                      : "bg-gradient-to-r from-blue-50 to-white"
+                  } flex justify-between items-center`}
+                >
                   <h3 className="text-sm font-semibold text-gray-900">
-                    Notifications
+                    {currentUser?.role === "ROLE_ADMIN"
+                      ? "Admin Dashboard"
+                      : "Notifications"}
                   </h3>
                   <button
-                    onClick={() => navigate("/notifications")}
-                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                    onClick={() =>
+                      currentUser?.role === "ROLE_ADMIN"
+                        ? navigate("/all-startup-dashboard", {
+                            state: { activeTab: "review" },
+                          })
+                        : navigate("/notifications")
+                    }
+                    className={`text-xs ${
+                      currentUser?.role === "ROLE_ADMIN"
+                        ? "text-amber-600 hover:text-amber-800"
+                        : "text-blue-600 hover:text-blue-800"
+                    } hover:underline`}
                   >
-                    View all
+                    {currentUser?.role === "ROLE_ADMIN"
+                      ? "View all submissions"
+                      : "View all notifications"}
                   </button>
                 </div>
 
-                {/* Notification Tabs */}
-                <div className="flex border-b border-gray-100">
-                  {notificationTabs.map((tab, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        setNotificationActiveIndex(tab);
-                        if (tab === "New") {
-                          fetchNewNotifications();
-                        }
-                      }}
-                      className={`flex-1 py-2 text-sm font-medium text-center ${
-                        notificationActiveIndex === tab
-                          ? "text-blue-600 border-b-2 border-blue-600"
-                          : "text-gray-500 hover:text-gray-700"
-                      }`}
-                    >
-                      {tab}
-                      {tab === "New" && notificationsCount > 0 && (
-                        <span className="ml-1.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-600">
-                          {notificationsCount}
+                {/* Content - Show different tabs based on role */}
+                {currentUser?.role === "ROLE_ADMIN" ? (
+                  /* Admin-only content */
+                  <div className="max-h-[400px] overflow-y-auto">
+                    {loadingNotification ? (
+                      <div className="flex justify-center p-4">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-600"></div>
+                      </div>
+                    ) : adminSubmissions && adminSubmissions.length > 0 ? (
+                      <div className="divide-y divide-gray-100">
+                        {adminSubmissions.map((startup) => (
+                          <div
+                            key={startup.id}
+                            className="p-4 flex items-start hover:bg-amber-50 transition-colors cursor-pointer"
+                            onClick={() =>
+                              navigate("/all-startup-dashboard", {
+                                state: {
+                                  activeTab: "review",
+                                  reviewStartupId: startup.id,
+                                  startupName: startup.companyName,
+                                },
+                              })
+                            }
+                          >
+                            {/* Startup avatar */}
+                            <div className="flex-shrink-0 mr-3">
+                              <div className="relative">
+                                {startup.photo ? (
+                                  <img
+                                    src={`${
+                                      import.meta.env.VITE_BACKEND_URL
+                                    }/startups/${startup.id}/photo`}
+                                    alt={startup.companyName}
+                                    className="h-12 w-12 rounded-lg object-cover border border-gray-200"
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = `https://ui-avatars.com/api/?name=${startup.companyName}&background=amber&color=fff`;
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="h-12 w-12 bg-amber-100 rounded-lg flex items-center justify-center text-amber-700 font-medium">
+                                    {startup.companyName
+                                      ?.charAt(0)
+                                      ?.toUpperCase() || "?"}
+                                  </div>
+                                )}
+                                <span className="absolute -top-1 -right-1 h-4 w-4 bg-amber-500 rounded-full border-2 border-white"></span>
+                              </div>
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex justify-between">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {startup.companyName}
+                                </p>
+                                <span className="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-800">
+                                  Review
+                                </span>
+                              </div>
+
+                              <p className="mt-1 text-xs text-gray-600 line-clamp-2">
+                                {startup.companyDescription ||
+                                  "New startup submission awaiting review"}
+                              </p>
+
+                              <div className="mt-2 flex items-center text-xs text-gray-500">
+                                <div className="flex items-center">
+                                  <svg
+                                    className="mr-1 h-3 w-3"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="2"
+                                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="2"
+                                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
+                                  </svg>
+                                  <span>
+                                    {startup.locationName || "Unknown location"}
+                                  </span>
+                                </div>
+                                <span className="mx-2">•</span>
+                                <span className="flex items-center">
+                                  <svg
+                                    className="mr-1 h-3 w-3"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="2"
+                                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 012 2z"
+                                    />
+                                  </svg>
+                                  {new Date(
+                                    startup.createdAt
+                                  ).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-10 text-center">
+                        <div className="mx-auto h-14 w-14 text-amber-400 mb-4 flex items-center justify-center rounded-full bg-amber-100">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-7 w-7"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </div>
+                        <h3 className="text-sm font-medium text-gray-900">
+                          No pending submissions
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          All startup submissions have been reviewed
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Admin footer */}
+                    <div className="border-t border-gray-100 p-3 bg-amber-50">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-gray-500">
+                          {adminSubmissionsCount > 0
+                            ? `${adminSubmissionsCount} submission${
+                                adminSubmissionsCount !== 1 ? "s" : ""
+                              } awaiting review`
+                            : "No pending submissions"}
                         </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Notification Content Area */}
-                <div className="max-h-[350px] overflow-y-auto">
-                  {/* Loading State */}
-                  {notificationActiveIndex === "New" && loadingNotification && (
-                    <div className="flex justify-center p-4">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                        <button
+                          onClick={() =>
+                            navigate("/all-startup-dashboard", {
+                              state: { activeTab: "review" },
+                            })
+                          }
+                          className="px-3 py-1.5 text-xs font-medium text-white bg-amber-600 rounded hover:bg-amber-700 transition-colors"
+                        >
+                          Review All
+                        </button>
+                      </div>
                     </div>
-                  )}
-
-                  {/* All Notifications Tab */}
-                  {notificationActiveIndex === "All" &&
-                  Array.isArray(notifications) &&
-                  notifications.length > 0 ? (
-                    <div className="divide-y divide-gray-100">
-                      {notifications.map((noti, index) => (
-                        <div
-                          onClick={() => {
-                            fetchNotificationsCount();
-                            if (!noti.viewed) markAsViewed(noti.id);
-                          }}
+                  </div>
+                ) : (
+                  /* Regular user content - Existing notification tabs and content */
+                  <>
+                    {/* Notification Tabs */}
+                    <div className="flex border-b border-gray-100">
+                      {notificationTabs.map((tab, index) => (
+                        <button
                           key={index}
-                          className={`p-3 flex items-start hover:bg-gray-50 transition-colors cursor-pointer ${
-                            !noti.viewed ? "bg-blue-50" : ""
+                          onClick={() => {
+                            setNotificationActiveIndex(tab);
+                            setNotificationAdminTab(false);
+                            if (tab === "New") {
+                              fetchNewNotifications();
+                            }
+                          }}
+                          className={`flex-1 py-2 text-sm font-medium text-center ${
+                            notificationActiveIndex === tab &&
+                            !notificationAdminTab
+                              ? "text-blue-600 border-b-2 border-blue-600"
+                              : "text-gray-500 hover:text-gray-700"
                           }`}
                         >
-                          {/* Avatar/Icon */}
-                          <div className="flex-shrink-0 mr-3">
-                            {noti.startup?.photo ? (
-                              <div className="relative">
-                                <img
-                                  src={`${
-                                    import.meta.env.VITE_BACKEND_URL
-                                  }/startups/${noti.startup.id}/photo`}
-                                  alt={noti.startup.companyName}
-                                  className="h-10 w-10 rounded-full object-cover border border-gray-200"
-                                  onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = `https://ui-avatars.com/api/?name=${noti.startup.companyName}&background=random`;
-                                  }}
-                                />
-                                {!noti.viewed && (
-                                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="relative">
-                                <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-                                  <span className="text-sm font-medium">
-                                    {noti.startup?.companyName?.charAt(0)?.toUpperCase() ||
-                                      "?"}
-                                  </span>
-                                </div>
-                                {!noti.viewed && (
-                                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900 font-medium mb-0.5">
-                              {noti.startup?.companyName || "Unknown"}
-                            </p>
-                            <p className="text-xs text-gray-600 line-clamp-2">
-                              {noti.remarks}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              {new Date(noti.createdAt).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                          </div>
-                        </div>
+                          {tab}
+                          {tab === "New" && notificationsCount > 0 && (
+                            <span className="ml-1.5 inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-600">
+                              {notificationsCount}
+                            </span>
+                          )}
+                        </button>
                       ))}
                     </div>
-                  ) : notificationActiveIndex === "All" ? (
-                    <div className="py-8 text-center">
-                      <div className="mx-auto h-12 w-12 text-gray-400 mb-3 flex items-center justify-center rounded-full bg-gray-100">
-                        <FaBell className="h-6 w-6" />
-                      </div>
-                      <p className="text-sm text-gray-500">No notifications</p>
-                      <p className="text-xs text-gray-400 mt-1">
-                        We'll notify you when something arrives
-                      </p>
-                    </div>
-                  ) : null}
 
-                  {/* New Notifications Tab */}
-                  {notificationActiveIndex === "New" &&
-                    !loadingNotification &&
-                    newNotifications.length > 0 ? (
-                    <div className="divide-y divide-gray-100">
-                      {newNotifications.map((noti, index) => (
-                        <div
-                          key={index}
-                          className="p-3 flex items-start hover:bg-gray-50 transition-colors cursor-pointer bg-blue-50"
-                          onClick={() => {
-                            markAsViewed(noti.id);
-                            fetchNotificationsCount();
-                          }}
-                        >
-                          {/* Avatar/Icon */}
-                          <div className="flex-shrink-0 mr-3">
-                            {noti.startup?.photo ? (
-                              <div className="relative">
-                                <img
-                                  src={`${
-                                    import.meta.env.VITE_BACKEND_URL
-                                  }/startups/${noti.startup.id}/photo`}
-                                  alt={noti.startup.companyName}
-                                  className="h-10 w-10 rounded-full object-cover border border-gray-200"
-                                  onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src = `https://ui-avatars.com/api/?name=${noti.startup.companyName}&background=random`;
-                                  }}
-                                />
-                                <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
+                    {/* Regular notification content - existing code */}
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {/* Loading state */}
+                      {loadingNotification && (
+                        <div className="flex justify-center p-4">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                        </div>
+                      )}
+
+                      {/* All Notifications Tab */}
+                      {!loadingNotification &&
+                        notificationActiveIndex === "All" && (
+                          <>
+                            {Array.isArray(notifications) &&
+                            notifications.length > 0 ? (
+                              <div className="divide-y divide-gray-100">
+                                {/* Existing notification mapping code */}
+                                {notifications.map((noti, index) => (
+                                  // Existing notification items code...
+                                  <div
+                                    onClick={() => {
+                                      fetchNotificationsCount();
+                                      if (!noti.viewed) markAsViewed(noti.id);
+                                    }}
+                                    key={index}
+                                    className={`p-3 flex items-start hover:bg-gray-50 transition-colors cursor-pointer ${
+                                      !noti.viewed ? "bg-blue-50" : ""
+                                    }`}
+                                  >
+                                    {/* Avatar/Icon */}
+                                    <div className="flex-shrink-0 mr-3">
+                                      {noti.startup?.photo ? (
+                                        <div className="relative">
+                                          <img
+                                            src={`${
+                                              import.meta.env.VITE_BACKEND_URL
+                                            }/startups/${
+                                              noti.startup.id
+                                            }/photo`}
+                                            alt={noti.startup.companyName}
+                                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                            onError={(e) => {
+                                              e.target.onerror = null;
+                                              e.target.src = `https://ui-avatars.com/api/?name=${noti.startup.companyName}&background=random`;
+                                            }}
+                                          />
+                                          {!noti.viewed && (
+                                            <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="relative">
+                                          <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                                            <span className="text-sm font-medium">
+                                              {noti.startup?.companyName
+                                                ?.charAt(0)
+                                                ?.toUpperCase() || "?"}
+                                            </span>
+                                          </div>
+                                          {!noti.viewed && (
+                                            <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Content */}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm text-gray-900 font-medium mb-0.5">
+                                        {noti.startup?.companyName || "Unknown"}
+                                      </p>
+                                      <p className="text-xs text-gray-600 line-clamp-2">
+                                        {noti.remarks}
+                                      </p>
+                                      <p className="text-xs text-gray-400 mt-1">
+                                        {new Date(
+                                          noti.createdAt
+                                        ).toLocaleDateString("en-US", {
+                                          month: "short",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             ) : (
-                              <div className="relative">
-                                <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-                                  <span className="text-sm font-medium">
-                                    {noti.startup?.companyName?.charAt(0)?.toUpperCase() ||
-                                      "?"}
-                                  </span>
+                              <div className="py-8 text-center">
+                                <div className="mx-auto h-12 w-12 text-gray-400 mb-3 flex items-center justify-center rounded-full bg-gray-100">
+                                  <FaBell className="h-6 w-6" />
                                 </div>
-                                <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
+                                <p className="text-sm text-gray-500">
+                                  No notifications
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  We'll notify you when something arrives
+                                </p>
                               </div>
                             )}
-                          </div>
+                          </>
+                        )}
 
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-gray-900 font-medium mb-0.5">
-                              {noti.startup?.companyName || "Unknown"}
-                            </p>
-                            <p className="text-xs text-gray-600 line-clamp-2">
-                              {noti.remarks}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              {new Date(noti.createdAt).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : notificationActiveIndex === "New" && !loadingNotification ? (
-                    <div className="py-8 text-center">
-                      <div className="mx-auto h-12 w-12 text-gray-400 mb-3 flex items-center justify-center rounded-full bg-gray-100">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-6 w-6"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M5 13l4 4L19 7"
-                          />
-                        </svg>
-                      </div>
-                      <p className="text-sm text-gray-500">You're all caught up!</p>
-                      <p className="text-xs text-gray-400 mt-1">No new notifications</p>
-                    </div>
-                  ) : null}
-                </div>
+                      {/* New Notifications Tab - existing code */}
+                      {!loadingNotification &&
+                        notificationActiveIndex === "New" && (
+                          <>
+                            {/* Existing new notifications code */}
+                            {newNotifications.length > 0 ? (
+                              <div className="divide-y divide-gray-100">
+                                {newNotifications.map((noti, index) => (
+                                  <div
+                                    key={index}
+                                    className="p-3 flex items-start hover:bg-gray-50 transition-colors cursor-pointer bg-blue-50"
+                                    onClick={() => {
+                                      markAsViewed(noti.id);
+                                      fetchNotificationsCount();
+                                    }}
+                                  >
+                                    {/* Avatar/Icon */}
+                                    <div className="flex-shrink-0 mr-3">
+                                      {noti.startup?.photo ? (
+                                        <div className="relative">
+                                          <img
+                                            src={`${
+                                              import.meta.env.VITE_BACKEND_URL
+                                            }/startups/${
+                                              noti.startup.id
+                                            }/photo`}
+                                            alt={noti.startup.companyName}
+                                            className="h-10 w-10 rounded-full object-cover border border-gray-200"
+                                            onError={(e) => {
+                                              e.target.onerror = null;
+                                              e.target.src = `https://ui-avatars.com/api/?name=${noti.startup.companyName}&background=random`;
+                                            }}
+                                          />
+                                          <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
+                                        </div>
+                                      ) : (
+                                        <div className="relative">
+                                          <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                                            <span className="text-sm font-medium">
+                                              {noti.startup?.companyName
+                                                ?.charAt(0)
+                                                ?.toUpperCase() || "?"}
+                                            </span>
+                                          </div>
+                                          <span className="absolute -top-1 -right-1 h-3 w-3 bg-blue-600 rounded-full border-2 border-white"></span>
+                                        </div>
+                                      )}
+                                    </div>
 
-                {/* Footer with link to full notifications page */}
-                {(notificationActiveIndex === "All" &&
-                  Array.isArray(notifications) &&
-                  notifications.length > 3) ||
-                (notificationActiveIndex === "New" && newNotifications.length > 3) ? (
-                  <div className="border-t border-gray-100 p-2 text-center">
-                    <button
-                      onClick={() => navigate("/notifications")}
-                      className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-                    >
-                      See all notifications
-                    </button>
-                  </div>
-                ) : null}
+                                    {/* Content */}
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm text-gray-900 font-medium mb-0.5">
+                                        {noti.startup?.companyName || "Unknown"}
+                                      </p>
+                                      <p className="text-xs text-gray-600 line-clamp-2">
+                                        {noti.remarks}
+                                      </p>
+                                      <p className="text-xs text-gray-400 mt-1">
+                                        {new Date(
+                                          noti.createdAt
+                                        ).toLocaleDateString("en-US", {
+                                          month: "short",
+                                          day: "numeric",
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                        })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="py-8 text-center">
+                                <div className="mx-auto h-12 w-12 text-gray-400 mb-3 flex items-center justify-center rounded-full bg-gray-100">
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    className="h-6 w-6"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth="2"
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                </div>
+                                <p className="text-sm text-gray-500">
+                                  You're all caught up!
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  No new notifications
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                    </div>
+
+                    {/* Regular user footer */}
+                    <div className="border-t border-gray-100 p-2 text-center">
+                      <button
+                        onClick={() => navigate("/notifications")}
+                        className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        See all notifications
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -1609,16 +1874,15 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
       {showSearchContainer && (
         <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-5 transform transition-all duration-300 ease-in-out animate-slide-in">
+          {/* Search Header */}
           <div className="p-4 bg-gradient-to-b from-blue-600 to-blue-500 relative">
             <button
-              className="cursor-pointer absolute top-2 right-2 text-white hover:text-gray-200 transition-colors"
+              className="absolute top-2 right-2 text-white hover:text-gray-200 transition-colors"
               onClick={() => {
                 const container = document.querySelector(".animate-slide-in");
                 if (container) {
                   container.classList.add("animate-slide-out");
-                  setTimeout(() => {
-                    setShowSearchContainer(false);
-                  }, 300);
+                  setTimeout(() => setShowSearchContainer(false), 300);
                 } else {
                   setShowSearchContainer(false);
                 }
@@ -1643,6 +1907,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
             <h2 className="text-lg text-white font-semibold mb-4">Search</h2>
 
+            {/* Search Form */}
             <form
               className="flex items-center max-w-sm mx-auto"
               onSubmit={(e) => {
@@ -1657,14 +1922,14 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     aria-hidden="true"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
-                    viewBox="0 0 18 20"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
                   >
                     <path
-                      stroke="currentColor"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M3 5v10M3 5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm0 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm12 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4Zm0 0V6a3 3 0 0 0-3-3H9m1.5-2-2 2 2 2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     />
                   </svg>
                 </div>
@@ -1674,9 +1939,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="bg-white/90 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5"
                   placeholder={
-                    filters.startups.industry
-                      ? `Search ${filters.startups.industry}`
-                      : "Search"
+                    viewingType === "startups"
+                      ? "Search startups..."
+                      : "Search investors..."
                   }
                   required
                 />
@@ -1690,24 +1955,27 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   aria-hidden="true"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
-                  viewBox="0 0 20 20"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
                 >
                   <path
-                    stroke="currentColor"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth="2"
                     d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
                   />
                 </svg>
-                <span className="sr-only">
-                  Search {filters.startups.industry && "industry"}
-                </span>
+                <span className="sr-only">Search</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
-                className="p-2.5 ms-2 text-sm font-medium bg-blue-700 rounded-lg border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 transition-colors"
+                className={`p-2.5 ms-2 text-sm font-medium rounded-lg border transition-colors ${
+                  showFilters
+                    ? "bg-blue-800 text-white border-blue-800"
+                    : "bg-blue-700 text-white border-blue-700 hover:bg-blue-800"
+                }`}
+                aria-label="Toggle filters"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1720,449 +1988,225 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth="2"
                     d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
                   />
                 </svg>
               </button>
             </form>
 
-            {showFilters && (
-              <div className="mt-4 p-4 bg-white rounded-lg shadow-lg">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Advanced Filters
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setFilters({
-                        startups: {
-                          industry: "",
-                          foundedDate: "",
-                          teamSize: "",
-                          fundingStage: "",
-                        },
-                        investors: {
-                          investmentStage: "",
-                          investmentRange: "",
-                          preferredIndustry: "",
-                          location: "",
-                        },
-                      });
-                    }}
-                    className="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                      />
-                    </svg>
-                    Reset All
-                  </button>
-                </div>
-
-                {viewingType === "startups" ? (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Industry
-                        </label>
-                        <select
-                          value={filters.startups.industry}
-                          onChange={(e) =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              startups: {
-                                ...prev.startups,
-                                industry: e.target.value,
-                              },
-                            }))
-                          }
-                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        >
-                          <option value="">All Industries</option>
-                          <optgroup label="Technology & Digital">
-                            <option value="technology">Technology</option>
-                            <option value="information technology">
-                              Information Technology
-                            </option>
-                            <option value="telecommunications">
-                              Telecommunications
-                            </option>
-                            <option value="financial technology">
-                              Financial Technology
-                            </option>
-                            <option value="entertainment">Entertainment</option>
-                          </optgroup>
-                          <optgroup label="Business & Finance">
-                            <option value="finance">Finance</option>
-                            <option value="legal services">
-                              Legal Services
-                            </option>
-                            <option value="real estate">Real Estate</option>
-                          </optgroup>
-                          <optgroup label="Healthcare & Education">
-                            <option value="healthcare">Healthcare</option>
-                            <option value="education">Education</option>
-                          </optgroup>
-                          <optgroup label="Industrial & Manufacturing">
-                            <option value="manufacturing">Manufacturing</option>
-                            <option value="construction">Construction</option>
-                            <option value="energy">Energy</option>
-                          </optgroup>
-                          <optgroup label="Consumer & Services">
-                            <option value="retail">Retail</option>
-                            <option value="hospitality">Hospitality</option>
-                            <option value="transportation">
-                              Transportation
-                            </option>
-                          </optgroup>
-                          <optgroup label="Other">
-                            <option value="agriculture">Agriculture</option>
-                          </optgroup>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Founded Date
-                        </label>
-                        <select
-                          value={filters.startups.foundedDate}
-                          onChange={(e) =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              startups: {
-                                ...prev.startups,
-                                foundedDate: e.target.value,
-                              },
-                            }))
-                          }
-                          className="mt-1 block w-full text-black rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        >
-                          <option value="">Any Time</option>
-                          <optgroup label="Recent (2020-Present)">
-                            <option value="2027">2027</option>
-                            <option value="2026">2026</option>
-                            <option value="2025">2025</option>
-                            <option value="2024">2024</option>
-                            <option value="2023">2023</option>
-                            <option value="2022">2022</option>
-                            <option value="2021">2021</option>
-                            <option value="2020">2020</option>
-                          </optgroup>
-                          <optgroup label="Past Years">
-                            <option value="2019">2019</option>
-                            <option value="2018">2018</option>
-                            <option value="2017">2017</option>
-                            <option value="2016">2016</option>
-                            <option value="2015">2015</option>
-                            <option value="2014">2014</option>
-                            <option value="2013">2013</option>
-                          </optgroup>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Team Size
-                        </label>
-                        <select
-                          value={filters.startups.teamSize}
-                          onChange={(e) =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              startups: {
-                                ...prev.startups,
-                                teamSize: e.target.value,
-                              },
-                            }))
-                          }
-                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        >
-                          <option value="">Any Size</option>
-                          <option value="1-10">1-10 employees</option>
-                          <option value="11-50">11-50 employees</option>
-                          <option value="51-200">51-200 employees</option>
-                          <option value="201+">201+ employees</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Funding Stage
-                        </label>
-                        <select
-                          value={filters.startups.fundingStage}
-                          onChange={(e) =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              startups: {
-                                ...prev.startups,
-                                fundingStage: e.target.value,
-                              },
-                            }))
-                          }
-                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        >
-                          <option value="">Any Stage</option>
-                          <option value="Bootstrapped">Bootstrapped</option>
-                          <option value="Seed">Seed</option>
-                          <option value="Series A">Series A</option>
-                          <option value="Series B">Series B</option>
-                          <option value="Series C">Series C</option>
-                          <option value="Public">Public</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Investment Stage
-                        </label>
-                        <select
-                          value={filters.investors.investmentStage}
-                          onChange={(e) =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              investors: {
-                                ...prev.investors,
-                                investmentStage: e.target.value,
-                              },
-                            }))
-                          }
-                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        >
-                          <option value="">Any Stage</option>
-                          <option value="bootstrapped">Bootstrapped</option>
-                          <option value="seed">Seed</option>
-                          <option value="series_a">Series A</option>
-                          <option value="series_b">Series B</option>
-                          <option value="series_c">Series C</option>
-                          <option value="public">Public</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Investment Range
-                        </label>
-                        <select
-                          value={filters.investors.investmentRange}
-                          onChange={(e) =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              investors: {
-                                ...prev.investors,
-                                investmentRange: e.target.value,
-                              },
-                            }))
-                          }
-                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        >
-                          <option value="">Any Range</option>
-                          <option value="0-100k">$0 - $100k</option>
-                          <option value="100k-1M">$100k - $1M</option>
-                          <option value="1M-10M">$1M - $10M</option>
-                          <option value="10M+">$10M+</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Preferred Industry
-                        </label>
-                        <select
-                          value={filters.investors.preferredIndustry}
-                          onChange={(e) =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              investors: {
-                                ...prev.investors,
-                                preferredIndustry: e.target.value,
-                              },
-                            }))
-                          }
-                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        >
-                          <option value="">All Industries</option>
-                          <optgroup label="Technology & Digital">
-                            <option value="technology">Technology</option>
-                            <option value="telecommunications">
-                              Telecommunications
-                            </option>
-                            <option value="entertainment">Entertainment</option>
-                          </optgroup>
-                          <optgroup label="Business & Finance">
-                            <option value="finance">Finance</option>
-                            <option value="legal_services">
-                              Legal Services
-                            </option>
-                            <option value="real_estate">Real Estate</option>
-                          </optgroup>
-                          <optgroup label="Healthcare & Education">
-                            <option value="healthcare">Healthcare</option>
-                            <option value="education">Education</option>
-                          </optgroup>
-                          <optgroup label="Industrial & Manufacturing">
-                            <option value="manufacturing">Manufacturing</option>
-                            <option value="construction">Construction</option>
-                            <option value="energy">Energy</option>
-                          </optgroup>
-                          <optgroup label="Consumer & Services">
-                            <option value="retail">Retail</option>
-                            <option value="hospitality">Hospitality</option>
-                            <option value="transportation">
-                              Transportation
-                            </option>
-                          </optgroup>
-                          <optgroup label="Other">
-                            <option value="agriculture">Agriculture</option>
-                          </optgroup>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Location
-                        </label>
-                        <select
-                          value={filters.investors.location}
-                          onChange={(e) =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              investors: {
-                                ...prev.investors,
-                                location: e.target.value,
-                              },
-                            }))
-                          }
-                          className="mt-1 block w-full rounded-md text-black border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                        >
-                          <option value="">Any Location</option>
-                          <optgroup label="North America">
-                            <option value="New York">New York</option>
-                            <option value="San Francisco">San Francisco</option>
-                            <option value="Los Angeles">Los Angeles</option>
-                            <option value="Boston">Boston</option>
-                          </optgroup>
-                          <optgroup label="Europe">
-                            <option value="London">London</option>
-                            <option value="Berlin">Berlin</option>
-                            <option value="Paris">Paris</option>
-                          </optgroup>
-                          <optgroup label="Asia">
-                            <option value="Singapore">Singapore</option>
-                            <option value="Tokyo">Tokyo</option>
-                            <option value="Hong Kong">Hong Kong</option>
-                          </optgroup>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-6 flex justify-end space-x-3">
-                  <button
-                    onClick={() => setShowFilters(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleSearch();
-                      setShowFilters(false);
-                    }}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="2"
-                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                      />
-                    </svg>
-                    Apply Filters
-                  </button>
-                </div>
-
-                {/* Active Filters Display */}
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(
-                      viewingType === "startups"
-                        ? filters.startups
-                        : filters.investors
-                    ).map(([key, value]) => {
-                      if (!value) return null;
-                      return (
-                        <div
-                          key={key}
-                          className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-sm"
-                        >
-                          <span>
-                            {key.replace(/([A-Z])/g, " $1").trim()}: {value}
-                          </span>
-                          <button
-                            onClick={() => {
-                              if (viewingType === "startups") {
-                                setFilters((prev) => ({
-                                  ...prev,
-                                  startups: { ...prev.startups, [key]: "" },
-                                }));
-                              } else {
-                                setFilters((prev) => ({
-                                  ...prev,
-                                  investors: { ...prev.investors, [key]: "" },
-                                }));
-                              }
-                            }}
-                            className="hover:text-blue-900"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-4 w-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M6 18L18 6M6 6l12 12"
-                              />
-                            </svg>
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Type Selector */}
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => setViewingType("startups")}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  viewingType === "startups"
+                    ? "bg-white text-blue-600"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
+              >
+                Startups
+              </button>
+              <button
+                onClick={() => setViewingType("investors")}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  viewingType === "investors"
+                    ? "bg-white text-blue-600"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
+              >
+                Investors
+              </button>
+            </div>
           </div>
+
+          {/* Filters Panel */}
+          {showFilters && (
+            <div className="px-4 py-3 bg-white border-b border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
+                <button
+                  onClick={() => {
+                    const currentFilters =
+                      viewingType === "startups"
+                        ? {
+                            industry: "",
+                            foundedDate: "",
+                            teamSize: "",
+                            fundingStage: "",
+                          }
+                        : {
+                            investmentStage: "",
+                            investmentRange: "",
+                            preferredIndustry: "",
+                            location: "",
+                          };
+
+                    setFilters((prev) => ({
+                      ...prev,
+                      [viewingType]: currentFilters,
+                    }));
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800"
+                >
+                  Reset filters
+                </button>
+              </div>
+
+              {viewingType === "startups" ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Industry filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-black mb-1">
+                      Industry
+                    </label>
+                    <select
+                      value={filters.startups.industry}
+                      onChange={(e) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          startups: { ...prev.startups, industry: e.target.value },
+                        }))
+                      }
+                      className="w-full text-black text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      <option value="" className="text-black">All Industries</option>
+                      <option value="technology" className="text-black">Technology</option>
+                      <option value="healthcare" className="text-black">Healthcare</option>
+                      <option value="finance" className="text-black">Finance</option>
+                      <option value="education" className="text-black">Education</option>
+                      <option value="retail" className="text-black">Retail</option>
+                      <option value="transportation" className="text-black">Transportation</option>
+                      <option value="entertainment" className="text-black">Entertainment</option>
+                      <option value="manufacturing" className="text-black">Manufacturing</option>
+                    </select>
+                  </div>
+
+                  {/* Team Size filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Team Size
+                    </label>
+                    <select
+                      value={filters.startups.teamSize}
+                      onChange={(e) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          startups: { ...prev.startups, teamSize: e.target.value },
+                        }))
+                      }
+                      className="w-full text-black text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      <option value="" className="text-black">Any Size</option>
+                      <option value="1-10" className="text-black">1-10 employees</option>
+                      <option value="11-50" className="text-black">11-50 employees</option>
+                      <option value="51-200" className="text-black">51-200 employees</option>
+                      <option value="201+" className="text-black">201+ employees</option>
+                    </select>
+                  </div>
+
+                  {/* Funding Stage filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Funding Stage
+                    </label>
+                    <select
+                      value={filters.startups.fundingStage}
+                      onChange={(e) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          startups: { ...prev.startups, fundingStage: e.target.value },
+                        }))
+                      }
+                      className="w-full text-black text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      <option value="" className="text-black">Any Stage</option>
+                      <option value="bootstrapped" className="text-black">Bootstrapped</option>
+                      <option value="seed" className="text-black">Seed</option>
+                      <option value="series_a" className="text-black">Series A</option>
+                      <option value="series_b" className="text-black">Series B</option>
+                      <option value="series_c" className="text-black">Series C</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Investor filters */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Investment Stage
+                    </label>
+                    <select
+                      value={filters.investors.investmentStage}
+                      onChange={(e) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          investors: { ...prev.investors, investmentStage: e.target.value },
+                        }))
+                      }
+                      className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      <option value="">Any Stage</option>
+                      <option value="seed">Seed</option>
+                      <option value="series_a">Series A</option>
+                      <option value="series_b">Series B</option>
+                      <option value="series_c">Series C</option>
+                      <option value="growth">Growth</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Industry Focus
+                    </label>
+                    <select
+                      value={filters.investors.preferredIndustry}
+                      onChange={(e) =>
+                        setFilters((prev) => ({
+                          ...prev,
+                          investors: { ...prev.investors, preferredIndustry: e.target.value },
+                        }))
+                      }
+                      className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    >
+                      <option value="">All Industries</option>
+                      <option value="technology">Technology</option>
+                      <option value="healthcare">Healthcare</option>
+                      <option value="finance">Finance</option>
+                      <option value="education">Education</option>
+                      <option value="retail">Retail</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Applied Filters Tags */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {Object.entries(viewingType === "startups" ? filters.startups : filters.investors)
+                  .filter(([_, value]) => value)
+                  .map(([key, value]) => (
+                    <div key={key} className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
+                      {key === "teamSize" ? "Team:" : 
+                       key === "industry" || key === "preferredIndustry" ? "Industry:" : 
+                       key === "fundingStage" || key === "investmentStage" ? "Stage:" : 
+                       key.replace(/([A-Z])/g, " $1").trim() + ":"} {value}
+                      <button
+                        className="ml-1 text-blue-700 hover:text-blue-900"
+                        onClick={() => {
+                          setFilters(prev => ({
+                            ...prev,
+                            [viewingType]: { ...prev[viewingType], [key]: "" }
+                          }));
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
 
           <div className="h-[calc(100vh-200px)] overflow-y-auto p-4 space-y-4">
             {loading ? (
@@ -2175,55 +2219,215 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   <div
                     key={startup.id}
                     onClick={() => handleStartupClick(startup)}
-                    className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
+                    className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100 group"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-500">
-                        {startup.locationName}
-                      </span>
-                      <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
-                        {startup.industry}
-                      </span>
+                    <div className="flex items-start">
+                      {/* Startup Icon/Logo */}
+                      <div className="mr-3 flex-shrink-0">
+                        <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 group-hover:bg-blue-200 transition-colors">
+                          <span className="text-lg font-medium">
+                            {startup.companyName?.charAt(0)?.toUpperCase() || "S"}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      {/* Startup Details */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
+                            {startup.companyName}
+                          </h3>
+                          <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full whitespace-nowrap ml-2">
+                            {startup.industry}
+                          </span>
+                        </div>
+                        
+                        <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                          {startup.companyDescription || "No description available"}
+                        </p>
+                        
+                        <div className="flex items-center text-xs text-gray-500">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-3 w-3 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            strokeWidth="2"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                          </svg>
+                          <span className="truncate">
+                            {startup.locationName || startup.city || "Location not specified"}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {startup.companyName}
-                    </h3>
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {startup.companyDescription}
-                    </p>
                   </div>
                 ))
-              ) : (
-                <div className="text-center text-gray-500 mt-4">
-                  No startups available
-                </div>
-              )
-            ) : investors.length > 0 ? (
-              applyFilters(investors).map((investor) => (
-                <div
-                  key={investor.investorId}
-                  onClick={() => handleInvestorClick(investor)}
-                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-500">
-                      {investor.locationName}
-                    </span>
-                    <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
-                      {investor.gender}
-                    </span>
+              ) : searchQuery ? (
+                <div className="text-center py-10">
+                  <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-full w-full"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M21 21l-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+                      />
+                    </svg>
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {investor.firstname} {investor.lastname}
-                  </h3>
-                  <p className="text-sm text-gray-600 line-clamp-2">
-                    {investor.biography}
+                  <p className="text-gray-700 font-medium">No startups found</p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Try adjusting your search or filters
                   </p>
                 </div>
+              ) : (
+                <div className="text-center py-10">
+                  <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-full w-full"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M21 21l-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-gray-700 font-medium">Search for startups</p>
+                  <p className="text-gray-500 text-sm mt-1">
+                    Enter a search term to find startups
+                  </p>
+                </div>
+              )
+            ) : investors && investors.length > 0 ? (
+              applyFilters(investors).map((investor) => (
+                <div
+                  key={investor.id || investor.investorId}
+                  onClick={() => handleInvestorClick(investor)}
+                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100 group"
+                >
+                  <div className="flex items-start">
+                    {/* Investor Avatar */}
+                    <div className="mr-3 flex-shrink-0">
+                      <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 group-hover:bg-blue-200 transition-colors">
+                        <span className="text-lg font-medium">
+                          {investor.firstname?.charAt(0) || "I"}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Investor Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                          {investor.firstname} {investor.lastname}
+                        </h3>
+                        {investor.investmentStage && (
+                          <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
+                            {investor.investmentStage}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                        {investor.biography || "No biography available"}
+                      </p>
+                      
+                      <div className="flex items-center text-xs text-gray-500">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3 w-3 mr-1"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          strokeWidth="2"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                        <span>
+                          {investor.locationName || "Location not specified"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))
+            ) : searchQuery ? (
+              <div className="text-center py-10">
+                <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-full w-full"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                <p className="text-gray-700 font-medium">No investors found</p>
+                <p className="text-gray-500 text-sm mt-1">
+                  Try adjusting your search or filters
+                </p>
+              </div>
             ) : (
-              <div className="text-center text-gray-500 mt-4">
-                No investors match your search.
+              <div className="text-center py-10">
+                <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-full w-full"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                <p className="text-gray-700 font-medium">Search for investors</p>
+                <p className="text-gray-500 text-sm mt-1">
+                  Enter a search term to find investors
+                </p>
               </div>
             )}
           </div>
@@ -2368,74 +2572,37 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
       {/* Investor Details Container */}
       {investor && !viewingStartup && (
         <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-20 transform transition-all duration-300 ease-in-out animate-slide-in">
-          <div className="flex justify-end p-4 border-b border-gray-200">
-            <button
-              className="cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
-              onClick={() => {
-                const container = document.querySelector(".animate-slide-in");
-                if (container) {
-                  container.classList.add("animate-slide-out");
-                  setTimeout(() => {
+          <div>
+            <div className="flex justify-end p-4 border-b border-gray-200">
+              <button
+                className="cursor-pointer text-gray-500 hover:text-gray-700 transition-colors"
+                onClick={() => {
+                  const container = document.querySelector(".animate-slide-in");
+                  if (container) {
+                    container.classList.add("animate-slide-out");
+                    setTimeout(() => {
+                      setInvestor(null);
+                      setShowSearchContainer(true);
+                    }, 300);
+                  } else {
                     setInvestor(null);
                     setShowSearchContainer(true);
-                  }, 300);
-                } else {
-                  setInvestor(null);
-                  setShowSearchContainer(true);
-                }
-              }}
+                  }
+                }}
+              >
+                <MdKeyboardReturn className="h-6 w-6" />
+              </button>
+            </div>
+            <button
+              onClick={toggleBookmark}
+              className={`text-2xl transition cursor-pointer ${
+                isCurrentItemBookmarked
+                  ? "text-blue-500"
+                  : "text-gray-400 hover:text-blue-400"
+              }`}
             >
-              <MdKeyboardReturn className="h-6 w-6" />
+              <FaBookmark />
             </button>
-          </div>
-
-          <div className="h-52 bg-gradient-to-br from-blue-500 to-blue-600"></div>
-
-          <div className="p-4 space-y-4">
-            <div className="space-y-1">
-              <h1 className="text-xl font-semibold text-gray-900">
-                {investor.firstname} {investor.lastname}
-              </h1>
-              <p className="flex items-center text-gray-600 text-sm">
-                <CiLocationOn className="mr-1" />
-                {investor.locationName}
-              </p>
-              <a
-                href={investor.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center text-blue-600 text-sm hover:underline"
-              >
-                <CiGlobe className="mr-1 text-gray-700" />
-                {investor.website}
-              </a>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => toggleLike(user.id, null, investor.id)}
-                className={`text-2xl transition cursor-pointer ${
-                  likedInvestors.includes(investor.id)
-                    ? "text-red-500"
-                    : "text-gray-400 hover:text-red-400"
-                }`}
-              >
-                <FaHeart />
-              </button>
-              <span className="text-sm text-gray-700">
-                {investorLikeCounts[investor.id] || 0}
-              </span>
-              <button
-                onClick={toggleBookmark}
-                className={`text-2xl transition cursor-pointer ${
-                  isCurrentItemBookmarked
-                    ? "text-blue-500"
-                    : "text-gray-400 hover:text-blue-400"
-                }`}
-              >
-                <FaBookmark />
-              </button>
-            </div>
 
             <div className="flex items-center text-gray-700">
               <FaRegEye className="mr-2 text-xl" />
@@ -2485,7 +2652,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
 
       {/* Startup Details Container */}
       {startup && !viewingStartup && (
-        <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-20 transform transition-all duration-300 ease-in-out animate-slide-in overflow-y-auto">
+        <div className="absolute left-20 top-0 h-screen w-96 bg-white shadow-lg z-20 transform transition-all duration-300 ease-in-out animate-slide-in">
           <div className="flex justify-end p-4 border-b border-gray-200">
             <button
               className="text-gray-500 hover:text-gray-700 transition-colors"
