@@ -56,7 +56,6 @@ class ErrorBoundary extends React.Component {
 }
 
 function NotificationComponent() {
-
   const [notifications, setNotifications] = useState([]);
   const [filteredNotifications, setFilteredNotifications] = useState([]);
   const [loading, setLoading] = useState(true);

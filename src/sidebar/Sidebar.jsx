@@ -1803,6 +1803,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     </div>
                   </>
                 )}
+
               </div>
             )}
 
