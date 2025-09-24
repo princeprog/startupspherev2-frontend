@@ -2549,7 +2549,6 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 }`}
                 title={likedInvestors?.includes(investor.id) ? "Unlike" : "Like"}
               >
-
                 {likedInvestors?.includes(investor.id) ? <FaHeart className="h-5 w-5" /> : <FaRegHeart className="h-5 w-5" />}
               </button>
             </div>
