@@ -2329,6 +2329,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
                       {investor.gender}
                     </span>
+
                   </div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     {investor.firstname} {investor.lastname}
@@ -2341,6 +2342,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             ) : (
               <div className="text-center text-gray-500 mt-4">
                 No investors match your search.
+
 
               </div>
             )}
@@ -2547,6 +2549,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 }`}
                 title={likedInvestors?.includes(investor.id) ? "Unlike" : "Like"}
               >
+
                 {likedInvestors?.includes(investor.id) ? <FaHeart className="h-5 w-5" /> : <FaRegHeart className="h-5 w-5" />}
               </button>
             </div>
