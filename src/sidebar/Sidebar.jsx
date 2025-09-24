@@ -2343,6 +2343,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               <div className="text-center text-gray-500 mt-4">
                 No investors match your search.
 
+
               </div>
             )}
           </div>
@@ -2548,7 +2549,6 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 }`}
                 title={likedInvestors?.includes(investor.id) ? "Unlike" : "Like"}
               >
-
                 {likedInvestors?.includes(investor.id) ? <FaHeart className="h-5 w-5" /> : <FaRegHeart className="h-5 w-5" />}
               </button>
             </div>
@@ -2570,41 +2570,148 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               )}
             </div>
 
-            <div className="pt-4 space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-900">About</h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  {investor.biography}
-                </p>
-              </div>
-
-              <div className="flex gap-4">
-                <button
-                  className="cursor-pointer flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  onClick={() => {
-                    if (
-                      investor &&
-                      investor.locationLang &&
-                      investor.locationLat
-                    ) {
-                      mapInstanceRef.current.flyTo({
-                        center: [
-                          parseFloat(investor.locationLang),
-                          parseFloat(investor.locationLat),
-                        ],
-                        zoom: 14,
-                        essential: true,
-                      });
-                      setViewingInvestor(investor);
-                      setInvestor(null);
-                    }
-                  }}
+            <h3 className="mt-4 text-xl font-semibold text-gray-900">
+              {investor.firstname} {investor.lastname}
+            </h3>
+            <p className="text-sm text-gray-500">{investor.title || "Investor"}</p>
+          </div>
+          {/* Contact and Social Links */}
+          <div className="px-4 py-3 border-b border-gray-200">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Contact</h4>
+            
+            <div className="flex flex-col gap-2">
+              {investor.email && (
+                <a
+                  href={`mailto:${investor.email}`}
+                  className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
                 >
-                  Preview Location
-                </button>
-                <button className="cursor-pointer flex-1 py-2 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors">
-                  Update Location
-                </button>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2 text-gray-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16 12v2a4 4 0 01-8 0v-2m8-4V7a4 4 0 00-8 0v1"
+                    />
+                  </svg>
+                  {investor.email}
+                </a>
+              )}
+              
+              {investor.phone && (
+                <a
+                  href={`tel:${investor.phone}`}
+                  className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2 text-gray-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M3 7v4l3 3 4-4-3-3V7a4 4 0 00-4-4H3zm18 0v4l-3 3-4-4 3-3V7a4 4 0 014-4h1a4 4 0 014 4z"
+                    />
+                  </svg>
+                  {investor.phone}
+                </a>
+              )}
+              
+              {investor.linkedIn && (
+                <a
+                  href={investor.linkedIn}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center text-gray-700 hover:text-blue-600 transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2 text-gray-500"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M16 8a6 6 0 10-8 0 6 6 0 008 0zM2 12c0-2.21.895-4.21 2.343-5.657M22 12c0 2.21-.895 4.21-2.343 5.657M4.343 6.343A9.958 9.958 0 002 12m20 0a9.958 9.958 0 00-2.343-5.657"
+                    />
+                  </svg>
+                  LinkedIn
+                </a>
+              )}
+            </div>
+          </div>
+
+          {/* About and Preferences */}
+          <div className="px-4 py-3">
+            <h4 className="text-sm font-medium text-gray-900 mb-2">About</h4>
+            <p className="text-gray-700 text-sm leading-relaxed mb-4">
+              {investor.biography || "No biography available."}
+            </p>
+            
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Preferences</h4>
+            <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 mr-2 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 7v4l3 3 4-4-3-3V7a4 4 0 00-4-4H3zm18 0v4l-3 3-4-4 3-3V7a4 4 0 014-4h1a4 4 0 014 4z"
+                  />
+                </svg>
+                <span>{investor.industryFocus || "Any industry"}</span>
+              </div>
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 mr-2 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <span>{investor.investmentStage || "Any stage"}</span>
+              </div>
+              <div className="flex items-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 mr-2 text-gray-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 16v-4l3-3 4 4-3 3v4a4 4 0 01-4 4H3a4 4 0 01-4-4zM21 8v4l-3 3-4-4 3-3V4a4 4 0 014-4h1a4 4 0 014 4z"
+                  />
+                </svg>
+                <span>{investor.locationPreference || "Any location"}</span>
               </div>
             </div>
           </div>
