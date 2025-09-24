@@ -63,6 +63,7 @@ export default function UpdateStartup() {
   const [csvFile, setCsvFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState(null);
+  const [errors, setErrors] = useState({}); // For form validation errors
 
   useEffect(() => {
     if (formData.foundedDate) {
@@ -90,9 +91,12 @@ export default function UpdateStartup() {
   const fetchStartupData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${id}`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${id}`,
+        {
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Error fetching startup: ${response.status}`);
@@ -144,15 +148,58 @@ export default function UpdateStartup() {
     setSubmitting(true);
     setError(null);
 
+    // Basic validation
+    const newErrors = {};
+    if (!formData.companyName) {
+      newErrors.companyName = "Company name is required";
+    }
+    if (!formData.contactEmail) {
+      newErrors.contactEmail = "Contact email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.contactEmail)) {
+      newErrors.contactEmail = "Email address is invalid";
+    }
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = "Phone number is required";
+    }
+    if (!formData.website) {
+      newErrors.website = "Website is required";
+    }
+    if (!formData.streetAddress) {
+      newErrors.streetAddress = "Street address is required";
+    }
+    if (!formData.city) {
+      newErrors.city = "City is required";
+    }
+    if (!formData.province) {
+      newErrors.province = "Province/State is required";
+    }
+    if (!formData.postalCode) {
+      newErrors.postalCode = "Postal code is required";
+    }
+    if (!formData.locationLat || !formData.locationLng) {
+      newErrors.location = "Location on map is required";
+    }
+
+    setErrors(newErrors);
+
+    // If there are errors, don't submit the form
+    if (Object.keys(newErrors).length > 0) {
+      setSubmitting(false);
+      return;
+    }
+
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(formData),
+          credentials: "include",
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Error updating startup: ${response.status}`);
@@ -353,8 +400,11 @@ export default function UpdateStartup() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-gray-50">
-        <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex flex-col items-center justify-center h-[60vh]">
+        <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+        <p className="mt-4 text-gray-600 font-medium">
+          Loading startup information...
+        </p>
       </div>
     );
   }
@@ -363,216 +413,412 @@ export default function UpdateStartup() {
     switch (activeSection) {
       case "basic":
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-8">
+            {/* Company Name */}
             <div className="md:col-span-2">
-              <input
-                type="text"
-                name="companyName"
-                placeholder="Startup name"
-                value={formData.companyName || ""}
-                onChange={handleInputChange}
-                required
-                className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              />
+              <label
+                className="block text-sm font-medium text-slate-700 mb-1.5"
+                htmlFor="companyName"
+              >
+                Company Name
+              </label>
+              <div className="relative rounded-lg shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Building className="h-5 w-5 text-slate-400" />
+                </div>
+                <input
+                  id="companyName"
+                  type="text"
+                  name="companyName"
+                  value={formData.companyName || ""}
+                  onChange={handleInputChange}
+                  required
+                  className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  placeholder="Enter your company name"
+                />
+              </div>
+              {errors.companyName && (
+                <p className="mt-1.5 text-sm text-red-600 flex items-center">
+                  <span className="inline-block h-4 w-4 rounded-full bg-red-100 text-red-500 mr-1.5 flex items-center justify-center text-xs">
+                    !
+                  </span>
+                  {errors.companyName}
+                </p>
+              )}
             </div>
 
-            <div className="md:col-span-2">
+            {/* Company Description */}
+            <div>
+              <label
+                className="block text-sm font-medium text-slate-700 mb-1.5"
+                htmlFor="companyDescription"
+              >
+                Company Description
+              </label>
               <textarea
+                id="companyDescription"
                 name="companyDescription"
-                placeholder="Description"
+                placeholder="Describe your company's mission, vision, and what you do"
                 value={formData.companyDescription || ""}
                 onChange={handleInputChange}
                 required
                 rows={4}
-                className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
+                className="block w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-y"
               />
             </div>
 
-            <div>
-              <select
-                name="industry"
-                value={formData.industry || ""}
-                onChange={handleInputChange}
-                required
-                className="select bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              >
-                <option value="" disabled>
-                  Select Industry
-                </option>
-                <option value="Agriculture">Agriculture</option>
-                <option value="Construction">Construction</option>
-                <option value="Education">Education</option>
-                <option value="Healthcare">Healthcare</option>
-                <option value="Information Technology">
-                  Information Technology
-                </option>
-                <option value="Manufacturing">Manufacturing</option>
-                <option value="Retail">Retail</option>
-              </select>
+            {/* Industry and Founded Date */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                  htmlFor="industry"
+                >
+                  Industry
+                </label>
+                <select
+                  id="industry"
+                  name="industry"
+                  value={formData.industry || ""}
+                  onChange={handleInputChange}
+                  required
+                  className="block w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white appearance-none"
+                >
+                  <option value="" disabled>
+                    Select Industry
+                  </option>
+                  <option value="Agriculture">Agriculture</option>
+                  <option value="Construction">Construction</option>
+                  <option value="Education">Education</option>
+                  <option value="Healthcare">Healthcare</option>
+                  <option value="Information Technology">
+                    Information Technology
+                  </option>
+                  <option value="Manufacturing">Manufacturing</option>
+                  <option value="Retail">Retail</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                  htmlFor="foundedDate"
+                >
+                  Founded Date
+                </label>
+                <div className="relative rounded-lg shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Calendar className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="foundedDate"
+                    type="date"
+                    name="foundedDate"
+                    value={formData.foundedDate || ""}
+                    onChange={handleInputChange}
+                    required
+                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div>
-              <input
-                type="date"
-                name="foundedDate"
-                value={formData.foundedDate || ""}
-                onChange={handleInputChange}
-                required
-                className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              />
-            </div>
+            {/* Number of Employees and Company Type */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                  htmlFor="numberOfEmployees"
+                >
+                  Number of Employees
+                </label>
+                <div className="relative rounded-lg shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Users className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="numberOfEmployees"
+                    type="text"
+                    name="numberOfEmployees"
+                    placeholder="e.g. 1-10, 11-50, 51-200"
+                    value={formData.numberOfEmployees || ""}
+                    onChange={handleInputChange}
+                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+              </div>
 
-            <div>
-              <input
-                type="text"
-                name="numberOfEmployees"
-                placeholder="Number of employees"
-                value={formData.numberOfEmployees || ""}
-                onChange={handleInputChange}
-                className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              />
-            </div>
-
-            <div>
-              <select
-                name="typeOfCompany"
-                value={formData.typeOfCompany || ""}
-                onChange={handleInputChange}
-                className="select bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              >
-                <option value="" disabled>
-                  Select Type of Company
-                </option>
-                <option value="Sole Proprietorship">Sole Proprietorship</option>
-                <option value="Partnership">Partnership</option>
-                <option value="Corporation (Inc.)">Corporation (Inc.)</option>
-                <option value="Limited Liability Company (LLC)">
-                  Limited Liability Company (LLC)
-                </option>
-                <option value="Cooperative (Co-op)">Cooperative (Co-op)</option>
-                <option value="Nonprofit Organization">
-                  Nonprofit Organization
-                </option>
-                <option value="Franchise">Franchise</option>
-              </select>
+              <div>
+                <label
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                  htmlFor="typeOfCompany"
+                >
+                  Type of Company
+                </label>
+                <div className="relative rounded-lg shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Briefcase className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <select
+                    id="typeOfCompany"
+                    name="typeOfCompany"
+                    value={formData.typeOfCompany || ""}
+                    onChange={handleInputChange}
+                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all bg-white appearance-none"
+                  >
+                    <option value="" disabled>
+                      Select Type of Company
+                    </option>
+                    <option value="Sole Proprietorship">Sole Proprietorship</option>
+                    <option value="Partnership">Partnership</option>
+                    <option value="Corporation (Inc.)">Corporation (Inc.)</option>
+                    <option value="Limited Liability Company (LLC)">
+                      Limited Liability Company (LLC)
+                    </option>
+                    <option value="Cooperative (Co-op)">Cooperative (Co-op)</option>
+                    <option value="Nonprofit Organization">
+                      Nonprofit Organization
+                    </option>
+                    <option value="Franchise">Franchise</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg
+                      className="h-5 w-5 text-gray-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         );
 
       case "contact":
         return (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <input
-                type="email"
-                name="contactEmail"
-                placeholder="Contact email"
-                value={formData.contactEmail || ""}
-                onChange={handleInputChange}
-                required
-                className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              />
+          <div className="space-y-8">
+            {/* Email and Phone */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                  htmlFor="contactEmail"
+                >
+                  Contact Email
+                </label>
+                <div className="relative rounded-lg shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Mail className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="contactEmail"
+                    type="email"
+                    name="contactEmail"
+                    placeholder="contact@company.com"
+                    value={formData.contactEmail || ""}
+                    onChange={handleInputChange}
+                    required
+                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+                {errors.contactEmail && (
+                  <p className="mt-1.5 text-sm text-red-600 flex items-center">
+                    <span className="inline-block h-4 w-4 rounded-full bg-red-100 text-red-500 mr-1.5 flex items-center justify-center text-xs">
+                      !
+                    </span>
+                    {errors.contactEmail}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  className="block text-sm font-medium text-slate-700 mb-1.5"
+                  htmlFor="phoneNumber"
+                >
+                  Phone Number
+                </label>
+                <div className="relative rounded-lg shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Phone className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    id="phoneNumber"
+                    type="text"
+                    name="phoneNumber"
+                    placeholder="+1 (555) 123-4567"
+                    value={formData.phoneNumber || ""}
+                    onChange={handleInputChange}
+                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+                {errors.phoneNumber && (
+                  <p className="mt-1.5 text-sm text-red-600 flex items-center">
+                    <span className="inline-block h-4 w-4 rounded-full bg-red-100 text-red-500 mr-1.5 flex items-center justify-center text-xs">
+                      !
+                    </span>
+                    {errors.phoneNumber}
+                  </p>
+                )}
+              </div>
             </div>
 
+            {/* Website */}
             <div>
-              <input
-                type="text"
-                name="phoneNumber"
-                placeholder="Phone number"
-                value={formData.phoneNumber || ""}
-                onChange={handleInputChange}
-                className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              />
+              <label
+                className="block text-sm font-medium text-slate-700 mb-1.5"
+                htmlFor="website"
+              >
+                Website
+              </label>
+              <div className="relative rounded-lg shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <Globe className="h-5 w-5 text-slate-400" />
+                </div>
+                <input
+                  id="website"
+                  type="url"
+                  name="website"
+                  placeholder="https://www.example.com"
+                  value={formData.website || ""}
+                  onChange={handleInputChange}
+                  className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                />
+              </div>
+              {errors.website && (
+                <p className="mt-1.5 text-sm text-red-600 flex items-center">
+                  <span className="inline-block h-4 w-4 rounded-full bg-red-100 text-red-500 mr-1.5 flex items-center justify-center text-xs">
+                    !
+                  </span>
+                  {errors.website}
+                </p>
+              )}
             </div>
 
+            {/* Social Media Profiles */}
             <div>
-              <input
-                type="url"
-                name="website"
-                placeholder="Website"
-                value={formData.website || ""}
-                onChange={handleInputChange}
-                className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              />
-            </div>
+              <h3 className="text-lg font-medium text-slate-800 mb-4">
+                Social Media Profiles
+              </h3>
 
-            <div>
-              <input
-                type="url"
-                name="facebook"
-                placeholder="Facebook"
-                value={formData.facebook || ""}
-                onChange={handleInputChange}
-                className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              />
-            </div>
+              <div className="space-y-4">
+                {/* Facebook */}
+                <div className="relative rounded-lg shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Facebook className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="url"
+                    name="facebook"
+                    placeholder="Facebook URL"
+                    value={formData.facebook || ""}
+                    onChange={handleInputChange}
+                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  />
+                </div>
 
-            <div>
-              <input
-                type="url"
-                name="twitter"
-                placeholder="Twitter"
-                value={formData.twitter || ""}
-                onChange={handleInputChange}
-                className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              />
-            </div>
+                {/* Twitter */}
+                <div className="relative rounded-lg shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Twitter className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="url"
+                    name="twitter"
+                    placeholder="Twitter URL"
+                    value={formData.twitter || ""}
+                    onChange={handleInputChange}
+                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  />
+                </div>
 
-            <div>
-              <input
-                type="url"
-                name="instagram"
-                placeholder="Instagram"
-                value={formData.instagram || ""}
-                onChange={handleInputChange}
-                className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              />
-            </div>
+                {/* Instagram */}
+                <div className="relative rounded-lg shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Instagram className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="url"
+                    name="instagram"
+                    placeholder="Instagram URL"
+                    value={formData.instagram || ""}
+                    onChange={handleInputChange}
+                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  />
+                </div>
 
-            <div>
-              <input
-                type="url"
-                name="linkedIn"
-                placeholder="LinkedIn"
-                value={formData.linkedIn || ""}
-                onChange={handleInputChange}
-                className="input bg-gray-300 text-black border-gray-200 w-full mb-4 p-2 rounded"
-              />
+                {/* LinkedIn */}
+                <div className="relative rounded-lg shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <Linkedin className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <input
+                    type="url"
+                    name="linkedIn"
+                    placeholder="LinkedIn URL"
+                    value={formData.linkedIn || ""}
+                    onChange={handleInputChange}
+                    className="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         );
 
       case "location":
         return (
-          <div className="flex flex-col md:flex-row h-full">
-            {isSidebarVisible && (
-              <div className="md:w-1/3 p-4 bg-white rounded-lg shadow mr-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <input
-                    type="text"
-                    name="locationName"
-                    placeholder="Location Name"
-                    value={formData.locationName || ""}
-                    onChange={handleInputChange}
-                    className="input bg-gray-300 text-black border-gray-200 w-full p-2 rounded"
-                  />
+          <div className="relative h-[600px] rounded-xl overflow-hidden border border-slate-200 shadow-inner">
+            <Startupmap
+              mapInstanceRef={mapInstanceRef}
+              onMapClick={handleMapClick}
+              initialLocation={
+                formData.locationLat && formData.locationLng
+                  ? { lat: formData.locationLat, lng: formData.locationLng }
+                  : null
+              }
+            />
 
-                  <input
-                    type="text"
-                    name="streetAddress"
-                    placeholder="Street Address"
-                    value={formData.streetAddress || ""}
-                    onChange={handleInputChange}
-                    className="input bg-gray-300 text-black border-gray-200 w-full p-2 rounded"
-                  />
+            <div className="absolute top-4 left-4 bg-white/95 p-5 rounded-xl shadow-xl backdrop-blur-sm border border-slate-100 w-80 max-w-[calc(100%-32px)] transition-all">
+              <h3 className="font-medium text-slate-800 mb-4 flex items-center">
+                <MapPin className="h-5 w-5 mr-2 text-indigo-500" />
+                Location Details
+              </h3>
 
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  name="locationName"
+                  placeholder="Location Name"
+                  value={formData.locationName || ""}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+                />
+
+                <input
+                  type="text"
+                  name="streetAddress"
+                  placeholder="Street Address"
+                  value={formData.streetAddress || ""}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+                />
+
+                <div className="grid grid-cols-2 gap-2">
                   <input
                     type="text"
                     name="city"
                     placeholder="City"
                     value={formData.city || ""}
                     onChange={handleInputChange}
-                    className="input bg-gray-300 text-black border-gray-200 w-full p-2 rounded"
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
                   />
 
                   <input
@@ -581,138 +827,207 @@ export default function UpdateStartup() {
                     placeholder="Province/State"
                     value={formData.province || ""}
                     onChange={handleInputChange}
-                    className="input bg-gray-300 text-black border-gray-200 w-full p-2 rounded"
+                    className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
                   />
-
-                  <input
-                    type="text"
-                    name="postalCode"
-                    placeholder="Postal Code"
-                    value={formData.postalCode || ""}
-                    onChange={handleInputChange}
-                    className="input bg-gray-300 text-black border-gray-200 w-full p-2 rounded"
-                  />
-
-                  <div className="flex space-x-2">
-                    <input
-                      type="number"
-                      name="locationLat"
-                      placeholder="Latitude"
-                      value={formData.locationLat || ""}
-                      onChange={handleInputChange}
-                      readOnly
-                      className="input bg-gray-200 text-black border-gray-200 w-1/2 p-2 rounded"
-                    />
-
-                    <input
-                      type="number"
-                      name="locationLng"
-                      placeholder="Longitude"
-                      value={formData.locationLng || ""}
-                      onChange={handleInputChange}
-                      readOnly
-                      className="input bg-gray-200 text-black border-gray-200 w-1/2 p-2 rounded"
-                    />
-                  </div>
-
-                  <button
-                    onClick={() => setIsSidebarVisible(false)}
-                    className="btn bg-blue-500 text-white hover:bg-blue-600 w-full py-2 rounded-lg"
-                  >
-                    Set Company Location on Map
-                  </button>
-
-                  {formData.locationLat && (
-                    <p className="text-sm text-gray-600">
-                      Selected Location: ({formData.locationLat.toFixed(4)},{" "}
-                      {formData.locationLng.toFixed(4)})
-                    </p>
-                  )}
                 </div>
-              </div>
-            )}
 
-            {/* Map always shows in location tab, but takes full width when sidebar is hidden */}
-            <div
-              className={`${
-                isSidebarVisible ? "md:w-2/3" : "w-full"
-              } h-96 rounded-lg overflow-hidden`}
-            >
-              <Startupmap
-                mapInstanceRef={mapInstanceRef}
-                onMapClick={handleMapClick}
-                initialLocation={
-                  formData.locationLat && formData.locationLng
-                    ? { lat: formData.locationLat, lng: formData.locationLng }
-                    : null
-                }
-              />
+                <input
+                  type="text"
+                  name="postalCode"
+                  placeholder="Postal Code"
+                  value={formData.postalCode || ""}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm"
+                />
+
+                {errors.location && (
+                  <p className="text-sm text-red-600 flex items-center bg-red-50 p-2 rounded-lg">
+                    <span className="inline-block h-4 w-4 rounded-full bg-red-100 text-red-500 mr-1.5 flex items-center justify-center text-xs">
+                      !
+                    </span>
+                    {errors.location}
+                  </p>
+                )}
+              </div>
+
+              {formData.locationLat && (
+                <div className="mt-3 p-2 rounded-lg bg-indigo-50 flex items-center text-sm text-indigo-700 font-medium">
+                  <MapPin className="h-4 w-4 mr-1.5 text-indigo-600" />
+                  <div>
+                    <div>Location set:</div>
+                    <div className="font-mono text-xs">
+                      {formData.locationLat.toFixed(6)}, {formData.locationLng.toFixed(6)}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setIsSidebarVisible(!isSidebarVisible)}
+                className="mt-3 w-full flex items-center justify-center px-4 py-2 rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-all font-medium text-sm"
+              >
+                {isSidebarVisible ? "Hide Sidebar" : "Show Sidebar"}
+              </button>
             </div>
           </div>
         );
 
       case "upload":
         return (
-          <div className="flex flex-col items-center justify-center p-6">
-            <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-md">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                Upload Data via CSV
-              </h2>
-
-              <p className="text-gray-600 mb-6">
-                Upload a CSV file to update or add data to this startup. Make
-                sure your CSV follows the required format.
-              </p>
-
-              <div className="mb-6">
-                <label className="block mb-2 text-sm font-medium text-gray-700">
-                  Select CSV File
-                </label>
-                <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-10 h-10 mb-3 text-gray-500" />
-                      <p className="mb-2 text-sm text-gray-500">
-                        <span className="font-semibold">Click to upload</span>{" "}
-                        or drag and drop
-                      </p>
-                      <p className="text-xs text-gray-500">CSV files only</p>
-                    </div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".csv"
-                      className="hidden"
-                      onChange={handleFileChange}
-                    />
-                  </label>
+          <div className="bg-gradient-to-br from-indigo-50/50 to-slate-50 p-8 rounded-xl">
+            <div className="max-w-2xl mx-auto">
+              <div className="flex items-center mb-6">
+                <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center mr-4 shadow-sm">
+                  <Upload className="h-6 w-6 text-indigo-600" />
                 </div>
-                {csvFile && (
-                  <p className="mt-2 text-sm text-green-600">
-                    Selected file: {csvFile.name}
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-800">
+                    Upload Startup Data
+                  </h2>
+                  <p className="text-slate-600 text-sm">
+                    Import additional metrics and data using CSV format
                   </p>
-                )}
+                </div>
               </div>
 
-              {uploadStatus && (
-                <div
-                  className={`p-4 mb-4 rounded-lg ${
-                    uploadStatus.success
-                      ? "bg-green-50 text-green-700"
-                      : "bg-red-50 text-red-700"
-                  }`}
+              {/* File upload area with dropzone */}
+              <div
+                className="border-2 border-dashed border-indigo-200 rounded-xl bg-white hover:bg-indigo-50/50 transition-colors p-8 text-center cursor-pointer group relative shadow-sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                <div className="bg-indigo-100 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4 group-hover:bg-indigo-200 transition-colors">
+                  <Upload className="h-8 w-8 text-indigo-500 group-hover:text-indigo-600 transition-colors" />
+                </div>
+                <p className="font-medium text-slate-800 text-lg">
+                  Drag and drop your CSV file here
+                </p>
+                <p className="text-sm text-slate-500 mt-1">- or -</p>
+                <button
+                  type="button"
+                  className="mt-3 px-5 py-2.5 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors font-medium"
                 >
-                  <p className="text-sm font-medium">{uploadStatus.message}</p>
+                  Browse Files
+                </button>
+                <p className="text-xs text-slate-400 mt-4">
+                  Only CSV files with valid startup metrics are supported
+                </p>
+              </div>
+
+              {/* Selected file indicator */}
+              {csvFile && (
+                <div className="flex items-center mt-4 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+                  <div className="h-12 w-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-4 shadow-sm">
+                    <span className="text-xs font-medium text-indigo-600">CSV</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-slate-900 truncate">
+                      {csvFile.name}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {(csvFile.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="ml-4 p-2 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCsvFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = "";
+                    }}
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
                 </div>
               )}
 
+              {/* Upload status */}
+              {uploadStatus && (
+                <div
+                  className={`mt-4 p-4 rounded-xl ${
+                    uploadStatus.success
+                      ? "bg-emerald-50 border border-emerald-200"
+                      : "bg-red-50 border border-red-200"
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <div
+                      className={`flex-shrink-0 rounded-full p-1 ${
+                        uploadStatus.success ? "bg-emerald-100" : "bg-red-100"
+                      }`}
+                    >
+                      {uploadStatus.success ? (
+                        <svg
+                          className="h-5 w-5 text-emerald-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          className="h-5 w-5 text-red-600"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <p
+                        className={`text-sm font-medium ${
+                          uploadStatus.success
+                            ? "text-emerald-800"
+                            : "text-red-800"
+                        }`}
+                      >
+                        {uploadStatus.success
+                          ? "Upload Successful"
+                          : "Upload Failed"}
+                      </p>
+                      <p
+                        className={`text-sm ${
+                          uploadStatus.success
+                            ? "text-emerald-700"
+                            : "text-red-700"
+                        }`}
+                      >
+                        {uploadStatus.message}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Upload button */}
               <button
                 onClick={handleCsvUpload}
                 disabled={!csvFile || uploading}
-                className={`w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                className={`mt-6 w-full flex items-center justify-center px-6 py-3 rounded-lg text-white font-medium transition-all ${
                   !csvFile || uploading
-                    ? "bg-indigo-400 cursor-not-allowed"
-                    : "bg-indigo-600 hover:bg-indigo-700"
+                    ? "bg-indigo-300 cursor-not-allowed"
+                    : "bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-md"
                 }`}
               >
                 {uploading ? (
@@ -723,7 +1038,7 @@ export default function UpdateStartup() {
                 ) : (
                   <>
                     <Upload className="h-5 w-5 mr-2" />
-                    Upload CSV
+                    Upload Data
                   </>
                 )}
               </button>
@@ -737,30 +1052,33 @@ export default function UpdateStartup() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center text-gray-600 hover:text-indigo-600 transition-colors"
-          >
-            <ArrowLeft className="h-5 w-5 mr-2" />
-            <span className="font-medium">Back to Dashboard</span>
-          </button>
-
-          <h1 className="text-xl font-bold text-indigo-600">
-            Update Startup: {formData.companyName}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Modern header with subtle gradient and better spacing */}
+      <header className="bg-gradient-to-r from-indigo-600 to-violet-500 text-white shadow-lg">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex items-center justify-between">
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center text-white hover:text-white/90 transition-all rounded-lg px-4 py-2 hover:bg-white/10"
+            >
+              <ArrowLeft className="h-5 w-5 mr-2" strokeWidth={2.5} />
+              <span className="font-medium">Back to Dashboard</span>
+            </button>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {formData.companyName || "Update Startup Profile"}
           </h1>
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error notification with improved design */}
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-xl text-red-700 p-5 mb-6 shadow-sm animate-fade-in">
             <div className="flex items-center">
-              <div className="py-1">
+              <div className="flex-shrink-0 bg-red-100 rounded-full p-2 mr-4">
                 <svg
-                  className="h-6 w-6 mr-4 text-red-500"
+                  className="h-5 w-5 text-red-500"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -775,117 +1093,136 @@ export default function UpdateStartup() {
                 </svg>
               </div>
               <div>
-                <p className="font-bold">Error</p>
-                <p className="text-sm">{error}</p>
+                <p className="font-medium">Error</p>
+                <p className="text-sm mt-1">{error}</p>
               </div>
+              <button
+                className="ml-auto text-red-400 hover:text-red-600"
+                onClick={() => setError(null)}
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
           </div>
         )}
 
+        {/* Success notification with improved design */}
         {success && (
-          <div className="bg-green-50 border-l-4 border-green-500 text-green-700 p-4 mb-6">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 mb-6 shadow-sm animate-fade-in">
             <div className="flex items-center">
-              <div className="py-1">
+              <div className="flex-shrink-0 bg-emerald-100 rounded-full p-2 mr-4">
                 <svg
-                  className="h-6 w-6 mr-4 text-green-500"
+                  className="h-5 w-5 text-emerald-600"
                   xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
                 >
                   <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M5 13l4 4L19 7"
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
                   />
                 </svg>
               </div>
               <div>
-                <p className="font-bold">Success</p>
-                <p className="text-sm">{success}</p>
+                <h3 className="font-medium text-emerald-800">Success</h3>
+                <p className="text-sm text-emerald-700 mt-1">{success}</p>
               </div>
+              <button
+                className="ml-auto text-emerald-400 hover:text-emerald-600"
+                onClick={() => setSuccess(null)}
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
           </div>
         )}
 
-        <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-          <div className="flex border-b overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => setActiveSection("basic")}
-              className={`flex-1 py-4 text-center font-medium whitespace-nowrap ${
-                activeSection === "basic"
-                  ? "bg-indigo-500 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              Basic Information
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection("contact")}
-              className={`flex-1 py-4 text-center font-medium whitespace-nowrap ${
-                activeSection === "contact"
-                  ? "bg-indigo-500 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              Contact & Social
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection("location")}
-              className={`flex-1 py-4 text-center font-medium whitespace-nowrap ${
-                activeSection === "location"
-                  ? "bg-indigo-500 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              Location
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection("upload")}
-              className={`flex-1 py-4 text-center font-medium whitespace-nowrap ${
-                activeSection === "upload"
-                  ? "bg-indigo-500 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
-            >
-              Upload Data
-            </button>
+        {/* Main card with improved shadow and rounding */}
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+          {/* Modern tab navigation */}
+          <div className="flex border-b overflow-x-auto bg-white sticky top-0 z-10">
+            {[
+              {
+                id: "basic",
+                label: "Basic Information",
+                icon: <Building className="h-4 w-4 mr-2" />,
+              },
+              {
+                id: "contact",
+                label: "Contact & Social",
+                icon: <Mail className="h-4 w-4 mr-2" />,
+              },
+              {
+                id: "location",
+                label: "Location",
+                icon: <MapPin className="h-4 w-4 mr-2" />,
+              },
+              {
+                id: "upload",
+                label: "Upload Data",
+                icon: <Upload className="h-4 w-4 mr-2" />,
+              },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveSection(tab.id)}
+                className={`flex items-center justify-center px-6 py-5 text-center font-medium transition-all duration-200 min-w-[140px] ${
+                  activeSection === tab.id
+                    ? "text-indigo-600 border-b-2 border-indigo-600 bg-indigo-50/30"
+                    : "text-slate-600 hover:text-indigo-500 hover:bg-indigo-50/50"
+                }`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Progress indicator */}
+          <div className="relative h-1 bg-indigo-50">
+            <div
+              className="absolute h-1 bg-indigo-500 transition-all duration-500 ease-in-out"
+              style={{
+                width: `${(["basic", "contact", "location", "upload"].indexOf(
+                  activeSection
+                ) + 1) * 25}%`,
+              }}
+            />
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="p-6">
-              {renderFormSection()}
+            <div className="p-8">{renderFormSection()}</div>
 
-              {activeSection !== "upload" && (
-                <div className="mt-8 flex justify-end gap-4">
-                  <button
-                    type="button"
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                    onClick={() => navigate("/startup-dashboard")}
-                    disabled={submitting}
-                  >
-                    <X className="h-5 w-5 mr-2" />
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-                    disabled={submitting}
-                  >
-                    {submitting ? (
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                    ) : (
-                      <Save className="h-5 w-5 mr-2" />
-                    )}
-                    {submitting ? "Saving..." : "Save Changes"}
-                  </button>
-                </div>
-              )}
+            {/* Form actions with improved styling */}
+            <div className="px-8 py-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-4">
+              <button
+                type="button"
+                className="px-5 py-2.5 border border-slate-300 rounded-lg text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 font-medium transition-all shadow-sm disabled:opacity-50"
+                onClick={() => navigate("/startup-dashboard")}
+                disabled={submitting}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                className="px-6 py-2.5 rounded-lg text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 font-medium transition-all flex items-center shadow-md disabled:opacity-70 disabled:cursor-not-allowed"
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Saving Changes...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-5 w-5 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </button>
             </div>
           </form>
         </div>
