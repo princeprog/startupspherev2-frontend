@@ -35,20 +35,26 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import StartupReviewSection from "./StartupReviewSelection";
 import { useSidebar } from "../context/SidebarContext";
 import loginLogo from "../assets/StartUpSphere_loginLogo.png";
 
 export default function AllStartupDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { closeSidebar } = useSidebar();
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useState(
+    location.state?.activeTab || "overview"
+  );
   const [selectedIndustry, setSelectedIndustry] = useState("All");
   const [rankingMetric, setRankingMetric] = useState("overall");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [selectedReviewStartupId, setSelectedReviewStartupId] = useState(
+    location.state?.reviewStartupId || null
+  );
 
   const [topStartups, setTopStartups] = useState([]);
   const [rankedStartups, setRankedStartups] = useState([]);
@@ -90,9 +96,12 @@ export default function AllStartupDashboard() {
 
   const fetchRole = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/users/me/role`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/users/me/role`,
+        {
+          credentials: "include",
+        }
+      );
 
       if (response.ok) {
         const data = await response.text();
@@ -116,6 +125,7 @@ export default function AllStartupDashboard() {
       try {
         const response = await fetch(
           `${import.meta.env.VITE_BACKEND_URL}/api/rankings/dashboard-analytics`,
+
           {
             credentials: "include",
           }
@@ -194,6 +204,7 @@ export default function AllStartupDashboard() {
         const metricParam = `metric=${rankingMetric}`;
         const url = `${import.meta.env.VITE_BACKEND_URL}/api/rankings?${industryParam}&${metricParam}`;
 
+
         const response = await fetch(url, {
           credentials: "include",
         });
@@ -211,7 +222,7 @@ export default function AllStartupDashboard() {
             locationName: matchingStartup?.city || "Unknown",
           };
         });
-        console.log(processedStartups)
+        console.log(processedStartups);
         setRankedStartups(processedStartups);
         setTotalStartups(data.totalCount);
 
@@ -841,7 +852,21 @@ export default function AllStartupDashboard() {
 
   useEffect(() => {
     closeSidebar();
-  }, [closeSidebar]);
+
+    // Check if we have a startup ID to review from navigation
+    if (
+      location.state?.activeTab === "review" &&
+      location.state?.reviewStartupId
+    ) {
+      setActiveTab("review");
+      setSelectedReviewStartupId(location.state.reviewStartupId);
+
+      // Show a toast notification to indicate which startup is being reviewed
+      if (location.state?.startupName) {
+        toast.info(`Reviewing startup: ${location.state.startupName}`);
+      }
+    }
+  }, [closeSidebar, location.state]);
 
   // Add this function to handle pagination
   const paginate = (array, page_size, page_number) => {
@@ -969,8 +994,7 @@ export default function AllStartupDashboard() {
                       startup.totalFunding || // Direct path
                       startup.metrics?.totalFunding || // Nested in metrics
                       (typeof startup.metrics === "string"
-                        ? JSON.parse(startup.metrics)
-                            ?.totalFunding
+                        ? JSON.parse(startup.metrics)?.totalFunding
                         : 0) || // Parse if string
                       0; // Default to 0 if none found
                     return sum + Number(funding);
@@ -1910,9 +1934,14 @@ export default function AllStartupDashboard() {
           <div className="p-4">
             <h2 className="text-xl font-semibold mb-4 text-blue-900">
               Startup Review
+              {location.state?.startupName && (
+                <span className="ml-2 text-base font-normal text-amber-600">
+                  (Reviewing: {location.state.startupName})
+                </span>
+              )}
             </h2>
             <div className="bg-white rounded-lg shadow">
-              <StartupReviewSection />
+              <StartupReviewSection startupId={selectedReviewStartupId} />
             </div>
           </div>
         )}

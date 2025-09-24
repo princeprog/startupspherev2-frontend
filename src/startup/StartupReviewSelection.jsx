@@ -26,8 +26,9 @@ import {
   Search,
   RefreshCw,
 } from "lucide-react";
+import { toast } from "react-toastify"
 
-export default function EnhancedStartupReviewSection() {
+export default function EnhancedStartupReviewSection({ startupId }) {
   const [startups, setStartups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,7 +64,7 @@ export default function EnhancedStartupReviewSection() {
   // Fetch startups data
   useEffect(() => {
     fetchStartups();
-  }, []);
+  }, [startupId]); // Now also watches for changes in startupId
 
   // Extract unique filter options
   useEffect(() => {
@@ -80,22 +81,64 @@ export default function EnhancedStartupReviewSection() {
     }
   }, [startups]);
 
+  // Effect to handle auto-opening preview when startupId is provided
+  useEffect(() => {
+    if (startupId && startups.length > 0) {
+      const targetStartup = startups.find(startup => startup.id === parseInt(startupId));
+      if (targetStartup) {
+        setSelectedStartup(targetStartup);
+        setIsPreviewOpen(true);
+        // Highlight that we're reviewing this specific startup
+        toast.info(`Reviewing startup: ${targetStartup.companyName}`);
+      }
+    }
+  }, [startupId, startups]);
+
   // API call to fetch startups
   const fetchStartups = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/startups/email-verified`,
-        { credentials: "include" }
-      );
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch startups: ${response.status}`);
+      
+      // If a specific startupId is provided, fetch only that startup or use submitted endpoint
+      if (startupId) {
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/startups/submitted`,
+          { credentials: "include" }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch startups: ${response.status}`);
+        }
+
+        const data = await response.json();
+        // Filter to find the specific startup if needed
+        const filteredData = Array.isArray(data) ? 
+          data.filter(s => s.id === parseInt(startupId)) : 
+          [];
+        
+        setStartups(filteredData.length > 0 ? filteredData : data);
+        
+        // If we have the specific startup, auto-select it
+        if (filteredData.length > 0) {
+          setSelectedStartup(filteredData[0]);
+          setIsPreviewOpen(true);
+        }
+      } else {
+        // Regular fetch for all startups
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/startups/email-verified`,
+          { credentials: "include" }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch startups: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setStartups(data);
       }
-
-      const data = await response.json();
-      setStartups(data);
     } catch (err) {
       console.error("Error fetching startups:", err);
       setError(err.message);
@@ -133,14 +176,20 @@ export default function EnhancedStartupReviewSection() {
       // Update local state
       setStartups(startups.filter((startup) => startup.id !== id));
       setActionResult({ success: true, message: successMessage });
-      fetchStartups()
+      fetchStartups();
 
       if (selectedStartup && selectedStartup.id === id) {
         setIsPreviewOpen(false);
+        setSelectedStartup(null);
       }
+      
+      // Show toast notification
+      toast.success(successMessage);
+      
     } catch (err) {
       console.error(`Failed to ${action} startup:`, err);
       setActionResult({ success: false, message: err.message });
+      toast.error(`Failed to ${action} startup: ${err.message}`);
     } finally {
       setIsActionLoading(false);
       setActionVisible(true);
@@ -149,6 +198,8 @@ export default function EnhancedStartupReviewSection() {
     }
   };
 
+  // Rest of your component remains the same...
+  
   // Export startups to CSV
   const exportToCSV = () => {
     const headers = [
