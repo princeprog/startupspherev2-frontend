@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 
 export default function Login({ closeModal, openRegister, onLoginSuccess }) {
   const [email, setEmail] = useState("");
@@ -48,8 +49,8 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
         const userData = await userResponse.json();
         console.log("Login successful, user data:", userData);
 
-        onLoginSuccess(userData); // Pass user data to parent
-        closeModal(); // Close the login modal
+        onLoginSuccess(userData);
+        closeModal();
       }
     } catch (err) {
       setError(err.message);
@@ -59,16 +60,24 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-      <div
-        className="w-[95%] max-w-sm mx-auto overflow-hidden bg-white rounded-xl shadow-2xl"
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm transition-opacity">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="w-[95%] max-w-md mx-auto overflow-hidden bg-white rounded-xl shadow-[0_15px_50px_-12px_rgba(0,0,0,0.25)] border border-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header with Logo */}
-        <div className="relative px-4 py-6 bg-gradient-to-br from-blue-600 to-blue-700">
+        {/* Subtle top accent line */}
+        <div className="h-1 w-full bg-gradient-to-r from-primary/80 via-primary to-primary/80"></div>
+        
+        {/* Header */}
+        <div className="relative bg-gray-200 px-8 pt-7 pb-6 bg-gradient-to-b from-gray-500 to-white border-b border-gray-100">
+          {/* Close button */}
           <button
-            className="absolute top-2 right-2 cursor-pointer text-white/80 hover:text-white transition-colors"
+            className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors border-0 bg-transparent"
             onClick={closeModal}
+            aria-label="Close login modal"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -85,75 +94,153 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
               />
             </svg>
           </button>
-          <div className="flex justify-center mb-4">
-            <img
-              src="/src/assets/StartUpSphere_loginLogo.png"
-              alt="StartUpSphere Logo"
-              className="h-12 w-auto object-contain"
-            />
+
+          {/* Logo with subtle shadow */}
+          <div className="flex justify-center mb-5">
+            <div className="relative">
+              <img
+                src="/src/assets/StartUpSphere_loginLogo.png"
+                alt="StartUpSphere Logo"
+                className="h-16 w-auto object-contain drop-shadow-sm"
+              />
+            </div>
           </div>
-          <h3 className="text-xl font-bold text-center text-white">
+
+          {/* Title text */}
+          <h3 className="text-2xl font-bold text-center text-gray-800 mb-1">
             Welcome Back
           </h3>
-          <p className="text-center text-white/80 mt-1 text-sm">
-            Sign in to continue to StartUpSphere
+          <p className="text-center text-gray-500 text-sm">
+            Sign in to continue to your account
           </p>
         </div>
 
-        {/* Login Form */}
-        <div className="px-6 py-4">
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
+        {/* Form container */}
+        <div className="px-8 py-7 bg-white">
+          <form onSubmit={handleLogin} className="space-y-5">
+            {/* Email Field */}
+            <div className="mb-0">
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-gray-700 mb-1.5 ml-0.5"
               >
                 Email Address
               </label>
-              <input
-                id="email"
-                className="block w-full px-3 py-2 text-gray-900 placeholder-gray-400 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <svg
+                    className="w-5 h-5 text-gray-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                    />
+                  </svg>
+                </div>
+                <input
+                  id="email"
+                  className="block w-full px-3 py-3 pl-11 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
             </div>
 
-            <div>
+            {/* Password Field */}
+            <div className="mb-0">
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-1"
+                className="block text-sm font-medium text-gray-700 mb-1.5 ml-0.5"
               >
                 Password
               </label>
-              <input
-                id="password"
-                className="block w-full px-3 py-2 text-gray-900 placeholder-gray-400 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                  <svg
+                    className="w-5 h-5 text-gray-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
+                  </svg>
+                </div>
+                <input
+                  id="password"
+                  className="block w-full px-3 py-3 pl-11 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
+              
+              {/* Password recovery link */}
+              <div className="flex justify-end mt-1.5">
+                <button 
+                  type="button" 
+                  className="text-xs text-gray-500 hover:text-primary hover:underline transition-colors border-0 p-0 bg-transparent"
+                >
+                  Forgot your password?
+                </button>
+              </div>
             </div>
 
+            {/* Error message */}
             {error && (
-              <div className="p-2 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-xs text-red-600 text-center">{error}</p>
-              </div>
+              <motion.div 
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="p-3 bg-red-50 border border-red-100 rounded-lg"
+              >
+                <div className="flex">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-5 w-5 text-red-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm text-red-600">{error}</p>
+                  </div>
+                </div>
+              </motion.div>
             )}
 
+            {/* Sign In button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2 px-4 cursor-pointer text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 px-4 cursor-pointer text-white bg-primary hover:bg-primary-focus active:bg-primary-focus focus:outline-none focus:ring-2 focus:ring-primary/30 font-medium rounded-lg transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm border-0 flex items-center justify-center mt-3"
             >
               {loading ? (
-                <div className="flex items-center justify-center">
+                <>
                   <svg
-                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                    className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
@@ -172,27 +259,28 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     ></path>
                   </svg>
-                  Signing in...
-                </div>
+                  <span>Signing in...</span>
+                </>
               ) : (
-                "Sign In"
+                <span>Sign In</span>
               )}
             </button>
           </form>
 
-          <div className="mt-4 text-center">
-            <p className="text-xs text-gray-600">
+          {/* Register link */}
+          <div className="mt-7 text-center border-t border-gray-100 pt-6">
+            <p className="text-sm text-gray-600">
               Don't have an account?{" "}
               <button
                 onClick={openRegister}
-                className="font-medium cursor-pointer text-blue-600 hover:text-blue-700 transition-colors"
+                className="font-medium text-primary hover:text-primary-focus transition-colors hover:underline bg-transparent p-0 border-0"
               >
-                Register now
+                Create an account
               </button>
             </p>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
