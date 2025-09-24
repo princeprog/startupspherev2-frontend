@@ -2342,6 +2342,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             ) : (
               <div className="text-center text-gray-500 mt-4">
                 No investors match your search.
+
               </div>
             )}
           </div>
