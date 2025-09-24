@@ -2322,93 +2322,28 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   onClick={() => handleInvestorClick(investor)}
                   className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100 group"
                 >
-                  <div className="flex items-start">
-                    {/* Investor Avatar */}
-                    <div className="mr-3 flex-shrink-0">
-                      <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 group-hover:bg-blue-200 transition-colors">
-                        <span className="text-lg font-medium">
-                          {investor.firstname?.charAt(0) || "I"}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Investor Details */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="text-base font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                          {investor.firstname} {investor.lastname}
-                        </h3>
-                        {investor.investmentStage && (
-                          <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
-                            {investor.investmentStage}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <p className="text-sm text-gray-600 line-clamp-2 mb-2">
-                        {investor.biography || "No biography available"}
-                      </p>
-                      
-                      <div className="flex items-center text-xs text-gray-500">
-                        <div className="flex items-center">
-                          <MdLocationOn className="mr-1 h-4 w-4 text-gray-500" />
-                          <span>
-                            {investor.locationName || "Location not specified"}
-                          </span>
-                        </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-gray-500">
+                      {investor.locationName}
+                    </span>
+                    <span className="px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
+                      {investor.gender}
+                    </span>
 
-                      </div>
-                    </div>
                   </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {investor.firstname} {investor.lastname}
+                  </h3>
+                  <p className="text-sm text-gray-600 line-clamp-2">
+                    {investor.biography}
+                  </p>
                 </div>
               ))
-            ) : searchQuery ? (
-              <div className="text-center py-10">
-                <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-full w-full"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="2"
-
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-700 font-medium">No investors found</p>
-                <p className="text-gray-500 text-sm mt-1">
-                  Try adjusting your search or filters
-                </p>
-              </div>
             ) : (
-              <div className="text-center py-10">
-                <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-full w-full"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="2"
+              <div className="text-center text-gray-500 mt-4">
+                No investors match your search.
 
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-                <p className="text-gray-700 font-medium">Search for investors</p>
-                <p className="text-gray-500 text-sm mt-1">
-                  Enter a search term to find investors
-                </p>
+
               </div>
             )}
           </div>
@@ -2614,6 +2549,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 }`}
                 title={likedInvestors?.includes(investor.id) ? "Unlike" : "Like"}
               >
+
                 {likedInvestors?.includes(investor.id) ? <FaHeart className="h-5 w-5" /> : <FaRegHeart className="h-5 w-5" />}
               </button>
             </div>

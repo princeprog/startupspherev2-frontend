@@ -1258,7 +1258,11 @@ export default function StartupDashboard() {
                   : "N/A";
 
                 return (
-                  <tr key={st.id} className="hover">
+                  <tr 
+                    key={st.id} 
+                    className="hover cursor-pointer"
+                    onClick={() => navigate(`/startup/${st.id}`)}
+                  >
                     <td>
                       <div className="flex items-center gap-3">
                         <div className="avatar">
@@ -1306,6 +1310,7 @@ export default function StartupDashboard() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()} // Prevent row click when clicking link
                           >
                             {st.website} <ExternalLink size={12} />
                           </a>
@@ -1317,17 +1322,23 @@ export default function StartupDashboard() {
                     <td>{formattedDate}</td>
                     <td>{st.contactEmail || "N/A"}</td>
                     <td>{st.phoneNumber || "N/A"}</td>
-                    <td>
+                    <td onClick={(e) => e.stopPropagation()}> {/* Prevent row click when clicking buttons */}
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleNavigateToUpdate(st)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNavigateToUpdate(st);
+                          }}
                           className="btn btn-sm btn-outline btn-info"
                           disabled={submitting}
                         >
                           <Edit size={16} />
                         </button>
                         <button
-                          onClick={() => handleDeleteStartup(st.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteStartup(st.id);
+                          }}
                           className="btn btn-sm btn-outline btn-error"
                           disabled={submitting}
                         >
