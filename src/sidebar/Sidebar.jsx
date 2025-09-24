@@ -2342,8 +2342,6 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
             ) : (
               <div className="text-center text-gray-500 mt-4">
                 No investors match your search.
-
-
               </div>
             )}
           </div>
@@ -2549,6 +2547,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 }`}
                 title={likedInvestors?.includes(investor.id) ? "Unlike" : "Like"}
               >
+
                 {likedInvestors?.includes(investor.id) ? <FaHeart className="h-5 w-5" /> : <FaRegHeart className="h-5 w-5" />}
               </button>
             </div>
@@ -2568,6 +2567,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                   className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-md"
                 />
               )}
+
             </div>
 
             <h3 className="mt-4 text-xl font-semibold text-gray-900">
