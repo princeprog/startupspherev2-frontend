@@ -53,20 +53,24 @@ export default function StartupDetail() {
     email: "",
     phoneNumber: "",
     region: "",
+    regionCode: null,
+    province: "",
+    provinceCode: null,
     city: "",
+    cityCode: null,
     barangay: "",
+    barangayCode: null,
     street: "",
     postalCode: "",
     facebook: "",
     linkedIn: "",
     role: "Mentor",
     status: "Active",
-    hasPhysicalLocation: false, // New toggle field
-    locationLat: null, // Latitude coordinate
-    locationLng: null, // Longitude coordinate
-    locationName: "", // Descriptive name of location
+    hasPhysicalLocation: false,
+    locationLat: null,
+    locationLng: null,
+    locationName: "",
   });
-
   // Add this state near your other state variables
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -180,6 +184,7 @@ export default function StartupDetail() {
 
   // Update the handleAddStakeholder function to include location data
   // Update the handleAddStakeholder function to include loading state and better error handling
+  // Modified handleAddStakeholder to include location codes
   const handleAddStakeholder = async (e) => {
     e.preventDefault();
 
@@ -188,7 +193,7 @@ export default function StartupDetail() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Extract stakeholder data (excluding role and status)
+      // Extract stakeholder data including location codes
       const { role, status, hasPhysicalLocation, ...stakeholderData } =
         stakeholderFormData;
 
@@ -199,7 +204,7 @@ export default function StartupDetail() {
         delete stakeholderData.locationName;
       }
 
-      // Step 2: Create stakeholder
+      // Create stakeholder with the updated data structure
       const stakeholderResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/stakeholders`,
         {
@@ -215,7 +220,7 @@ export default function StartupDetail() {
       const responseData = await stakeholderResponse.json();
 
       if (!stakeholderResponse.ok) {
-        // Check for duplicate email error
+        // Handle errors as before
         if (
           responseData.message?.toLowerCase().includes("duplicate") ||
           responseData.message?.toLowerCase().includes("already exists")
@@ -227,10 +232,8 @@ export default function StartupDetail() {
         throw new Error(responseData.message || "Error creating stakeholder");
       }
 
-      // Step 3: Get the created stakeholder ID
+      // Continue with association as before
       const stakeholderId = responseData.id;
-
-      // Step 4: Create startup-stakeholder association
       const associationResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/startup-stakeholders`,
         {
@@ -248,6 +251,7 @@ export default function StartupDetail() {
         }
       );
 
+      // Continue with existing code...
       if (!associationResponse.ok) {
         const errorData = await associationResponse.json();
         throw new Error(
@@ -255,7 +259,6 @@ export default function StartupDetail() {
         );
       }
 
-      // Step 5: Refresh the stakeholders list
       await fetchStakeholders();
       setShowStakeholderForm(false);
       resetStakeholderForm();
@@ -268,9 +271,117 @@ export default function StartupDetail() {
     }
   };
 
-  // Update stakeholder
-  // Update the handleUpdateStakeholder function similarly
-  // Fix for the handleUpdateStakeholder function to use the correct endpoint for role and status
+  // First, add a new state variable near your other state variables
+  const [addressDataLoading, setAddressDataLoading] = useState(false);
+
+  // Updated startEditingStakeholder function with improved dropdown value display
+  const startEditingStakeholder = async (stakeholderData) => {
+    console.log("Editing stakeholder data:", stakeholderData);
+    const stakeholder = stakeholderData.stakeholder || stakeholderData;
+
+    // Show loading state immediately
+    setAddressDataLoading(true);
+    setEditingStakeholder(stakeholderData);
+
+    try {
+      // Reset previous selections to avoid stale data
+      setProvinces([]);
+      setCities([]);
+      setBarangays([]);
+
+      // Set form data with stakeholder information
+      setStakeholderFormData({
+        name: stakeholder.name || "",
+        email: stakeholder.email || "",
+        phoneNumber: stakeholder.phoneNumber || "",
+        region: stakeholder.region || "",
+        regionCode: stakeholder.regionCode || null,
+        province: stakeholder.province || "",
+        provinceCode: stakeholder.provinceCode || null,
+        city: stakeholder.city || "",
+        cityCode: stakeholder.cityCode || null,
+        barangay: stakeholder.barangay || "",
+        barangayCode: stakeholder.barangayCode || null,
+        street: stakeholder.street || "",
+        postalCode: stakeholder.postalCode || "",
+        facebook: stakeholder.facebook || "",
+        linkedIn: stakeholder.linkedIn || "",
+        role: stakeholderData.role || "Mentor",
+        status: stakeholderData.status || "Active",
+        hasPhysicalLocation: !!(
+          stakeholder.locationLat && stakeholder.locationLng
+        ),
+        locationLat: stakeholder.locationLat || null,
+        locationLng: stakeholder.locationLng || null,
+        locationName: stakeholder.locationName || "",
+      });
+
+      // Step 1: Load regions (always needed)
+      if (regions.length === 0) {
+        const regionsResponse = await fetch(
+          "https://psgc.gitlab.io/api/regions"
+        );
+        if (regionsResponse.ok) {
+          const regionsData = await regionsResponse.json();
+          setRegions(regionsData);
+        }
+      }
+
+      // Step 2: Set selected region and load provinces if available
+      if (stakeholder.regionCode) {
+        setSelectedRegion(stakeholder.regionCode);
+
+        const provincesResponse = await fetch(
+          `https://psgc.gitlab.io/api/regions/${stakeholder.regionCode}/provinces`
+        );
+        if (provincesResponse.ok) {
+          const provincesData = await provincesResponse.json();
+          setProvinces(provincesData);
+
+          // Step 3: Set selected province and load cities if available
+          if (stakeholder.provinceCode) {
+            setSelectedProvince(stakeholder.provinceCode);
+
+            const citiesResponse = await fetch(
+              `https://psgc.gitlab.io/api/provinces/${stakeholder.provinceCode}/cities-municipalities`
+            );
+            if (citiesResponse.ok) {
+              const citiesData = await citiesResponse.json();
+              setCities(citiesData);
+
+              // Step 4: Set selected city and load barangays if available
+              if (stakeholder.cityCode) {
+                setSelectedCity(stakeholder.cityCode);
+
+                const barangaysResponse = await fetch(
+                  `https://psgc.gitlab.io/api/cities-municipalities/${stakeholder.cityCode}/barangays`
+                );
+                if (barangaysResponse.ok) {
+                  const barangaysData = await barangaysResponse.json();
+                  setBarangays(barangaysData);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Wait a moment to ensure all state updates are processed
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    } catch (error) {
+      console.error("Error loading address data:", error);
+      showNotification(
+        "There was an issue loading some address data. You may need to select some location fields manually.",
+        "error"
+      );
+    } finally {
+      // Show the form once all data is loaded
+      setAddressDataLoading(false);
+      setShowStakeholderForm(true);
+    }
+  };
+
+  // Modified handleUpdateStakeholder to include location codes
   const handleUpdateStakeholder = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -281,7 +392,7 @@ export default function StartupDetail() {
         ? editingStakeholder.stakeholder.id
         : editingStakeholder.id;
 
-      // Extract role and status
+      // Extract role, status, and hasPhysicalLocation
       const { role, status, hasPhysicalLocation, ...stakeholderData } =
         stakeholderFormData;
 
@@ -292,7 +403,7 @@ export default function StartupDetail() {
         delete stakeholderData.locationName;
       }
 
-      // Step 1: Update the stakeholder data
+      // Update stakeholder with the updated data structure
       const stakeholderResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/stakeholders/${stakeholderId}`,
         {
@@ -308,7 +419,6 @@ export default function StartupDetail() {
       const responseData = await stakeholderResponse.json();
 
       if (!stakeholderResponse.ok) {
-        // Check for duplicate email error
         if (
           responseData.message?.toLowerCase().includes("duplicate") ||
           responseData.message?.toLowerCase().includes("already exists")
@@ -320,10 +430,8 @@ export default function StartupDetail() {
         throw new Error(responseData.message || "Error updating stakeholder");
       }
 
-      // Step 2: Update the role and status using the direct startup-stakeholder ID
-      // Note: stakeholderData.id is actually the association ID, not the stakeholder ID
-      const associationId = stakeholderData.id || editingStakeholder.id;
-
+      // Update the association (role and status)
+      const associationId = editingStakeholder.id;
       const associationResponse = await fetch(
         `${
           import.meta.env.VITE_BACKEND_URL
@@ -437,46 +545,53 @@ export default function StartupDetail() {
     }
   };
 
-  // Helper function to edit stakeholder
-  // Helper function to edit stakeholder
-  const startEditingStakeholder = (stakeholderData) => {
-    console.log(stakeholderData);
-    // Handle both direct stakeholder objects and nested structures
-    const stakeholder = stakeholderData.stakeholder || stakeholderData;
+  const findClosestMatch = (name, options) => {
+    if (!name || !options || options.length === 0) return null;
 
-    // Determine if stakeholder has a physical location
-    const hasPhysicalLocation = !!(
-      stakeholder.locationLat && stakeholder.locationLng
+    // Convert to lowercase for comparison
+    const normalizedName = name.toLowerCase().trim();
+
+    // Try exact match first
+    const exactMatch = options.find(
+      (opt) => opt.name.toLowerCase() === normalizedName
     );
 
-    setEditingStakeholder(stakeholderData);
-    setStakeholderFormData({
-      name: stakeholder.name || "",
-      email: stakeholder.email || "",
-      phoneNumber: stakeholder.phoneNumber || "",
-      region: stakeholder.region || "",
-      city: stakeholder.city || "",
-      barangay: stakeholder.barangay || "",
-      street: stakeholder.street || "",
-      postalCode: stakeholder.postalCode || "",
-      facebook: stakeholder.facebook || "",
-      linkedIn: stakeholder.linkedIn || "",
-      role: stakeholderData.role || "Mentor",
-      status: stakeholderData.status || "Active",
-      hasPhysicalLocation,
-      locationLat: stakeholder.locationLat || null,
-      locationLng: stakeholder.locationLng || null,
-      locationName: stakeholder.locationName || "",
-    });
+    if (exactMatch) return exactMatch;
 
-    // Find and select the region based on name (pre-selection)
-    const matchedRegion = regions.find((r) => r.name === stakeholder.region);
-    if (matchedRegion) {
-      setSelectedRegion(matchedRegion.code);
-      // The useEffect hooks will handle loading provinces and subsequent selections
+    // Try includes match (both ways)
+    const includesMatch = options.find(
+      (opt) =>
+        opt.name.toLowerCase().includes(normalizedName) ||
+        normalizedName.includes(opt.name.toLowerCase())
+    );
+
+    if (includesMatch) return includesMatch;
+
+    // Try fuzzy matching - check if first few characters match
+    if (normalizedName.length > 3) {
+      const prefix = normalizedName.substring(0, 4); // First 4 chars
+      const prefixMatch = options.find((opt) =>
+        opt.name.toLowerCase().startsWith(prefix)
+      );
+
+      if (prefixMatch) return prefixMatch;
     }
 
-    setShowStakeholderForm(true);
+    // Try looking for a partial match - any word in the name
+    const words = normalizedName.split(/\s+/);
+    if (words.length > 1) {
+      for (const word of words) {
+        if (word.length > 3) {
+          // Only use meaningful words
+          const wordMatch = options.find((opt) =>
+            opt.name.toLowerCase().includes(word)
+          );
+          if (wordMatch) return wordMatch;
+        }
+      }
+    }
+
+    return null;
   };
 
   // Reset stakeholder form
@@ -486,8 +601,13 @@ export default function StartupDetail() {
       email: "",
       phoneNumber: "",
       region: "",
+      regionCode: null,
+      province: "",
+      provinceCode: null,
       city: "",
+      cityCode: null,
       barangay: "",
+      barangayCode: null,
       street: "",
       postalCode: "",
       facebook: "",
@@ -499,6 +619,12 @@ export default function StartupDetail() {
       locationLng: null,
       locationName: "",
     });
+    setSelectedRegion("");
+    setSelectedProvince("");
+    setSelectedCity("");
+    setProvinces([]);
+    setCities([]);
+    setBarangays([]);
   };
 
   // Show notification
@@ -656,12 +782,14 @@ export default function StartupDetail() {
         if (!response.ok) throw new Error("Failed to fetch provinces");
         const data = await response.json();
         setProvinces(data);
+
         // Reset child selections when parent changes
         setSelectedProvince("");
         setSelectedCity("");
         setCities([]);
         setBarangays([]);
-        // Update form data with region name instead of code
+
+        // Update form data with region name AND code
         const selectedRegionObj = regions.find(
           (r) => r.code === selectedRegion
         );
@@ -669,6 +797,7 @@ export default function StartupDetail() {
           setStakeholderFormData((prev) => ({
             ...prev,
             region: selectedRegionObj.name,
+            regionCode: selectedRegionObj.code,
           }));
         }
       } catch (error) {
@@ -693,10 +822,12 @@ export default function StartupDetail() {
         if (!response.ok) throw new Error("Failed to fetch cities");
         const data = await response.json();
         setCities(data);
+
         // Reset barangays when city changes
         setSelectedCity("");
         setBarangays([]);
-        // Update form data with province name
+
+        // Update form data with province name AND code
         const selectedProvinceObj = provinces.find(
           (p) => p.code === selectedProvince
         );
@@ -704,6 +835,7 @@ export default function StartupDetail() {
           setStakeholderFormData((prev) => ({
             ...prev,
             province: selectedProvinceObj.name,
+            provinceCode: selectedProvinceObj.code,
           }));
         }
       } catch (error) {
@@ -728,12 +860,14 @@ export default function StartupDetail() {
         if (!response.ok) throw new Error("Failed to fetch barangays");
         const data = await response.json();
         setBarangays(data);
-        // Update form data with city name
+
+        // Update form data with city name AND code
         const selectedCityObj = cities.find((c) => c.code === selectedCity);
         if (selectedCityObj) {
           setStakeholderFormData((prev) => ({
             ...prev,
             city: selectedCityObj.name,
+            cityCode: selectedCityObj.code,
           }));
         }
       } catch (error) {
@@ -752,6 +886,7 @@ export default function StartupDetail() {
       setStakeholderFormData((prev) => ({
         ...prev,
         barangay: selectedBarangayObj.name,
+        barangayCode: selectedBarangayObj.code,
       }));
     }
   };
@@ -781,7 +916,9 @@ export default function StartupDetail() {
     const stakeholderId = deleteModal.stakeholderId;
 
     // Find the stakeholder data to get both IDs
-    const stakeholderData = stakeholders.find((item) => item.id === stakeholderId);
+    const stakeholderData = stakeholders.find(
+      (item) => item.id === stakeholderId
+    );
     if (!stakeholderData) {
       showNotification("Could not find stakeholder data", "error");
       setDeleteModal({ ...deleteModal, isOpen: false });
@@ -798,7 +935,9 @@ export default function StartupDetail() {
       // Step 1: Delete the startup-stakeholder association
       console.log(`Deleting association with ID: ${stakeholderId}`);
       const associationResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/startup-stakeholders/${stakeholderId}`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/startup-stakeholders/${stakeholderId}`,
         {
           method: "DELETE",
           credentials: "include",
@@ -816,7 +955,9 @@ export default function StartupDetail() {
       if (actualStakeholderId) {
         console.log(`Deleting stakeholder with ID: ${actualStakeholderId}`);
         const stakeholderResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/stakeholders/${actualStakeholderId}`,
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/stakeholders/${actualStakeholderId}`,
           {
             method: "DELETE",
             credentials: "include",
@@ -841,7 +982,10 @@ export default function StartupDetail() {
       );
     } catch (error) {
       console.error("Error deleting stakeholder:", error);
-      showNotification("Failed to delete stakeholder: " + error.message, "error");
+      showNotification(
+        "Failed to delete stakeholder: " + error.message,
+        "error"
+      );
     } finally {
       setDeleteModal({
         isOpen: false,
@@ -1345,721 +1489,754 @@ export default function StartupDetail() {
                           </div>
                         </div>
 
-                        <form
-                          onSubmit={
-                            editingStakeholder
-                              ? handleUpdateStakeholder
-                              : handleAddStakeholder
-                          }
-                          className="p-6 overflow-y-auto max-h-[calc(90vh-4rem)]"
-                        >
-                          <div className="space-y-8">
-                            {/* Basic Information */}
-                            <fieldset>
-                              <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
-                                <User
-                                  size={18}
-                                  className="mr-2 text-blue-600"
-                                />
-                                Basic Information
-                              </legend>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="name"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Full Name{" "}
-                                    <span className="text-red-500">*</span>
-                                  </label>
-                                  <input
-                                    type="text"
-                                    id="name"
-                                    required
-                                    value={stakeholderFormData.name}
-                                    onChange={(e) =>
-                                      setStakeholderFormData({
-                                        ...stakeholderFormData,
-                                        name: e.target.value,
-                                      })
-                                    }
-                                    className="block text-gray-800 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-                                    placeholder="John Smith"
+                        {/* Show loading animation while address data is being loaded */}
+                        {addressDataLoading ? (
+                          <div className="flex flex-col items-center justify-center p-12">
+                            <div className="w-16 h-16 border-4 border-t-blue-600 border-blue-200 rounded-full animate-spin mb-4"></div>
+                            <h4 className="text-lg font-medium text-gray-800">
+                              Setting up address data
+                            </h4>
+                            <p className="text-gray-500 text-center mt-2">
+                              Loading location information to ensure accurate
+                              data entry
+                            </p>
+                          </div>
+                        ) : (
+                          <form
+                            onSubmit={
+                              editingStakeholder
+                                ? handleUpdateStakeholder
+                                : handleAddStakeholder
+                            }
+                            className="p-6 overflow-y-auto max-h-[calc(90vh-4rem)]"
+                          >
+                            <div className="space-y-8">
+                              {/* Basic Information */}
+                              <fieldset>
+                                <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
+                                  <User
+                                    size={18}
+                                    className="mr-2 text-blue-600"
                                   />
-                                </div>
-
-                                {/* NEW: Role Selection Dropdown */}
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="role"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Role <span className="text-red-500">*</span>
-                                  </label>
-                                  <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                      <Briefcase
-                                        size={16}
-                                        className="text-gray-400"
-                                      />
-                                    </div>
-                                    <select
-                                      id="role"
+                                  Basic Information
+                                </legend>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="name"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                      Full Name{" "}
+                                      <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                      type="text"
+                                      id="name"
                                       required
-                                      value={stakeholderFormData.role}
+                                      value={stakeholderFormData.name}
                                       onChange={(e) =>
                                         setStakeholderFormData({
                                           ...stakeholderFormData,
-                                          role: e.target.value,
+                                          name: e.target.value,
                                         })
                                       }
-                                      className="block text-gray-800 w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all appearance-none"
+                                      className="block text-gray-800 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+                                      placeholder="John Smith"
+                                    />
+                                  </div>
+
+                                  {/* NEW: Role Selection Dropdown */}
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="role"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
                                     >
-                                      <option value="Mentor">Mentor</option>
-                                      <option value="Advisor">Advisor</option>
-                                      <option value="Investor">Investor</option>
-                                      <option value="Angel Investor">
-                                        Angel Investor
-                                      </option>
-                                      <option value="VC Representative">
-                                        VC Representative
-                                      </option>
-                                      <option value="Founder">Founder</option>
-                                      <option value="Co-Founder">
-                                        Co-Founder
-                                      </option>
-                                      <option value="Board Member">
-                                        Board Member
-                                      </option>
-                                      <option value="Executive">
-                                        Executive
-                                      </option>
-                                      <option value="Partner">Partner</option>
-                                      <option value="Strategic Partner">
-                                        Strategic Partner
-                                      </option>
-                                      <option value="Industry Expert">
-                                        Industry Expert
-                                      </option>
-                                      <option value="Service Provider">
-                                        Service Provider
-                                      </option>
-                                      <option value="Family Office">
-                                        Family Office
-                                      </option>
-                                      <option value="Other">Other</option>
-                                    </select>
-                                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                      <ChevronDown
-                                        size={14}
-                                        className="text-gray-500"
+                                      Role{" "}
+                                      <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Briefcase
+                                          size={16}
+                                          className="text-gray-400"
+                                        />
+                                      </div>
+                                      <select
+                                        id="role"
+                                        required
+                                        value={stakeholderFormData.role}
+                                        onChange={(e) =>
+                                          setStakeholderFormData({
+                                            ...stakeholderFormData,
+                                            role: e.target.value,
+                                          })
+                                        }
+                                        className="block text-gray-800 w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all appearance-none"
+                                      >
+                                        <option value="Mentor">Mentor</option>
+                                        <option value="Advisor">Advisor</option>
+                                        <option value="Investor">
+                                          Investor
+                                        </option>
+                                        <option value="Angel Investor">
+                                          Angel Investor
+                                        </option>
+                                        <option value="VC Representative">
+                                          VC Representative
+                                        </option>
+                                        <option value="Founder">Founder</option>
+                                        <option value="Co-Founder">
+                                          Co-Founder
+                                        </option>
+                                        <option value="Board Member">
+                                          Board Member
+                                        </option>
+                                        <option value="Executive">
+                                          Executive
+                                        </option>
+                                        <option value="Partner">Partner</option>
+                                        <option value="Strategic Partner">
+                                          Strategic Partner
+                                        </option>
+                                        <option value="Industry Expert">
+                                          Industry Expert
+                                        </option>
+                                        <option value="Service Provider">
+                                          Service Provider
+                                        </option>
+                                        <option value="Family Office">
+                                          Family Office
+                                        </option>
+                                        <option value="Other">Other</option>
+                                      </select>
+                                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                        <ChevronDown
+                                          size={14}
+                                          className="text-gray-500"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Existing email field */}
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="email"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                      Email Address{" "}
+                                      <span className="text-red-500">*</span>
+                                    </label>
+                                    <div>
+                                      <input
+                                        type="email"
+                                        id="email"
+                                        required
+                                        value={stakeholderFormData.email}
+                                        onChange={(e) => {
+                                          setStakeholderFormData({
+                                            ...stakeholderFormData,
+                                            email: e.target.value,
+                                          });
+                                        }}
+                                        className={`block text-gray-800 w-full px-3 py-2 border ${
+                                          stakeholderFormData.email &&
+                                          !validateEmail(
+                                            stakeholderFormData.email
+                                          )
+                                            ? "border-red-300 focus:ring-red-500 focus:border-red-500"
+                                            : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                        } rounded-md shadow-sm sm:text-sm transition-all`}
+                                        placeholder="john.smith@example.com"
+                                      />
+                                      {stakeholderFormData.email &&
+                                        !validateEmail(
+                                          stakeholderFormData.email
+                                        ) && (
+                                          <p className="mt-1 text-sm text-red-600">
+                                            Please enter a valid email address
+                                          </p>
+                                        )}
+                                    </div>
+                                  </div>
+
+                                  {/* Existing phone number field */}
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="phoneNumber"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                      Phone Number
+                                    </label>
+                                    <div className="relative">
+                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Phone
+                                          size={16}
+                                          className="text-gray-400"
+                                        />
+                                      </div>
+                                      <input
+                                        type="text"
+                                        id="phoneNumber"
+                                        value={stakeholderFormData.phoneNumber}
+                                        onChange={(e) =>
+                                          setStakeholderFormData({
+                                            ...stakeholderFormData,
+                                            phoneNumber: e.target.value,
+                                          })
+                                        }
+                                        className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+                                        placeholder="+63 919 123 4567"
                                       />
                                     </div>
                                   </div>
-                                </div>
 
-                                {/* Existing email field */}
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="email"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Email Address{" "}
-                                    <span className="text-red-500">*</span>
-                                  </label>
-                                  <div>
-                                    <input
-                                      type="email"
-                                      id="email"
-                                      required
-                                      value={stakeholderFormData.email}
-                                      onChange={(e) => {
-                                        setStakeholderFormData({
-                                          ...stakeholderFormData,
-                                          email: e.target.value,
-                                        });
-                                      }}
-                                      className={`block text-gray-800 w-full px-3 py-2 border ${
-                                        stakeholderFormData.email &&
-                                        !validateEmail(
-                                          stakeholderFormData.email
-                                        )
-                                          ? "border-red-300 focus:ring-red-500 focus:border-red-500"
-                                          : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                                      } rounded-md shadow-sm sm:text-sm transition-all`}
-                                      placeholder="john.smith@example.com"
-                                    />
-                                    {stakeholderFormData.email &&
-                                      !validateEmail(
-                                        stakeholderFormData.email
-                                      ) && (
-                                        <p className="mt-1 text-sm text-red-600">
-                                          Please enter a valid email address
+                                  {/* NEW: Status Selection Dropdown */}
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="status"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                      Status{" "}
+                                      <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <div
+                                          className={`w-2 h-2 rounded-full ${
+                                            stakeholderFormData.status ===
+                                            "Active"
+                                              ? "bg-green-500"
+                                              : stakeholderFormData.status ===
+                                                "Inactive"
+                                              ? "bg-gray-400"
+                                              : "bg-yellow-500"
+                                          }`}
+                                        ></div>
+                                      </div>
+                                      <select
+                                        id="status"
+                                        required
+                                        value={stakeholderFormData.status}
+                                        onChange={(e) =>
+                                          setStakeholderFormData({
+                                            ...stakeholderFormData,
+                                            status: e.target.value,
+                                          })
+                                        }
+                                        className="block text-gray-800 w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all appearance-none"
+                                      >
+                                        <option value="Active">Active</option>
+                                        <option value="Inactive">
+                                          Inactive
+                                        </option>
+                                        <option value="Pending">Pending</option>
+                                        <option value="Former">Former</option>
+                                      </select>
+                                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                        <ChevronDown
+                                          size={14}
+                                          className="text-gray-500"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </fieldset>
+
+                              {/* Address Information with PSGC API Integration */}
+                              <fieldset>
+                                <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
+                                  <MapPin
+                                    size={18}
+                                    className="mr-2 text-blue-600"
+                                  />
+                                  Address Information
+                                </legend>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                                  {/* Region Selection */}
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="region"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                      Region
+                                    </label>
+                                    <select
+                                      id="region"
+                                      value={selectedRegion}
+                                      onChange={(e) =>
+                                        setSelectedRegion(e.target.value)
+                                      }
+                                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
+                                    >
+                                      <option value="">Select a region</option>
+                                      {regions.map((region) => (
+                                        <option
+                                          key={region.code}
+                                          value={region.code}
+                                        >
+                                          {region.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {/* Province Selection */}
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="province"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                      Province
+                                    </label>
+                                    <select
+                                      id="province"
+                                      value={selectedProvince}
+                                      onChange={(e) =>
+                                        setSelectedProvince(e.target.value)
+                                      }
+                                      disabled={
+                                        !selectedRegion ||
+                                        provinces.length === 0
+                                      }
+                                      className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
+                                        !selectedRegion
+                                          ? "bg-gray-100 cursor-not-allowed"
+                                          : ""
+                                      }`}
+                                    >
+                                      <option value="">
+                                        Select a province
+                                      </option>
+                                      {provinces.map((province) => (
+                                        <option
+                                          key={province.code}
+                                          value={province.code}
+                                        >
+                                          {province.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {selectedRegion &&
+                                      provinces.length === 0 && (
+                                        <p className="mt-1 text-xs text-blue-600">
+                                          Loading provinces or region may not
+                                          have provinces...
                                         </p>
                                       )}
                                   </div>
-                                </div>
 
-                                {/* Existing phone number field */}
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="phoneNumber"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Phone Number
-                                  </label>
-                                  <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                      <Phone
-                                        size={16}
-                                        className="text-gray-400"
-                                      />
-                                    </div>
-                                    <input
-                                      type="text"
-                                      id="phoneNumber"
-                                      value={stakeholderFormData.phoneNumber}
-                                      onChange={(e) =>
-                                        setStakeholderFormData({
-                                          ...stakeholderFormData,
-                                          phoneNumber: e.target.value,
-                                        })
-                                      }
-                                      className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-                                      placeholder="+63 919 123 4567"
-                                    />
-                                  </div>
-                                </div>
-
-                                {/* NEW: Status Selection Dropdown */}
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="status"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Status{" "}
-                                    <span className="text-red-500">*</span>
-                                  </label>
-                                  <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                      <div
-                                        className={`w-2 h-2 rounded-full ${
-                                          stakeholderFormData.status ===
-                                          "Active"
-                                            ? "bg-green-500"
-                                            : stakeholderFormData.status ===
-                                              "Inactive"
-                                            ? "bg-gray-400"
-                                            : "bg-yellow-500"
-                                        }`}
-                                      ></div>
-                                    </div>
-                                    <select
-                                      id="status"
-                                      required
-                                      value={stakeholderFormData.status}
-                                      onChange={(e) =>
-                                        setStakeholderFormData({
-                                          ...stakeholderFormData,
-                                          status: e.target.value,
-                                        })
-                                      }
-                                      className="block text-gray-800 w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all appearance-none"
+                                  {/* City/Municipality Selection */}
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="city"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
                                     >
-                                      <option value="Active">Active</option>
-                                      <option value="Inactive">Inactive</option>
-                                      <option value="Pending">Pending</option>
-                                      <option value="Former">Former</option>
+                                      City / Municipality
+                                    </label>
+                                    <select
+                                      id="city"
+                                      value={selectedCity}
+                                      onChange={(e) =>
+                                        setSelectedCity(e.target.value)
+                                      }
+                                      disabled={
+                                        !selectedProvince || cities.length === 0
+                                      }
+                                      className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
+                                        !selectedProvince
+                                          ? "bg-gray-100 cursor-not-allowed"
+                                          : ""
+                                      }`}
+                                    >
+                                      <option value="">
+                                        Select a city/municipality
+                                      </option>
+                                      {cities.map((city) => (
+                                        <option
+                                          key={city.code}
+                                          value={city.code}
+                                        >
+                                          {city.name}
+                                        </option>
+                                      ))}
                                     </select>
-                                    <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                      <ChevronDown
-                                        size={14}
-                                        className="text-gray-500"
-                                      />
-                                    </div>
+                                  </div>
+
+                                  {/* Barangay Selection */}
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="barangay"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                      Barangay
+                                    </label>
+                                    <select
+                                      id="barangay"
+                                      value={
+                                        stakeholderFormData.barangayCode || ""
+                                      }
+                                      onChange={handleBarangayChange}
+                                      disabled={
+                                        !selectedCity || barangays.length === 0
+                                      }
+                                      className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
+                                        !selectedCity
+                                          ? "bg-gray-100 cursor-not-allowed"
+                                          : ""
+                                      }`}
+                                    >
+                                      <option value="">
+                                        Select a barangay
+                                      </option>
+                                      {barangays.map((barangay) => (
+                                        <option
+                                          key={barangay.code}
+                                          value={barangay.code}
+                                        >
+                                          {barangay.name}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {/* Street Address - Keep as free text input */}
+                                  <div className="col-span-2">
+                                    <label
+                                      htmlFor="street"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                      Street Address / Building / House No.
+                                    </label>
+                                    <input
+                                      type="text"
+                                      id="street"
+                                      value={stakeholderFormData.street}
+                                      onChange={(e) =>
+                                        setStakeholderFormData({
+                                          ...stakeholderFormData,
+                                          street: e.target.value,
+                                        })
+                                      }
+                                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
+                                      placeholder="123 Main Street"
+                                    />
+                                  </div>
+
+                                  {/* Postal Code - Keep as free text input */}
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="postalCode"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                      Postal Code
+                                    </label>
+                                    <input
+                                      type="text"
+                                      id="postalCode"
+                                      value={stakeholderFormData.postalCode}
+                                      onChange={(e) =>
+                                        setStakeholderFormData({
+                                          ...stakeholderFormData,
+                                          postalCode: e.target.value,
+                                        })
+                                      }
+                                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
+                                      placeholder="1200"
+                                    />
                                   </div>
                                 </div>
-                              </div>
-                            </fieldset>
+                              </fieldset>
 
-                            {/* Address Information with PSGC API Integration */}
-                            <fieldset>
-                              <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
-                                <MapPin
-                                  size={18}
-                                  className="mr-2 text-blue-600"
-                                />
-                                Address Information
-                              </legend>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                {/* Region Selection */}
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="region"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Region
-                                  </label>
-                                  <select
-                                    id="region"
-                                    value={selectedRegion}
-                                    onChange={(e) =>
-                                      setSelectedRegion(e.target.value)
-                                    }
-                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
-                                  >
-                                    <option value="">Select a region</option>
-                                    {regions.map((region) => (
-                                      <option
-                                        key={region.code}
-                                        value={region.code}
-                                      >
-                                        {region.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-
-                                {/* Province Selection */}
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="province"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Province
-                                  </label>
-                                  <select
-                                    id="province"
-                                    value={selectedProvince}
-                                    onChange={(e) =>
-                                      setSelectedProvince(e.target.value)
-                                    }
-                                    disabled={
-                                      !selectedRegion || provinces.length === 0
-                                    }
-                                    className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
-                                      !selectedRegion
-                                        ? "bg-gray-100 cursor-not-allowed"
-                                        : ""
-                                    }`}
-                                  >
-                                    <option value="">Select a province</option>
-                                    {provinces.map((province) => (
-                                      <option
-                                        key={province.code}
-                                        value={province.code}
-                                      >
-                                        {province.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                  {selectedRegion && provinces.length === 0 && (
-                                    <p className="mt-1 text-xs text-blue-600">
-                                      Loading provinces or region may not have
-                                      provinces...
+                              {/* Social Media */}
+                              <fieldset>
+                                <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
+                                  <Globe
+                                    size={18}
+                                    className="mr-2 text-blue-600"
+                                  />
+                                  Social Media
+                                </legend>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="facebook"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                      Facebook
+                                    </label>
+                                    <div className="relative rounded-md">
+                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Facebook
+                                          size={16}
+                                          className="text-blue-600"
+                                        />
+                                      </div>
+                                      <input
+                                        type="text"
+                                        id="facebook"
+                                        value={stakeholderFormData.facebook}
+                                        onChange={(e) =>
+                                          setStakeholderFormData({
+                                            ...stakeholderFormData,
+                                            facebook: e.target.value,
+                                          })
+                                        }
+                                        className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+                                        placeholder="facebook.com/profile"
+                                      />
+                                    </div>
+                                    <p className="mt-1 text-xs text-gray-500">
+                                      Full URL or username
                                     </p>
-                                  )}
-                                </div>
+                                  </div>
 
-                                {/* City/Municipality Selection */}
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="city"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    City / Municipality
-                                  </label>
-                                  <select
-                                    id="city"
-                                    value={selectedCity}
-                                    onChange={(e) =>
-                                      setSelectedCity(e.target.value)
-                                    }
-                                    disabled={
-                                      !selectedProvince || cities.length === 0
-                                    }
-                                    className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
-                                      !selectedProvince
-                                        ? "bg-gray-100 cursor-not-allowed"
-                                        : ""
-                                    }`}
-                                  >
-                                    <option value="">
-                                      Select a city/municipality
-                                    </option>
-                                    {cities.map((city) => (
-                                      <option key={city.code} value={city.code}>
-                                        {city.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-
-                                {/* Barangay Selection */}
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="barangay"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Barangay
-                                  </label>
-                                  <select
-                                    id="barangay"
-                                    onChange={handleBarangayChange}
-                                    disabled={
-                                      !selectedCity || barangays.length === 0
-                                    }
-                                    className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
-                                      !selectedCity
-                                        ? "bg-gray-100 cursor-not-allowed"
-                                        : ""
-                                    }`}
-                                  >
-                                    <option value="">Select a barangay</option>
-                                    {barangays.map((barangay) => (
-                                      <option
-                                        key={barangay.code}
-                                        value={barangay.code}
-                                      >
-                                        {barangay.name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </div>
-
-                                {/* Street Address - Keep as free text input */}
-                                <div className="col-span-2">
-                                  <label
-                                    htmlFor="street"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Street Address / Building / House No.
-                                  </label>
-                                  <input
-                                    type="text"
-                                    id="street"
-                                    value={stakeholderFormData.street}
-                                    onChange={(e) =>
-                                      setStakeholderFormData({
-                                        ...stakeholderFormData,
-                                        street: e.target.value,
-                                      })
-                                    }
-                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
-                                    placeholder="123 Main Street"
-                                  />
-                                </div>
-
-                                {/* Postal Code - Keep as free text input */}
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="postalCode"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Postal Code
-                                  </label>
-                                  <input
-                                    type="text"
-                                    id="postalCode"
-                                    value={stakeholderFormData.postalCode}
-                                    onChange={(e) =>
-                                      setStakeholderFormData({
-                                        ...stakeholderFormData,
-                                        postalCode: e.target.value,
-                                      })
-                                    }
-                                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
-                                    placeholder="1200"
-                                  />
-                                </div>
-                              </div>
-                            </fieldset>
-
-                            {/* Social Media */}
-                            <fieldset>
-                              <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
-                                <Globe
-                                  size={18}
-                                  className="mr-2 text-blue-600"
-                                />
-                                Social Media
-                              </legend>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="facebook"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    Facebook
-                                  </label>
-                                  <div className="relative rounded-md">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                      <Facebook
-                                        size={16}
-                                        className="text-blue-600"
+                                  <div className="col-span-1">
+                                    <label
+                                      htmlFor="linkedIn"
+                                      className="block text-sm font-medium text-gray-700 mb-1"
+                                    >
+                                      LinkedIn
+                                    </label>
+                                    <div className="relative rounded-md">
+                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Linkedin
+                                          size={16}
+                                          className="text-blue-700"
+                                        />
+                                      </div>
+                                      <input
+                                        type="text"
+                                        id="linkedIn"
+                                        value={stakeholderFormData.linkedIn}
+                                        onChange={(e) =>
+                                          setStakeholderFormData({
+                                            ...stakeholderFormData,
+                                            linkedIn: e.target.value,
+                                          })
+                                        }
+                                        className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+                                        placeholder="linkedin.com/in/profile"
                                       />
                                     </div>
-                                    <input
-                                      type="text"
-                                      id="facebook"
-                                      value={stakeholderFormData.facebook}
-                                      onChange={(e) =>
-                                        setStakeholderFormData({
-                                          ...stakeholderFormData,
-                                          facebook: e.target.value,
-                                        })
-                                      }
-                                      className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-                                      placeholder="facebook.com/profile"
-                                    />
+                                    <p className="mt-1 text-xs text-gray-500">
+                                      Full URL or username
+                                    </p>
                                   </div>
-                                  <p className="mt-1 text-xs text-gray-500">
-                                    Full URL or username
-                                  </p>
                                 </div>
+                              </fieldset>
 
-                                <div className="col-span-1">
-                                  <label
-                                    htmlFor="linkedIn"
-                                    className="block text-sm font-medium text-gray-700 mb-1"
-                                  >
-                                    LinkedIn
-                                  </label>
-                                  <div className="relative rounded-md">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                      <Linkedin
-                                        size={16}
-                                        className="text-blue-700"
+                              {/* Location on Map (Optional) */}
+                              <fieldset>
+                                <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
+                                  <MapPin
+                                    size={18}
+                                    className="mr-2 text-blue-600"
+                                  />
+                                  Physical Location
+                                </legend>
+
+                                <div className="flex items-center mb-4">
+                                  <div className="form-control">
+                                    <label className="flex items-center cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={
+                                          stakeholderFormData.hasPhysicalLocation
+                                        }
+                                        onChange={(e) => {
+                                          setStakeholderFormData({
+                                            ...stakeholderFormData,
+                                            hasPhysicalLocation:
+                                              e.target.checked,
+                                            // Reset location data if toggled off
+                                            ...(e.target.checked
+                                              ? {}
+                                              : {
+                                                  locationLat: null,
+                                                  locationLng: null,
+                                                  locationName: "",
+                                                }),
+                                          });
+                                        }}
+                                        className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                                       />
-                                    </div>
-                                    <input
-                                      type="text"
-                                      id="linkedIn"
-                                      value={stakeholderFormData.linkedIn}
-                                      onChange={(e) =>
-                                        setStakeholderFormData({
-                                          ...stakeholderFormData,
-                                          linkedIn: e.target.value,
-                                        })
-                                      }
-                                      className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-                                      placeholder="linkedin.com/in/profile"
-                                    />
+                                      <span className="text-sm text-gray-700">
+                                        This stakeholder has a physical office
+                                        or workplace to show on the map
+                                      </span>
+                                    </label>
                                   </div>
-                                  <p className="mt-1 text-xs text-gray-500">
-                                    Full URL or username
-                                  </p>
                                 </div>
-                              </div>
-                            </fieldset>
 
-                            {/* Location on Map (Optional) */}
-                            <fieldset>
-                              <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
-                                <MapPin
-                                  size={18}
-                                  className="mr-2 text-blue-600"
-                                />
-                                Physical Location
-                              </legend>
-
-                              <div className="flex items-center mb-4">
-                                <div className="form-control">
-                                  <label className="flex items-center cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      checked={
-                                        stakeholderFormData.hasPhysicalLocation
-                                      }
-                                      onChange={(e) => {
-                                        setStakeholderFormData({
-                                          ...stakeholderFormData,
-                                          hasPhysicalLocation: e.target.checked,
-                                          // Reset location data if toggled off
-                                          ...(e.target.checked
-                                            ? {}
-                                            : {
-                                                locationLat: null,
-                                                locationLng: null,
-                                                locationName: "",
-                                              }),
-                                        });
-                                      }}
-                                      className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                    />
-                                    <span className="text-sm text-gray-700">
-                                      This stakeholder has a physical office or
-                                      workplace to show on the map
-                                    </span>
-                                  </label>
-                                </div>
-                              </div>
-
-                              {stakeholderFormData.hasPhysicalLocation && (
-                                <div className="space-y-4">
-                                  <div className="relative rounded-md border border-gray-300 bg-gray-50 p-4">
-                                    {stakeholderFormData.locationLat &&
-                                    stakeholderFormData.locationLng ? (
-                                      <div className="flex flex-col space-y-3">
-                                        <div className="flex items-center justify-between">
-                                          <div>
-                                            <p className="text-sm font-medium text-gray-900">
-                                              {stakeholderFormData.locationName}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                              Latitude:{" "}
-                                              {stakeholderFormData.locationLat.toFixed(
-                                                6
-                                              )}
-                                              , Longitude:{" "}
-                                              {stakeholderFormData.locationLng.toFixed(
-                                                6
-                                              )}
-                                            </p>
+                                {stakeholderFormData.hasPhysicalLocation && (
+                                  <div className="space-y-4">
+                                    <div className="relative rounded-md border border-gray-300 bg-gray-50 p-4">
+                                      {stakeholderFormData.locationLat &&
+                                      stakeholderFormData.locationLng ? (
+                                        <div className="flex flex-col space-y-3">
+                                          <div className="flex items-center justify-between">
+                                            <div>
+                                              <p className="text-sm font-medium text-gray-900">
+                                                {
+                                                  stakeholderFormData.locationName
+                                                }
+                                              </p>
+                                              <p className="text-xs text-gray-500">
+                                                Latitude:{" "}
+                                                {stakeholderFormData.locationLat.toFixed(
+                                                  6
+                                                )}
+                                                , Longitude:{" "}
+                                                {stakeholderFormData.locationLng.toFixed(
+                                                  6
+                                                )}
+                                              </p>
+                                            </div>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setShowLocationModal(true)
+                                              }
+                                              className="px-3 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 shadow-sm"
+                                            >
+                                              Change
+                                            </button>
                                           </div>
+
+                                          {/* Preview Map */}
+                                          <div className="h-40 w-full rounded-md overflow-hidden border border-gray-200">
+                                            <iframe
+                                              title="Location preview"
+                                              width="100%"
+                                              height="100%"
+                                              frameBorder="0"
+                                              src={`https://maps.google.com/maps?q=${stakeholderFormData.locationLat},${stakeholderFormData.locationLng}&z=15&output=embed`}
+                                            />
+                                          </div>
+
+                                          {/* Location description input */}
+                                          <div>
+                                            <label
+                                              htmlFor="locationName"
+                                              className="block text-sm font-medium text-gray-700 mb-1"
+                                            >
+                                              Location Name{" "}
+                                              <span className="text-xs text-gray-500">
+                                                (e.g. "Main Office",
+                                                "Headquarters")
+                                              </span>
+                                            </label>
+                                            <input
+                                              type="text"
+                                              id="locationName"
+                                              value={
+                                                stakeholderFormData.locationName
+                                              }
+                                              onChange={(e) =>
+                                                setStakeholderFormData({
+                                                  ...stakeholderFormData,
+                                                  locationName: e.target.value,
+                                                })
+                                              }
+                                              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                              placeholder="Enter a descriptive name for this location"
+                                            />
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-6">
+                                          <MapPin className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                                          <p className="text-sm font-medium text-gray-900">
+                                            No location selected
+                                          </p>
+                                          <p className="text-xs text-gray-500 mb-4">
+                                            Click the button below to select a
+                                            location on the map
+                                          </p>
                                           <button
                                             type="button"
                                             onClick={() =>
                                               setShowLocationModal(true)
                                             }
-                                            className="px-3 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 shadow-sm"
+                                            className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                                           >
-                                            Change
+                                            Select Location on Map
                                           </button>
                                         </div>
-
-                                        {/* Preview Map */}
-                                        <div className="h-40 w-full rounded-md overflow-hidden border border-gray-200">
-                                          <iframe
-                                            title="Location preview"
-                                            width="100%"
-                                            height="100%"
-                                            frameBorder="0"
-                                            src={`https://maps.google.com/maps?q=${stakeholderFormData.locationLat},${stakeholderFormData.locationLng}&z=15&output=embed`}
-                                          />
-                                        </div>
-
-                                        {/* Location description input */}
-                                        <div>
-                                          <label
-                                            htmlFor="locationName"
-                                            className="block text-sm font-medium text-gray-700 mb-1"
-                                          >
-                                            Location Name{" "}
-                                            <span className="text-xs text-gray-500">
-                                              (e.g. "Main Office",
-                                              "Headquarters")
-                                            </span>
-                                          </label>
-                                          <input
-                                            type="text"
-                                            id="locationName"
-                                            value={
-                                              stakeholderFormData.locationName
-                                            }
-                                            onChange={(e) =>
-                                              setStakeholderFormData({
-                                                ...stakeholderFormData,
-                                                locationName: e.target.value,
-                                              })
-                                            }
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                            placeholder="Enter a descriptive name for this location"
-                                          />
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="text-center py-6">
-                                        <MapPin className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                                        <p className="text-sm font-medium text-gray-900">
-                                          No location selected
-                                        </p>
-                                        <p className="text-xs text-gray-500 mb-4">
-                                          Click the button below to select a
-                                          location on the map
-                                        </p>
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            setShowLocationModal(true)
-                                          }
-                                          className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                                        >
-                                          Select Location on Map
-                                        </button>
-                                      </div>
-                                    )}
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
-                            </fieldset>
+                                )}
+                              </fieldset>
 
-                            {/* Form Buttons */}
-                            {/* Form Buttons */}
-                            <div className="mt-8 border-t border-gray-200 pt-5">
-                              <div className="flex justify-end space-x-3">
-                                <button
-                                  type="button"
-                                  disabled={isSubmitting}
-                                  onClick={() => {
-                                    setShowStakeholderForm(false);
-                                    setEditingStakeholder(null);
-                                  }}
-                                  className={`px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
-                                    isSubmitting
-                                      ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                      : "text-gray-700 bg-white hover:bg-gray-50"
-                                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors`}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="submit"
-                                  disabled={isSubmitting}
-                                  className={`px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                                    isSubmitting
-                                      ? "bg-blue-500 cursor-not-allowed"
-                                      : "bg-blue-600 hover:bg-blue-700"
-                                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors inline-flex items-center`}
-                                >
-                                  {isSubmitting ? (
-                                    <>
-                                      <svg
-                                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                      >
-                                        <circle
-                                          className="opacity-25"
-                                          cx="12"
-                                          cy="12"
-                                          r="10"
-                                          stroke="currentColor"
-                                          strokeWidth="4"
-                                        ></circle>
-                                        <path
-                                          className="opacity-75"
-                                          fill="currentColor"
-                                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                        ></path>
-                                      </svg>
-                                      {editingStakeholder
-                                        ? "Saving..."
-                                        : "Adding..."}
-                                    </>
-                                  ) : (
-                                    <>
-                                      {editingStakeholder
-                                        ? "Save Changes"
-                                        : "Add Stakeholder"}
-                                    </>
-                                  )}
-                                </button>
+                              {/* Form Buttons */}
+                              <div className="mt-8 border-t border-gray-200 pt-5">
+                                <div className="flex justify-end space-x-3">
+                                  <button
+                                    type="button"
+                                    disabled={isSubmitting}
+                                    onClick={() => {
+                                      setShowStakeholderForm(false);
+                                      setEditingStakeholder(null);
+                                    }}
+                                    className={`px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
+                                      isSubmitting
+                                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                        : "text-gray-700 bg-white hover:bg-gray-50"
+                                    } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors`}
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className={`px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                                      isSubmitting
+                                        ? "bg-blue-500 cursor-not-allowed"
+                                        : "bg-blue-600 hover:bg-blue-700"
+                                    } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors inline-flex items-center`}
+                                  >
+                                    {isSubmitting ? (
+                                      <>
+                                        <svg
+                                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          fill="none"
+                                          viewBox="0 0 24 24"
+                                        >
+                                          <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                          ></circle>
+                                          <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                          ></path>
+                                        </svg>
+                                        {editingStakeholder
+                                          ? "Saving..."
+                                          : "Adding..."}
+                                      </>
+                                    ) : (
+                                      <>
+                                        {editingStakeholder
+                                          ? "Save Changes"
+                                          : "Add Stakeholder"}
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        </form>
+                          </form>
+                        )}
                       </div>
                     </div>
                   )}
@@ -2550,24 +2727,34 @@ export default function StartupDetail() {
                 Delete {deleteModal.role}
               </h3>
             </div>
-            
+
             <div className="px-6 py-4">
               <p className="text-gray-700 mb-3">
-                Are you sure you want to delete <span className="font-semibold">{deleteModal.stakeholderName}</span>?
+                Are you sure you want to delete{" "}
+                <span className="font-semibold">
+                  {deleteModal.stakeholderName}
+                </span>
+                ?
               </p>
               <p className="text-sm text-gray-500">
-                This action will permanently remove this stakeholder and cannot be undone.
-                All associated data will be deleted.
+                This action will permanently remove this stakeholder and cannot
+                be undone. All associated data will be deleted.
               </p>
             </div>
-            
+
             <div className="px-6 py-3 bg-gray-50 flex justify-end space-x-3">
               <button
                 type="button"
-                onClick={() => setDeleteModal({...deleteModal, isOpen: false})}
+                onClick={() =>
+                  setDeleteModal({ ...deleteModal, isOpen: false })
+                }
                 disabled={deleteModal.isDeleting}
                 className={`px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 
-                ${deleteModal.isDeleting ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:bg-gray-50'} 
+                ${
+                  deleteModal.isDeleting
+                    ? "bg-gray-100 cursor-not-allowed"
+                    : "bg-white hover:bg-gray-50"
+                } 
                 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors`}
               >
                 Cancel
@@ -2577,20 +2764,40 @@ export default function StartupDetail() {
                 onClick={confirmDeleteStakeholder}
                 disabled={deleteModal.isDeleting}
                 className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium 
-                text-white bg-red-600 ${deleteModal.isDeleting ? 'opacity-70 cursor-not-allowed' : 'hover:bg-red-700'} 
+                text-white bg-red-600 ${
+                  deleteModal.isDeleting
+                    ? "opacity-70 cursor-not-allowed"
+                    : "hover:bg-red-700"
+                } 
                 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors
                 inline-flex items-center`}
               >
                 {deleteModal.isDeleting ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Deleting...
                   </>
                 ) : (
-                  'Delete'
+                  "Delete"
                 )}
               </button>
             </div>
