@@ -3,7 +3,6 @@ import { FaEye } from "react-icons/fa";
 import { BiLike } from "react-icons/bi";
 import { FaBookBookmark } from "react-icons/fa6";
 import { ArrowLeft, Edit, Trash2, Save, X, ExternalLink } from "lucide-react";
-
 import {
   Chart as ChartJS,
   ArcElement,
@@ -15,10 +14,11 @@ import {
   LineElement,
 } from "chart.js";
 import { Doughnut, Line } from "react-chartjs-2";
-
 import Card from "../components/Card";
 import CardContent from "../components/CardContent";
 import { useNavigate } from "react-router-dom";
+import Verification from "../modals/DashboardVerification"; // Adjust path as needed
+import { toast } from "react-toastify"; // Assuming you use toast for notifications
 
 ChartJS.register(
   ArcElement,
@@ -53,6 +53,11 @@ export default function StartupDashboard() {
   const [editFormData, setEditFormData] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [actionSuccess, setActionSuccess] = useState(null);
+
+  // State for verification modal
+  const [verificationModal, setVerificationModal] = useState(false);
+  const [selectedStartupId, setSelectedStartupId] = useState(null);
+  const [selectedContactEmail, setSelectedContactEmail] = useState(null);
 
   const months = [
     "January",
@@ -139,27 +144,21 @@ export default function StartupDashboard() {
           throw new Error(`Error deleting startup: ${response.status}`);
         }
 
-        // Update startups state first
         const updatedStartups = startups.filter((startup) => startup.id !== id);
         setStartups(updatedStartups);
 
-        // Update startup IDs
         const updatedIds = startupIds.filter((startupId) => startupId !== id);
         setStartupIds(updatedIds);
 
         setActionSuccess("Startup deleted successfully");
         setTimeout(() => setActionSuccess(null), 3000);
 
-        // Recalculate metrics and update charts
         if (selectedStartup === id) {
-          // If we deleted the currently selected startup, switch to "all"
           setSelectedStartup("all");
           await recalculateAllMetrics(updatedIds, updatedStartups);
         } else if (selectedStartup === "all") {
-          // If viewing all startups, recalculate total metrics
           await recalculateAllMetrics(updatedIds, updatedStartups);
         } else {
-          // If viewing a different single startup, just update the totals for consistency
           await recalculateAllMetrics(updatedIds, updatedStartups);
         }
       } catch (error) {
@@ -212,18 +211,16 @@ export default function StartupDashboard() {
     }
 
     try {
-      // Recalculate total metrics
       const totalMetrics = await fetchTotalMetrics(ids);
 
       if (totalMetrics) {
-        // Update donut chart for all startups view
         const colors = updatedStartupsArray.map(
           (_, index) =>
             `hsl(${(index * 360) / updatedStartupsArray.length}, 70%, 50%)`
         );
 
         const startupMetrics = updatedStartupsArray.map((startup) => {
-          return startup.likes || 1; // Use existing likes or default to 1
+          return startup.likes || 1;
         });
 
         setDonutData({
@@ -238,7 +235,6 @@ export default function StartupDashboard() {
         });
       }
 
-      // Refresh engagement data
       await fetchAllStartupsEngagementData();
     } catch (error) {
       console.error("Error recalculating metrics after deletion:", error);
@@ -436,6 +432,9 @@ export default function StartupDashboard() {
         ids = await fetchStartupIds();
       }
 
+      const startupsData = await fetchStartups();
+      startupsData.forEach((startup) => fetchCompanyLogo(startup.id));
+
       const totalMetrics = await fetchTotalMetrics(ids);
 
       if (totalMetrics) {
@@ -499,7 +498,6 @@ export default function StartupDashboard() {
               : 0;
             const viewsData = viewsResponse.ok ? await viewsResponse.json() : 0;
 
-            // Update the startup object with metrics
             updatedStartups[index] = {
               ...startup,
               likes: likesData,
@@ -594,9 +592,8 @@ export default function StartupDashboard() {
       );
 
       const startupMetrics = startups.map((startup) => {
-        // Use existing likes from startup object, or default to 1 if not available
         const startupLikes = startup.likes !== undefined ? startup.likes : 1;
-        return Math.max(startupLikes, 1); // Ensure minimum value of 1 for chart display
+        return Math.max(startupLikes, 1);
       });
 
       setDonutData({
@@ -749,7 +746,6 @@ export default function StartupDashboard() {
     });
   };
 
-  // START NEW EDITING FUNCTIONS
   const handleEditStartup = (startup) => {
     setEditingId(startup.id);
     setEditFormData({
@@ -794,17 +790,14 @@ export default function StartupDashboard() {
         throw new Error(`Error updating startup: ${response.status}`);
       }
 
-      // Update local state
       const updatedStartups = startups.map((startup) =>
         startup.id === id ? { ...startup, ...editFormData } : startup
       );
       setStartups(updatedStartups);
 
-      // Show success message
       setActionSuccess("Startup updated successfully");
       setTimeout(() => setActionSuccess(null), 3000);
 
-      // Exit edit mode
       setEditingId(null);
       setEditFormData({});
     } catch (error) {
@@ -815,7 +808,6 @@ export default function StartupDashboard() {
       setSubmitting(false);
     }
   };
-  // END NEW EDITING FUNCTIONS
 
   const filteredStartups = startups.filter((startup) => {
     const query = searchQuery.toLowerCase();
@@ -911,6 +903,29 @@ export default function StartupDashboard() {
     },
   };
 
+  const handleVerifyNow = (id, email) => {
+    setSelectedStartupId(id);
+    setSelectedContactEmail(email);
+    setVerificationModal(true);
+    /*handleSendCode(id, email);*/
+  };
+
+  const handleSendCode = async (id, email) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/send-verification-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startupId: id, email }),
+        credentials: "include",
+      });
+      if (response.ok) toast.success("Verification code sent to your email!");
+      else toast.error("Failed to send verification code.");
+    } catch (error) {
+      console.error("Error sending code:", error);
+      toast.error("Error sending verification code.");
+    }
+  };
+
   useEffect(() => {
     const initializeData = async () => {
       setLoading(true);
@@ -920,7 +935,6 @@ export default function StartupDashboard() {
         const ids = await fetchStartupIds();
         const startupsData = await fetchStartups();
 
-        // Fetch logos for all startups
         if (startupsData && startupsData.length > 0) {
           startupsData.forEach((startup) => {
             fetchCompanyLogo(startup.id);
@@ -943,10 +957,9 @@ export default function StartupDashboard() {
 
   return (
     <div className="min-h-screen p-6 md:p-8 lg:p-10 space-y-6 bg-white text-black">
-      {/* Back Button */}
       <button
         onClick={() => navigate("/")}
-        className=" cursor-pointer flex items-center text-black mb-6 transition-colors hover:text-white hover:bg-indigo-500 rounded-md p-1.5"
+        className="cursor-pointer flex items-center text-black mb-6 transition-colors hover:text-white hover:bg-indigo-500 rounded-md p-1.5"
       >
         <ArrowLeft className="h-5 w-5 mr-2" />
         <span>Back to Home</span>
@@ -1231,19 +1244,20 @@ export default function StartupDashboard() {
               <th>Founded Date</th>
               <th>Email</th>
               <th>Phone Number</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="text-center py-4">
+                <td colSpan={7} className="text-center py-4">
                   Loading...
                 </td>
               </tr>
             ) : filteredStartups.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-4">
+                <td colSpan={7} className="text-center py-4">
                   No startups found
                 </td>
               </tr>
@@ -1258,8 +1272,8 @@ export default function StartupDashboard() {
                   : "N/A";
 
                 return (
-                  <tr 
-                    key={st.id} 
+                  <tr
+                    key={st.id}
                     className="hover cursor-pointer"
                     onClick={() => navigate(`/startup/${st.id}`)}
                   >
@@ -1310,7 +1324,7 @@ export default function StartupDashboard() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1"
-                            onClick={(e) => e.stopPropagation()} // Prevent row click when clicking link
+                            onClick={(e) => e.stopPropagation()}
                           >
                             {st.website} <ExternalLink size={12} />
                           </a>
@@ -1322,7 +1336,23 @@ export default function StartupDashboard() {
                     <td>{formattedDate}</td>
                     <td>{st.contactEmail || "N/A"}</td>
                     <td>{st.phoneNumber || "N/A"}</td>
-                    <td onClick={(e) => e.stopPropagation()}> {/* Prevent row click when clicking buttons */}
+                    <td onClick={(e) => e.stopPropagation()}>
+                      {st.emailVerified ? (
+                        "Verified"
+                      ) : (
+                        <button
+                          className="btn btn-sm btn-outline btn-success"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleVerifyNow(st.id, st.contactEmail);
+                          }}
+                          disabled={submitting}
+                        >
+                          Verify Now
+                        </button>
+                      )}
+                    </td>
+                    <td onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
                         <button
                           onClick={(e) => {
@@ -1361,6 +1391,14 @@ export default function StartupDashboard() {
             Add Startup
           </button>
         </div>
+        {verificationModal && (
+          <Verification
+            setVerificationModal={setVerificationModal}
+            startupId={selectedStartupId}
+            contactEmail={selectedContactEmail}
+            resetForm={() => {}}
+          />
+        )}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-export default function Verification({ setVerificationModal, setSelectedTab, startupId, contactEmail, resetForm }) {
+export default function DashboardVerification({ setVerificationModal, startupId, contactEmail, resetForm }) {
   const [verificationCode, setVerificationCode] = useState("");
   const [error, setError] = useState("");
 
@@ -29,7 +29,8 @@ export default function Verification({ setVerificationModal, setSelectedTab, sta
       if (response.ok) {
         toast.success("Email verified successfully!");
         setVerificationModal(false);
-        setSelectedTab("Upload Data");
+        // Optionally refresh dashboard data or redirect
+        // e.g., window.location.reload(); or navigate if you have useNavigate
       } else {
         const errorData = await response.json();
         toast.error(`Verification failed: ${errorData.message || "Invalid code"}`);
@@ -70,7 +71,6 @@ export default function Verification({ setVerificationModal, setSelectedTab, sta
 
   const handleVerifyLater = () => {
     setVerificationModal(false);
-    setSelectedTab("Upload Data");
     resetForm();
     toast.info("Verification postponed. You can verify later from the dashboard.");
   };
@@ -80,7 +80,7 @@ export default function Verification({ setVerificationModal, setSelectedTab, sta
       <div className="bg-white p-6 rounded-md shadow-md w-1/3">
         <h2 className="text-xl font-semibold mb-4">Verify Your Email</h2>
         <p className="text-sm text-gray-600 mb-4">
-          A verification code has been sent to {contactEmail}. Please enter the code below.
+          Please send the verification code to {contactEmail}. Click <strong>Send Code</strong> and enter the code below.
         </p>
         <div className="mb-4">
           <label className="block mb-1 text-sm font-medium">Verification Code</label>
