@@ -38,6 +38,7 @@ export default function StartupDetail() {
   const [stakeholders, setStakeholders] = useState([]);
   const [stakeholderLoading, setStakeholderLoading] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [editDataReady, setEditDataReady] = useState(false);
 
   // Add this validation function
   const validateEmail = (email) => {
@@ -78,6 +79,9 @@ export default function StartupDetail() {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const mapInstanceRef = useRef(null);
+
+  // ADD: guard ref to suppress cascading effects during prefill
+  const isPrefillingRef = useRef(false);
 
   // New state for expanded stakeholders
   const [expandedStakeholders, setExpandedStakeholders] = useState({});
@@ -274,111 +278,255 @@ export default function StartupDetail() {
   // First, add a new state variable near your other state variables
   const [addressDataLoading, setAddressDataLoading] = useState(false);
 
-  // Updated startEditingStakeholder function with improved dropdown value display
-  const startEditingStakeholder = async (stakeholderData) => {
-    console.log("Editing stakeholder data:", stakeholderData);
-    const stakeholder = stakeholderData.stakeholder || stakeholderData;
-
-    // Show loading state immediately
+  // REPLACE: addressHoldData with an async prefill that loads PSGC data sequentially
+  const addressHoldData = async (stakeholderData) => {
+    setEditDataReady(false);
     setAddressDataLoading(true);
+
+    // show the modal immediately so the user sees the loading state
+    setShowStakeholderForm(true);
+
+    // store association record (has role/status and nested stakeholder)
     setEditingStakeholder(stakeholderData);
 
-    try {
-      // Reset previous selections to avoid stale data
-      setProvinces([]);
-      setCities([]);
-      setBarangays([]);
+    const stakeholder = stakeholderData.stakeholder || stakeholderData;
 
-      // Set form data with stakeholder information
+    // Begin prefill phase; suppress cascading effects
+    isPrefillingRef.current = true;
+
+    try {
+      // 1) Load Regions
+      const regionsResponse = await fetch("https://psgc.gitlab.io/api/regions");
+      if (!regionsResponse.ok) throw new Error("Failed to fetch regions");
+      const regionsData = await regionsResponse.json();
+      setRegions(regionsData);
+
+      const regionCode = stakeholder.regionCode || "";
+      setSelectedRegion(regionCode);
+      const regionObj =
+        regionsData.find((r) => r.code === regionCode) || null;
+
+      // 2) Load Provinces (if region chosen)
+      let provincesData = [];
+      if (regionCode) {
+        const provincesResponse = await fetch(
+          `https://psgc.gitlab.io/api/regions/${regionCode}/provinces`
+        );
+        if (provincesResponse.ok) {
+          provincesData = await provincesResponse.json();
+          setProvinces(provincesData);
+        }
+      }
+      const provinceCode = stakeholder.provinceCode || "";
+      setSelectedProvince(provinceCode);
+      const provinceObj =
+        provincesData.find((p) => p.code === provinceCode) || null;
+
+      // 3) Load Cities (if province chosen)
+      let citiesData = [];
+      if (provinceCode) {
+        const citiesResponse = await fetch(
+          `https://psgc.gitlab.io/api/provinces/${provinceCode}/cities-municipalities`
+        );
+        if (citiesResponse.ok) {
+          citiesData = await citiesResponse.json();
+          setCities(citiesData);
+        }
+      }
+      const cityCode = stakeholder.cityCode || "";
+      setSelectedCity(cityCode);
+      const cityObj = citiesData.find((c) => c.code === cityCode) || null;
+
+      // 4) Load Barangays (if city chosen)
+      let barangaysData = [];
+      if (cityCode) {
+        const barangaysResponse = await fetch(
+          `https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays`
+        );
+        if (barangaysResponse.ok) {
+          barangaysData = await barangaysResponse.json();
+          setBarangays(barangaysData);
+        }
+      }
+      const barangayCode = stakeholder.barangayCode || "";
+      const barangayObj =
+        barangaysData.find((b) => b.code === barangayCode) || null;
+
+      // 5) Populate the form with stable names/codes and other fields
       setStakeholderFormData({
         name: stakeholder.name || "",
         email: stakeholder.email || "",
         phoneNumber: stakeholder.phoneNumber || "",
-        region: stakeholder.region || "",
-        regionCode: stakeholder.regionCode || null,
-        province: stakeholder.province || "",
-        provinceCode: stakeholder.provinceCode || null,
-        city: stakeholder.city || "",
-        cityCode: stakeholder.cityCode || null,
-        barangay: stakeholder.barangay || "",
-        barangayCode: stakeholder.barangayCode || null,
+
+        region: regionObj?.name || stakeholder.region || "",
+        regionCode: regionObj?.code || stakeholder.regionCode || null,
+
+        province: provinceObj?.name || stakeholder.province || "",
+        provinceCode: provinceObj?.code || stakeholder.provinceCode || null,
+
+        city: cityObj?.name || stakeholder.city || "",
+        cityCode: cityObj?.code || stakeholder.cityCode || null,
+
+        barangay: barangayObj?.name || stakeholder.barangay || "",
+        barangayCode: barangayObj?.code || stakeholder.barangayCode || null,
+
         street: stakeholder.street || "",
         postalCode: stakeholder.postalCode || "",
         facebook: stakeholder.facebook || "",
         linkedIn: stakeholder.linkedIn || "",
+
+        // association fields
         role: stakeholderData.role || "Mentor",
         status: stakeholderData.status || "Active",
-        hasPhysicalLocation: !!(
-          stakeholder.locationLat && stakeholder.locationLng
-        ),
+
+        hasPhysicalLocation: !!(stakeholder.locationLat && stakeholder.locationLng),
         locationLat: stakeholder.locationLat || null,
         locationLng: stakeholder.locationLng || null,
         locationName: stakeholder.locationName || "",
       });
 
-      // Step 1: Load regions (always needed)
-      if (regions.length === 0) {
-        const regionsResponse = await fetch(
-          "https://psgc.gitlab.io/api/regions"
-        );
-        if (regionsResponse.ok) {
+      setEditDataReady(true);
+    } catch (error) {
+      console.error("Error loading location data:", error);
+      showNotification(
+        "Error loading some location data. Location selections may be incomplete.",
+        "error"
+      );
+      // Still allow editing with whatever data we managed to set
+      setEditDataReady(true);
+    } finally {
+      // End prefill phase; allow cascading effects again
+      isPrefillingRef.current = false;
+      setAddressDataLoading(false);
+    }
+  };
+
+  // Modify this useEffect to ensure all location data is loaded before showing the form
+  useEffect(() => {
+    // Only run this when we're in edit mode and loading address data
+    if (editingStakeholder && addressDataLoading) {
+      const stakeholder = editingStakeholder.stakeholder || editingStakeholder;
+
+      // Load location data sequentially to ensure proper cascading
+      const loadLocationData = async () => {
+        try {
+          // Step 1: Load all regions (always needed)
+          console.log("Loading regions...");
+          const regionsResponse = await fetch(
+            "https://psgc.gitlab.io/api/regions"
+          );
+          if (!regionsResponse.ok) throw new Error("Failed to fetch regions");
           const regionsData = await regionsResponse.json();
           setRegions(regionsData);
-        }
-      }
 
-      // Step 2: Set selected region and load provinces if available
-      if (stakeholder.regionCode) {
-        setSelectedRegion(stakeholder.regionCode);
+          // Prepare for province loading if region code exists
+          let provincesData = [];
+          if (stakeholder.regionCode) {
+            // Step 2: Load provinces for the selected region
+            console.log(
+              `Loading provinces for region ${stakeholder.regionCode}...`
+            );
+            const provincesResponse = await fetch(
+              `https://psgc.gitlab.io/api/regions/${stakeholder.regionCode}/provinces`
+            );
+            if (provincesResponse.ok) {
+              provincesData = await provincesResponse.json();
+              setProvinces(provincesData);
+            } else {
+              console.warn("Failed to load provinces, but continuing...");
+            }
+          }
 
-        const provincesResponse = await fetch(
-          `https://psgc.gitlab.io/api/regions/${stakeholder.regionCode}/provinces`
-        );
-        if (provincesResponse.ok) {
-          const provincesData = await provincesResponse.json();
-          setProvinces(provincesData);
-
-          // Step 3: Set selected province and load cities if available
+          // Prepare for city loading if province code exists
+          let citiesData = [];
           if (stakeholder.provinceCode) {
-            setSelectedProvince(stakeholder.provinceCode);
-
+            // Step 3: Load cities for the selected province
+            console.log(
+              `Loading cities for province ${stakeholder.provinceCode}...`
+            );
             const citiesResponse = await fetch(
               `https://psgc.gitlab.io/api/provinces/${stakeholder.provinceCode}/cities-municipalities`
             );
             if (citiesResponse.ok) {
-              const citiesData = await citiesResponse.json();
+              citiesData = await citiesResponse.json();
               setCities(citiesData);
-
-              // Step 4: Set selected city and load barangays if available
-              if (stakeholder.cityCode) {
-                setSelectedCity(stakeholder.cityCode);
-
-                const barangaysResponse = await fetch(
-                  `https://psgc.gitlab.io/api/cities-municipalities/${stakeholder.cityCode}/barangays`
-                );
-                if (barangaysResponse.ok) {
-                  const barangaysData = await barangaysResponse.json();
-                  setBarangays(barangaysData);
-                }
-              }
+            } else {
+              console.warn("Failed to load cities, but continuing...");
             }
           }
-        }
-      }
 
-      // Wait a moment to ensure all state updates are processed
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    } catch (error) {
-      console.error("Error loading address data:", error);
-      showNotification(
-        "There was an issue loading some address data. You may need to select some location fields manually.",
-        "error"
-      );
-    } finally {
-      // Show the form once all data is loaded
-      setAddressDataLoading(false);
-      setShowStakeholderForm(true);
+          // Prepare for barangay loading if city code exists
+          if (stakeholder.cityCode) {
+            // Step 4: Load barangays for the selected city
+            console.log(
+              `Loading barangays for city ${stakeholder.cityCode}...`
+            );
+            const barangaysResponse = await fetch(
+              `https://psgc.gitlab.io/api/cities-municipalities/${stakeholder.cityCode}/barangays`
+            );
+            if (barangaysResponse.ok) {
+              const barangaysData = await barangaysResponse.json();
+              setBarangays(barangaysData);
+            } else {
+              console.warn("Failed to load barangays, but continuing...");
+            }
+          }
+
+          // Step 5: Populate form with stakeholder data
+          console.log("Setting stakeholder form data...");
+          setStakeholderFormData({
+            name: stakeholder.name || "",
+            email: stakeholder.email || "",
+            phoneNumber: stakeholder.phoneNumber || "",
+            region: stakeholder.region || "",
+            regionCode: stakeholder.regionCode || null,
+            province: stakeholder.province || "",
+            provinceCode: stakeholder.provinceCode || null,
+            city: stakeholder.city || "",
+            cityCode: stakeholder.cityCode || null,
+            barangay: stakeholder.barangay || "",
+            barangayCode: stakeholder.barangayCode || null,
+            street: stakeholder.street || "",
+            postalCode: stakeholder.postalCode || "",
+            facebook: stakeholder.facebook || "",
+            linkedIn: stakeholder.linkedIn || "",
+            role: editingStakeholder.role || "Mentor",
+            status: editingStakeholder.status || "Active",
+            hasPhysicalLocation: !!(
+              stakeholder.locationLat && stakeholder.locationLng
+            ),
+            locationLat: stakeholder.locationLat || null,
+            locationLng: stakeholder.locationLng || null,
+            locationName: stakeholder.locationName || "",
+          });
+
+          // Step 6: Only now mark data as ready and show the form
+          console.log("Location data loaded, ready to display form");
+          setEditDataReady(true);
+          setAddressDataLoading(false);
+
+          // Finally show the form when all data is loaded
+          setShowStakeholderForm(true);
+        } catch (error) {
+          console.error("Error loading location data:", error);
+          // Show error but still allow editing with what data we have
+          showNotification(
+            "Error loading some location data. Location selections may be incomplete.",
+            "error"
+          );
+          setEditDataReady(true);
+          setAddressDataLoading(false);
+          setShowStakeholderForm(true); // Still show the form on error
+        }
+      };
+
+      loadLocationData();
     }
+  }, [editingStakeholder, addressDataLoading]);
+
+  // Updated startEditingStakeholder function (optional: keep or call addressHoldData directly)
+  const startEditingStakeholder = (stakeholderData) => {
+    addressHoldData(stakeholderData);
   };
 
   // Modified handleUpdateStakeholder to include location codes
@@ -767,11 +915,30 @@ export default function StartupDetail() {
     fetchRegions();
   }, []);
 
-  // Fetch provinces when region is selected
+  // Fetch provinces when region is selected (guarded when prefilling)
   useEffect(() => {
+    if (isPrefillingRef.current) return; // guard during prefill
+
     const fetchProvinces = async () => {
       if (!selectedRegion) {
         setProvinces([]);
+        // reset child selections only if user interaction (not prefill)
+        setSelectedProvince("");
+        setSelectedCity("");
+        setCities([]);
+        setBarangays([]);
+        // also clear names in form
+        setStakeholderFormData((prev) => ({
+          ...prev,
+          region: "",
+          regionCode: null,
+          province: "",
+          provinceCode: null,
+          city: "",
+          cityCode: null,
+          barangay: "",
+          barangayCode: null,
+        }));
         return;
       }
 
@@ -783,16 +950,14 @@ export default function StartupDetail() {
         const data = await response.json();
         setProvinces(data);
 
-        // Reset child selections when parent changes
+        // Reset child selections when parent changes (user-driven change)
         setSelectedProvince("");
         setSelectedCity("");
         setCities([]);
         setBarangays([]);
 
         // Update form data with region name AND code
-        const selectedRegionObj = regions.find(
-          (r) => r.code === selectedRegion
-        );
+        const selectedRegionObj = regions.find((r) => r.code === selectedRegion);
         if (selectedRegionObj) {
           setStakeholderFormData((prev) => ({
             ...prev,
@@ -807,11 +972,25 @@ export default function StartupDetail() {
     fetchProvinces();
   }, [selectedRegion, regions]);
 
-  // Fetch cities/municipalities when province is selected
+  // Fetch cities/municipalities when province is selected (guarded when prefilling)
   useEffect(() => {
+    if (isPrefillingRef.current) return; // guard during prefill
+
     const fetchCities = async () => {
       if (!selectedProvince) {
         setCities([]);
+        // reset child selection and names
+        setSelectedCity("");
+        setBarangays([]);
+        setStakeholderFormData((prev) => ({
+          ...prev,
+          province: "",
+          provinceCode: null,
+          city: "",
+          cityCode: null,
+          barangay: "",
+          barangayCode: null,
+        }));
         return;
       }
 
@@ -823,14 +1002,12 @@ export default function StartupDetail() {
         const data = await response.json();
         setCities(data);
 
-        // Reset barangays when city changes
+        // Reset barangays when province changes (user-driven change)
         setSelectedCity("");
         setBarangays([]);
 
         // Update form data with province name AND code
-        const selectedProvinceObj = provinces.find(
-          (p) => p.code === selectedProvince
-        );
+        const selectedProvinceObj = provinces.find((p) => p.code === selectedProvince);
         if (selectedProvinceObj) {
           setStakeholderFormData((prev) => ({
             ...prev,
@@ -845,11 +1022,21 @@ export default function StartupDetail() {
     fetchCities();
   }, [selectedProvince, provinces]);
 
-  // Fetch barangays when city/municipality is selected
+  // Fetch barangays when city/municipality is selected (guarded when prefilling)
   useEffect(() => {
+    if (isPrefillingRef.current) return; // guard during prefill
+
     const fetchBarangays = async () => {
       if (!selectedCity) {
         setBarangays([]);
+        // clear city/barangay names
+        setStakeholderFormData((prev) => ({
+          ...prev,
+          city: "",
+          cityCode: null,
+          barangay: "",
+          barangayCode: null,
+        }));
         return;
       }
 
@@ -1480,6 +1667,7 @@ export default function StartupDetail() {
                               onClick={() => {
                                 setShowStakeholderForm(false);
                                 setEditingStakeholder(null);
+                                setEditDataReady(false);
                               }}
                               className="rounded-full p-1 hover:bg-gray-100 text-gray-400 hover:text-gray-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Close"
@@ -1494,12 +1682,47 @@ export default function StartupDetail() {
                           <div className="flex flex-col items-center justify-center p-12">
                             <div className="w-16 h-16 border-4 border-t-blue-600 border-blue-200 rounded-full animate-spin mb-4"></div>
                             <h4 className="text-lg font-medium text-gray-800">
-                              Setting up address data
+                              {editingStakeholder
+                                ? "Loading stakeholder data"
+                                : "Setting up address data"}
                             </h4>
                             <p className="text-gray-500 text-center mt-2">
-                              Loading location information to ensure accurate
-                              data entry
+                              {editingStakeholder
+                                ? "Retrieving location information for this stakeholder..."
+                                : "Loading location information to ensure accurate data entry"}
                             </p>
+                            {editingStakeholder && (
+                              <div className="mt-4 flex flex-col items-center">
+                                <div className="flex items-center space-x-2">
+                                  <div
+                                    className={`h-2 w-2 rounded-full ${
+                                      selectedRegion
+                                        ? "bg-green-500"
+                                        : "bg-gray-300"
+                                    }`}
+                                  ></div>
+                                  <span className="text-sm">Region</span>
+
+                                  <div
+                                    className={`h-2 w-2 rounded-full ${
+                                      selectedProvince
+                                        ? "bg-green-500"
+                                        : "bg-gray-300"
+                                    }`}
+                                  ></div>
+                                  <span className="text-sm">Province</span>
+
+                                  <div
+                                    className={`h-2 w-2 rounded-full ${
+                                      selectedCity
+                                        ? "bg-green-500"
+                                        : "bg-gray-300"
+                                    }`}
+                                  ></div>
+                                  <span className="text-sm">City</span>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <form
@@ -2361,9 +2584,7 @@ export default function StartupDetail() {
                                         <div className="flex justify-end space-x-2">
                                           <button
                                             onClick={() =>
-                                              startEditingStakeholder(
-                                                stakeholderData
-                                              )
+                                              addressHoldData(stakeholderData)
                                             }
                                             className="text-blue-600 hover:text-blue-900 p-1"
                                           >
