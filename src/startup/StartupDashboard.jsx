@@ -30,7 +30,7 @@ ChartJS.register(
   LineElement
 );
 
-export default function StartupDashboard() {
+export default function StartupDashboard({ openAddMethodModal }) {
   const [startupIds, setStartupIds] = useState([]);
   const [startups, setStartups] = useState([]);
   const [selectedStartup, setSelectedStartup] = useState("all");
@@ -47,6 +47,12 @@ export default function StartupDashboard() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+
+  const [isAddMethodModalOpen, setIsAddMethodModalOpen] = useState(false); 
+
+  const handleAddStartupClick = () => {
+    setIsAddMethodModalOpen(true);
+  };
 
   // State for editing
   const [editingId, setEditingId] = useState(null);
@@ -1354,7 +1360,7 @@ export default function StartupDashboard() {
         </table>
         <div className="text-right mt-4">
           <button
-            onClick={() => navigate("/add-startup")}
+            onClick={openAddMethodModal} 
             className="btn btn-primary"
             disabled={loading}
           >
