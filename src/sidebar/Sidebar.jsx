@@ -33,15 +33,19 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
   const [notificationActiveIndex, setNotificationActiveIndex] = useState("All");
   const [filters, setFilters] = useState({
     startups: {
+      query: "",
       industry: "",
+      customIndustry: "",
       foundedDate: "",
       teamSize: "",
       fundingStage: "",
     },
     investors: {
+      query: "",
       investmentStage: "",
       investmentRange: "",
       preferredIndustry: "",
+      customPreferredIndustry: "",
       location: "",
     },
   });
@@ -921,11 +925,26 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
     return items.filter((item) => {
       try {
         if (viewingType === "startups") {
-          // Industry filter
+          const textMatch =
+            !currentFilters.query ||
+            (item.companyName &&
+              item.companyName
+                .toLowerCase()
+                .includes(currentFilters.query.toLowerCase())) ||
+            (item.locationName &&
+              item.locationName
+                .toLowerCase()
+                .includes(currentFilters.query.toLowerCase()));
+          // Industry filter (with custom industry)
+          const selectedIndustry =
+            currentFilters.industry === "other"
+              ? (currentFilters.customIndustry || "").toLowerCase()
+              : currentFilters.industry;
+
           const industryMatch =
-            !currentFilters.industry ||
+            !selectedIndustry ||
             (item.industry &&
-              item.industry.localeCompare(currentFilters.industry, undefined, {
+              item.industry.localeCompare(selectedIndustry, undefined, {
                 sensitivity: "base",
               }) === 0);
 
@@ -971,6 +990,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               ) === 0);
 
           return (
+            textMatch &&
             industryMatch &&
             foundedDateMatch &&
             teamSizeMatch &&
@@ -978,6 +998,16 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           );
         } else {
           // Investor filters
+          const textMatch =
+            !currentFilters.query ||
+            ((item.firstname || item.lastname || item.lastName) &&
+              `${item.firstname || ""} ${item.lastname || item.lastName || ""}`
+                .toLowerCase()
+                .includes(currentFilters.query.toLowerCase())) ||
+            (item.locationName &&
+              item.locationName
+                .toLowerCase()
+                .includes(currentFilters.query.toLowerCase()));
           const investmentStageMatch =
             !currentFilters.investmentStage ||
             (item.investmentStage &&
@@ -996,11 +1026,16 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                 { sensitivity: "base" }
               ) === 0);
 
+          const selectedPreferredIndustry =
+            currentFilters.preferredIndustry === "other"
+              ? (currentFilters.customPreferredIndustry || "").toLowerCase()
+              : currentFilters.preferredIndustry;
+
           const preferredIndustryMatch =
-            !currentFilters.preferredIndustry ||
+            !selectedPreferredIndustry ||
             (item.preferredIndustry &&
               item.preferredIndustry.localeCompare(
-                currentFilters.preferredIndustry,
+                selectedPreferredIndustry,
                 undefined,
                 { sensitivity: "base" }
               ) === 0);
@@ -1015,6 +1050,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               ) === 0);
 
           return (
+            textMatch &&
             investmentStageMatch &&
             investmentRangeMatch &&
             preferredIndustryMatch &&
@@ -1105,7 +1141,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
           <div className="border-b border-gray-200">
             <div className="px-2">
               <ul className="space-y-1 pt-4">
-                {/* Search Icon */}
+                {/* Filters Icon (repurposed from Search) */}
                 <li className="flex justify-center">
                   <button
                     className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
@@ -1133,11 +1169,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M21 21l-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"
+                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
                       />
                     </svg>
                     <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
-                      Search
+                      Filters
                     </span>
                   </button>
                 </li>
@@ -1907,14 +1943,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
               </svg>
             </button>
 
-            <h2 className="text-lg text-white font-semibold mb-4">Search</h2>
+            <h2 className="text-lg text-white font-semibold mb-4">Browse & Filter</h2>
 
-            {/* Search Form */}
+            {/* Sidebar Filter Input (repurposed from search) */}
             <form
               className="flex items-center max-w-sm mx-auto"
               onSubmit={(e) => {
                 e.preventDefault();
-                handleSearch();
               }}
             >
               <div className="relative w-full">
@@ -1931,44 +1966,25 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M21 21l-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"
+                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
                     />
                   </svg>
                 </div>
                 <input
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={(viewingType === "startups" ? filters.startups.query : filters.investors.query) || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFilters((prev) => ({
+                      ...prev,
+                      [viewingType]: { ...prev[viewingType], query: value },
+                    }));
+                  }}
                   className="bg-white/90 border border-gray-200 text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 block w-full ps-10 p-2.5"
-                  placeholder={
-                    viewingType === "startups"
-                      ? "Search startups..."
-                      : "Search investors..."
-                  }
+                  placeholder={viewingType === "startups" ? "Filter by name or location" : "Filter investors by name or location"}
                   required
                 />
               </div>
-              <button
-                type="submit"
-                className="p-2.5 ms-2 text-sm font-medium text-white bg-blue-700 rounded-lg border border-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 transition-colors"
-              >
-                <svg
-                  className="w-4 h-4"
-                  aria-hidden="true"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
-                  />
-                </svg>
-                <span className="sr-only">Search</span>
-              </button>
               <button
                 type="button"
                 onClick={() => setShowFilters(!showFilters)}
@@ -1977,7 +1993,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                     ? "bg-blue-800 text-white border-blue-800"
                     : "bg-blue-700 text-white border-blue-700 hover:bg-blue-800"
                 }`}
-                aria-label="Toggle filters"
+                aria-label="Toggle filters panel"
+                title="Toggle filters"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -2032,6 +2049,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       viewingType === "startups"
                         ? {
                             industry: "",
+                            customIndustry: "",
                             foundedDate: "",
                             teamSize: "",
                             fundingStage: "",
@@ -2040,6 +2058,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                             investmentStage: "",
                             investmentRange: "",
                             preferredIndustry: "",
+                            customPreferredIndustry: "",
                             location: "",
                           };
 
@@ -2066,7 +2085,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       onChange={(e) =>
                         setFilters((prev) => ({
                           ...prev,
-                          startups: { ...prev.startups, industry: e.target.value },
+                          startups: { ...prev.startups, industry: e.target.value, customIndustry: "" },
                         }))
                       }
                       className="w-full text-black text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -2080,7 +2099,28 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       <option value="transportation" className="text-black">Transportation</option>
                       <option value="entertainment" className="text-black">Entertainment</option>
                       <option value="manufacturing" className="text-black">Manufacturing</option>
+                      <option value="other" className="text-black">Other (specify)</option>
                     </select>
+                    {filters.startups.industry === "other" && (
+                      <div className="mt-2">
+                        <input
+                          type="text"
+                          value={filters.startups.customIndustry}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              startups: {
+                                ...prev.startups,
+                                customIndustry: e.target.value.toLowerCase(),
+                              },
+                            }))
+                          }
+                          placeholder="Type industry"
+                          className="w-full text-sm text-gray-900 rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                        />
+                        <p className="mt-1 text-[11px] text-gray-500">We’ll match startups whose industry equals your entry.</p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Team Size filter */}
@@ -2165,7 +2205,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       onChange={(e) =>
                         setFilters((prev) => ({
                           ...prev,
-                          investors: { ...prev.investors, preferredIndustry: e.target.value },
+                          investors: { ...prev.investors, preferredIndustry: e.target.value, customPreferredIndustry: "" },
                         }))
                       }
                       className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -2176,36 +2216,74 @@ export default function Sidebar({ mapInstanceRef, setUserDetails }) {
                       <option value="finance">Finance</option>
                       <option value="education">Education</option>
                       <option value="retail">Retail</option>
+                      <option value="other">Other (specify)</option>
                     </select>
+                    {filters.investors.preferredIndustry === "other" && (
+                      <div className="mt-2">
+                        <input
+                          type="text"
+                          value={filters.investors.customPreferredIndustry}
+                          onChange={(e) =>
+                            setFilters((prev) => ({
+                              ...prev,
+                              investors: {
+                                ...prev.investors,
+                                customPreferredIndustry: e.target.value.toLowerCase(),
+                              },
+                            }))
+                          }
+                          placeholder="Type industry focus"
+                          className="w-full text-sm text-gray-900 rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
+                        />
+                        <p className="mt-1 text-[11px] text-gray-500">We’ll match investors whose preferred industry equals your entry.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Applied Filters Tags */}
               <div className="mt-3 flex flex-wrap gap-2">
-                {Object.entries(viewingType === "startups" ? filters.startups : filters.investors)
-                  .filter(([_, value]) => value)
-                  .map(([key, value]) => (
-                    <div key={key} className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
-                      {key === "teamSize" ? "Team:" : 
-                       key === "industry" || key === "preferredIndustry" ? "Industry:" : 
-                       key === "fundingStage" || key === "investmentStage" ? "Stage:" : 
-                       key.replace(/([A-Z])/g, " $1").trim() + ":"} {value}
-                      <button
-                        className="ml-1 text-blue-700 hover:text-blue-900"
-                        onClick={() => {
-                          setFilters(prev => ({
-                            ...prev,
-                            [viewingType]: { ...prev[viewingType], [key]: "" }
-                          }));
-                        }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  ))}
+                {(viewingType === "startups"
+                  ? [
+                      ...Object.entries(filters.startups).filter(
+                        ([key, value]) =>
+                          value && key !== "customIndustry" && key !== "query"
+                      ),
+                      ...(filters.startups.industry === "other" && filters.startups.customIndustry
+                        ? [["industry", filters.startups.customIndustry]]
+                        : []),
+                    ]
+                  : [
+                      ...Object.entries(filters.investors).filter(
+                        ([key, value]) =>
+                          value && key !== "customPreferredIndustry" && key !== "query"
+                      ),
+                      ...(filters.investors.preferredIndustry === "other" && filters.investors.customPreferredIndustry
+                        ? [["preferredIndustry", filters.investors.customPreferredIndustry]]
+                        : []),
+                    ]
+                ).map(([key, value]) => (
+                  <div key={key} className="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
+                    {key === "teamSize" ? "Team:" :
+                    key === "industry" || key === "preferredIndustry" ? "Industry:" :
+                    key === "fundingStage" || key === "investmentStage" ? "Stage:" :
+                    key.replace(/([A-Z])/g, " $1").trim() + ":"} {value}
+                    <button
+                      className="ml-1 text-blue-700 hover:text-blue-900"
+                      onClick={() => {
+                        setFilters(prev => ({
+                          ...prev,
+                          [viewingType]: { ...prev[viewingType], [key]: "" }
+                        }));
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
           )}
