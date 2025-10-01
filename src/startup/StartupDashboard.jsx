@@ -995,6 +995,23 @@ export default function StartupDashboard({ openAddMethodModal }) {
     /*handleSendCode(id, email);*/
   };
 
+  const handleVerifySuccess = (verifiedStartupId) => {
+  // Update the startups array to set emailVerified to true for the verified startup
+  const updatedStartups = startups.map((startup) =>
+    startup.id === verifiedStartupId ? { ...startup, emailVerified: true } : startup
+  );
+  setStartups(updatedStartups);
+
+  // Show success notification
+  setActionSuccess("Email verified successfully");
+  setTimeout(() => setActionSuccess(null), 3000);
+
+  // Recalculate metrics if necessary (similar to delete functionality)
+  if (selectedStartup === "all" || selectedStartup === verifiedStartupId) {
+    recalculateAllMetrics(startupIds, updatedStartups);
+  }
+};
+
   const handleSendCode = async (id, email) => {
     try {
       const response = await fetch(
@@ -1426,10 +1443,26 @@ export default function StartupDashboard({ openAddMethodModal }) {
                     <td>{st.phoneNumber || "N/A"}</td>
                     <td onClick={(e) => e.stopPropagation()}>
                       {st.emailVerified ? (
-                        "Verified"
+                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium">
+                          <svg
+                            className="w-4 h-4 mr-1 text-green-600"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth="2"
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          Verified
+                        </span>
                       ) : (
                         <button
-                          className="btn btn-sm btn-outline btn-success"
+                          className="btn btn-sm btn-outline border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white transition-colors duration-200"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleVerifyNow(st.id, st.contactEmail);
@@ -1485,6 +1518,7 @@ export default function StartupDashboard({ openAddMethodModal }) {
             startupId={selectedStartupId}
             contactEmail={selectedContactEmail}
             resetForm={() => {}}
+            onVerifySuccess={handleVerifySuccess} // Pass the callback
           />
         )}
         {/* Delete Confirmation Modal */}
