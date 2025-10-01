@@ -31,10 +31,10 @@ export default function Startupmap({
   const geocoderContainerRef = useRef(null);
   const [is3DActive, setIs3DActive] = useState(true);
   const [startupMarkers, setStartupMarkers] = useState([]);
-  const [investorMarkers, setInvestorMarkers] = useState([]);
+  // const [investorMarkers, setInvestorMarkers] = useState([]); // removed
   const [searchInput, setSearchInput] = useState("");
   const [filteredStartups, setFilteredStartups] = useState([]);
-  const [filteredInvestors, setFilteredInvestors] = useState([]);
+  // const [filteredInvestors, setFilteredInvestors] = useState([]); // removed
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [currentGeojsonBoundary, setCurrentGeojsonBoundary] = useState(null);
   const [searchSuggestions, setSearchSuggestions] = useState([]);
@@ -43,13 +43,15 @@ export default function Startupmap({
   const searchTimeoutRef = useRef(null);
   const suggestionsRef = useRef(null);
   const [recentSearches, setRecentSearches] = useState([]);
-  const [searchCategory, setSearchCategory] = useState("all"); // all, startup, investor, place
+  const [searchCategory, setSearchCategory] = useState("all"); // all, startup, stakeholder, place
   const [searchHistory, setSearchHistory] = useState(
     JSON.parse(localStorage.getItem("mapSearchHistory") || "[]")
   );
   const [stakeholderConnections, setStakeholderConnections] = useState([]);
   const [showConnections, setShowConnections] = useState(true);
   const [connectionLines, setConnectionLines] = useState([]);
+  const [stakeholderMarkers, setStakeholderMarkers] = useState([]);
+  const [filteredStakeholders, setFilteredStakeholders] = useState([]);
 
   const saveToSearchHistory = (query, result) => {
     const newHistory = [
@@ -149,24 +151,152 @@ export default function Startupmap({
     });
   };
 
-  const loadInvestorMarkers = async (map) => {
+  // Add this function near the top of your component
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'active':
+        return '#10B981'; // Green
+      case 'pending':
+        return '#F59E0B'; // Amber
+      case 'declined':
+        return '#EF4444'; // Red
+      default:
+        return '#6B7280'; // Gray for unknown status
+    }
+  };
+
+  // Replace the renderStakeholderMarkers function with this updated version
+  const renderStakeholderMarkers = (map, items) => {
+    // Clear existing stakeholder markers if needed
+    if (window.stakeholderMarkersArray) {
+      window.stakeholderMarkersArray.forEach((marker) => marker.remove());
+    }
+    window.stakeholderMarkersArray = [];
+
+    // Keep track of stakeholders we've already rendered to avoid duplicates
+    const renderedStakeholderIds = new Set();
+    
+    // Process each item - could be a connection object or a stakeholder directly
+    items.forEach((item) => {
+      // Determine if we're dealing with a connection or direct stakeholder
+      const stakeholder = item.stakeholder || item;
+      const connection = item.stakeholder ? item : null;
+      
+      if (!stakeholder || !stakeholder.id) {
+        console.warn('Invalid stakeholder data:', item);
+        return;
+      }
+
+      // Skip if already rendered or missing location data
+      if (
+        renderedStakeholderIds.has(stakeholder.id) ||
+        !stakeholder.locationLat ||
+        !stakeholder.locationLng
+      ) {
+        return;
+      }
+
+      renderedStakeholderIds.add(stakeholder.id);
+
+      // Create a DOM element for the stakeholder marker
+      const el = document.createElement("div");
+      el.className = "stakeholder-marker";
+      el.style.width = "35px";
+      el.style.height = "35px";
+      el.style.backgroundColor = "#805AD5"; // Purple for stakeholders
+      el.style.borderRadius = "50%";
+      el.style.border = "2px solid white";
+      el.style.cursor = "pointer";
+      el.style.display = "flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+
+      // Add user icon inside the marker
+      const iconDiv = document.createElement("div");
+      iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M20 21v-2a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v2"></path></svg>`;
+      el.appendChild(iconDiv);
+
+      // Add 3D effect
+      el.style.boxShadow = "0 0 15px rgba(128, 90, 213, 0.7)";
+      el.style.transform = "translate(-50%, -50%)";
+
+      // Create a popup with stakeholder information
+      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+      <div style="color: black; font-family: Arial, sans-serif; max-width: 250px;">
+        <h3 style="margin: 0; color: black; font-weight: bold;">${stakeholder.name || 'Unknown'}</h3>
+        ${connection ? 
+          `<p style="margin: 0; color: #805AD5; font-weight: 500;">${connection.role || "Stakeholder"}</p>` : 
+          `<p style="margin: 0; color: #805AD5; font-weight: 500;">Stakeholder</p>`
+        }
+        <p style="margin: 5px 0 0; color: black; font-size: 13px;">${stakeholder.locationName || ""}</p>
+        ${stakeholder.email
+          ? `<p style="margin: 2px 0; color: gray; font-size: 12px;">✉️ ${stakeholder.email}</p>`
+          : ""}
+        ${stakeholder.phoneNumber
+          ? `<p style="margin: 2px 0; color: gray; font-size: 12px;">📱 ${stakeholder.phoneNumber}</p>`
+          : ""}
+        ${connection ? 
+          `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px;">
+            <p style="margin: 0; color: gray;">Status: <span style="color: ${getStatusColor(connection.status)};">${connection.status || "Unknown"}</span></p>
+            ${connection.dateJoined
+              ? `<p style="margin: 0; color: gray;">Joined: ${new Date(connection.dateJoined).toLocaleDateString()}</p>`
+              : ""}
+          </div>` : ""
+        }
+      </div>
+    `);
+
+    try {
+      // Parse coordinates if they're stored as strings
+      const lng = typeof stakeholder.locationLng === 'string' 
+        ? parseFloat(stakeholder.locationLng) 
+        : stakeholder.locationLng;
+        
+      const lat = typeof stakeholder.locationLat === 'string'
+        ? parseFloat(stakeholder.locationLat)
+        : stakeholder.locationLat;
+      
+      if (isNaN(lng) || isNaN(lat) || lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+        console.warn(`Invalid coordinates for stakeholder ${stakeholder.id}:`, lng, lat);
+        return;
+      }
+
+      // Add marker to the map
+      const marker = new mapboxgl.Marker({
+        element: el,
+        anchor: "center",
+      })
+        .setLngLat([lng, lat])
+        .setPopup(popup)
+        .addTo(map);
+
+      window.stakeholderMarkersArray = window.stakeholderMarkersArray || [];
+      window.stakeholderMarkersArray.push(marker);
+    } catch (error) {
+      console.error(`Error adding marker for stakeholder ${stakeholder.id}:`, error);
+    }
+  });
+  };
+
+  const loadStakeholders = async (map) => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/investors`,
-        {
-          credentials: "include",
-        }
+        `${import.meta.env.VITE_BACKEND_URL}/stakeholders`,
+        { credentials: "include" }
       );
-      const investors = await response.json();
-      setInvestorMarkers(investors);
-      setFilteredInvestors(investors);
+      if (!response.ok) {
+        console.error("Failed to load stakeholders:", response.status);
+        return [];
+      }
+      const stakeholders = await response.json();
+      setStakeholderMarkers(stakeholders);
+      setFilteredStakeholders(stakeholders);
 
-      // Render investor markers
-      renderInvestorMarkers(map, investors);
+      renderStakeholderMarkers(map, stakeholders);
 
-      return investors;
+      return stakeholders;
     } catch (error) {
-      console.error("Failed to load investors:", error);
+      console.error("Failed to load stakeholders:", error);
       return [];
     }
   };
@@ -267,6 +397,54 @@ export default function Startupmap({
       .setLngLat(cebuCoordinates)
       .setPopup(popup)
       .addTo(map);
+  };
+
+  const toggleConnectionsVisibility = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    setShowConnections((prev) => {
+      const next = !prev;
+
+      // If we already have rendered line layers, just toggle their visibility
+      if (
+        window.connectionLinesArray &&
+        window.connectionLinesArray.length > 0
+      ) {
+        window.connectionLinesArray.forEach((id) => {
+          try {
+            if (map.getLayer(id)) {
+              map.setLayoutProperty(
+                id,
+                "visibility",
+                next ? "visible" : "none"
+              );
+            }
+            if (map.getLayer(`${id}-glow`)) {
+              map.setLayoutProperty(
+                `${id}-glow`,
+                "visibility",
+                next ? "visible" : "none"
+              );
+            }
+            if (map.getLayer(`${id}-shadow`)) {
+              map.setLayoutProperty(
+                `${id}-shadow`,
+                "visibility",
+                next ? "visible" : "none"
+              );
+            }
+          } catch (e) {
+            // noop
+          }
+        });
+      } else if (next && stakeholderConnections?.length) {
+        // If showing but nothing rendered yet, render now
+        renderConnectionLines(map, stakeholderConnections);
+      }
+
+      return next;
+    });
   };
 
   // First, create and add the window pattern image
@@ -729,6 +907,7 @@ export default function Startupmap({
   const enhanceRoadLabels = (map) => {
     // Check if the layer exists before modifying it
     if (map.getLayer("road-label")) {
+      map.setLayoutProperty("road-label", "visibility", "visible");
       map.setLayoutProperty("road-label", "text-size", [
         "interpolate",
         ["linear"],
@@ -855,7 +1034,7 @@ export default function Startupmap({
 
       setIsLoading(true);
       try {
-        // Fetch from Mapbox for location data
+        // Mapbox location suggestions
         const mapboxResponse = await fetch(
           `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
             query
@@ -866,7 +1045,6 @@ export default function Startupmap({
 
         const mapboxData = await mapboxResponse.json();
         let mapboxSuggestions = [];
-
         if (mapboxData.features) {
           mapboxSuggestions = mapboxData.features.map((feature) => ({
             id: feature.id,
@@ -879,19 +1057,17 @@ export default function Startupmap({
           }));
         }
 
-        // Filter startups based on query
         const filteredStartups =
-          searchCategory !== "investor"
+          searchCategory !== "stakeholder"
             ? startupMarkers
                 .filter(
                   (startup) =>
                     startup.companyName
-                      .toLowerCase()
+                      ?.toLowerCase()
                       .includes(query.toLowerCase()) ||
-                    (startup.locationName &&
-                      startup.locationName
-                        .toLowerCase()
-                        .includes(query.toLowerCase()))
+                    startup.locationName
+                      ?.toLowerCase()
+                      .includes(query.toLowerCase())
                 )
                 .slice(0, 3)
                 .map((startup) => ({
@@ -906,49 +1082,39 @@ export default function Startupmap({
                 }))
             : [];
 
-        // Filter investors based on query
-        const filteredInvestors =
+        const filteredStakeholdersSug =
           searchCategory !== "startup"
-            ? investorMarkers
+            ? stakeholderMarkers
                 .filter(
-                  (investor) =>
-                    `${investor.firstname} ${investor.lastname}`
-                      .toLowerCase()
-                      .includes(query.toLowerCase()) ||
-                    (investor.locationName &&
-                      investor.locationName
-                        .toLowerCase()
-                        .includes(query.toLowerCase()))
+                  (s) =>
+                    s.name?.toLowerCase().includes(query.toLowerCase()) ||
+                    s.locationName?.toLowerCase().includes(query.toLowerCase())
                 )
                 .slice(0, 3)
-                .map((investor) => ({
-                  id: `investor-${investor.id}`,
-                  text: `${investor.firstname} ${investor.lastname}`,
-                  name: `${investor.firstname} ${investor.lastname} (${
-                    investor.locationName || "Unknown location"
-                  })`,
+                .map((s) => ({
+                  id: `stakeholder-${s.id}`,
+                  text: s.name,
+                  name: `${s.name} (${s.locationName || "Unknown location"})`,
                   center: [
-                    parseFloat(investor.locationLang),
-                    parseFloat(investor.locationLat),
+                    parseFloat(s.locationLng),
+                    parseFloat(s.locationLat),
                   ],
-                  type: "investor",
-                  data: investor,
+                  type: "stakeholder",
+                  data: s,
                 }))
             : [];
 
-        // Combine all suggestions based on search category
         let combinedSuggestions = [];
-
         if (searchCategory === "all") {
           combinedSuggestions = [
             ...filteredStartups,
-            ...filteredInvestors,
+            ...filteredStakeholdersSug,
             ...mapboxSuggestions,
           ];
         } else if (searchCategory === "startup") {
           combinedSuggestions = filteredStartups;
-        } else if (searchCategory === "investor") {
-          combinedSuggestions = filteredInvestors;
+        } else if (searchCategory === "stakeholder") {
+          combinedSuggestions = filteredStakeholdersSug;
         } else if (searchCategory === "place") {
           combinedSuggestions = mapboxSuggestions;
         }
@@ -963,7 +1129,7 @@ export default function Startupmap({
         setIsLoading(false);
       }
     },
-    [searchCategory, startupMarkers, investorMarkers]
+    [searchCategory, startupMarkers, stakeholderMarkers]
   );
 
   const debouncedFetchSuggestions = useCallback(
@@ -1071,18 +1237,18 @@ export default function Startupmap({
           }
         </div>
       `;
-    } else if (suggestion.type === "investor") {
+    } else if (suggestion.type === "stakeholder") {
       popupContent = `
         <div style="color: black; font-family: Arial, sans-serif;">
           <h3 style="margin: 0; color: black; font-weight: bold;">${
-            suggestion.data.firstname
-          } ${suggestion.data.lastname}</h3>
+            suggestion.data.name
+          }</h3>
           <p style="margin: 0; color: black;">${
             suggestion.data.locationName || "Location not specified"
           }</p>
           ${
-            suggestion.data.investorType
-              ? `<p style="margin: 0; color: #666; font-size: 12px;">${suggestion.data.investorType}</p>`
+            suggestion.data.email
+              ? `<p style="margin: 0; color: #666; font-size: 12px;">${suggestion.data.email}</p>`
               : ""
           }
         </div>
@@ -1199,14 +1365,14 @@ export default function Startupmap({
                 Startups
               </button>
               <button
-                onClick={() => setSearchCategory("investor")}
+                onClick={() => setSearchCategory("stakeholder")}
                 className={`px-3 py-1 text-xs rounded-md ${
-                  searchCategory === "investor"
+                  searchCategory === "stakeholder"
                     ? "bg-indigo-100 text-indigo-700 font-medium"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
-                Investors
+                Stakeholders
               </button>
               <button
                 onClick={() => setSearchCategory("place")}
@@ -1255,7 +1421,7 @@ export default function Startupmap({
                     >
                       {suggestion.type === "startup" ? (
                         <Building className="h-4 w-4 text-green-500" />
-                      ) : suggestion.type === "investor" ? (
+                      ) : suggestion.type === "stakeholder" ? (
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           width="16"
@@ -1671,9 +1837,10 @@ export default function Startupmap({
 
       // Load markers after 3D is set up
       loadStartupMarkers(map);
-      loadInvestorMarkers(map);
+      // loadInvestorMarkers(map); // removed
+      loadStakeholders(map);
 
-      // Add this line to load stakeholder connections
+      // Load stakeholder connections (associations)
       loadStakeholderConnections(map);
     });
 
@@ -1686,13 +1853,9 @@ export default function Startupmap({
   const loadStakeholderConnections = async (map) => {
     try {
       setIsLoading(true);
-      console.log("Fetching stakeholder connections...");
-
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/startup-stakeholders`,
-        {
-          credentials: "include",
-        }
+        { credentials: "include" }
       );
 
       if (!response.ok) {
@@ -1704,17 +1867,14 @@ export default function Startupmap({
       }
 
       const connections = await response.json();
-      console.log("Fetched connections:", connections.length, "items");
       setStakeholderConnections(connections);
 
-      // First render stakeholders
-      renderStakeholderMarkers(map, connections);
+      // We already rendered all stakeholders via loadStakeholders
 
-      // Then ensure connection lines are rendered after a short delay
-      // This gives the map time to process other rendering tasks first
+      // Then render connection lines (only for mutually connected)
       setTimeout(() => {
         renderConnectionLines(map, connections);
-      }, 1000);
+      }, 500);
 
       return connections;
     } catch (error) {
@@ -1725,129 +1885,11 @@ export default function Startupmap({
     }
   };
 
-  // Add this function to render stakeholder markers
-  const renderStakeholderMarkers = (map, connections) => {
-    // Clear existing stakeholder markers if needed
-    if (window.stakeholderMarkersArray) {
-      window.stakeholderMarkersArray.forEach((marker) => marker.remove());
-    }
-    window.stakeholderMarkersArray = [];
-
-    // Keep track of stakeholders we've already rendered to avoid duplicates
-    const renderedStakeholderIds = new Set();
-
-    connections.forEach((connection) => {
-      const stakeholder = connection.stakeholder;
-
-      // Skip if already rendered or missing location data
-      if (
-        renderedStakeholderIds.has(stakeholder.id) ||
-        !stakeholder.locationLat ||
-        !stakeholder.locationLng
-      ) {
-        return;
-      }
-
-      renderedStakeholderIds.add(stakeholder.id);
-
-      // Create a DOM element for the stakeholder marker
-      const el = document.createElement("div");
-      el.className = "stakeholder-marker";
-      el.style.width = "35px";
-      el.style.height = "35px";
-      el.style.backgroundColor = "#805AD5"; // Purple for stakeholders
-      el.style.borderRadius = "50%";
-      el.style.border = "2px solid white";
-      el.style.cursor = "pointer";
-      el.style.display = "flex";
-      el.style.alignItems = "center";
-      el.style.justifyContent = "center";
-
-      // Add user icon inside the marker
-      const iconDiv = document.createElement("div");
-      iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M20 21v-2a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v2"></path></svg>`;
-      el.appendChild(iconDiv);
-
-      // Add 3D effect
-      el.style.boxShadow = "0 0 15px rgba(128, 90, 213, 0.7)";
-      el.style.transform = "translate(-50%, -50%)";
-
-      // Create a popup with stakeholder information
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-      <div style="color: black; font-family: Arial, sans-serif; max-width: 250px;">
-        <h3 style="margin: 0; color: black; font-weight: bold;">${
-          stakeholder.name
-        }</h3>
-        <p style="margin: 0; color: #805AD5; font-weight: 500;">${
-          connection.role || "Stakeholder"
-        }</p>
-        <p style="margin: 5px 0 0; color: black; font-size: 13px;">${
-          stakeholder.locationName || ""
-        }</p>
-        ${
-          stakeholder.email
-            ? `<p style="margin: 2px 0; color: gray; font-size: 12px;">✉️ ${stakeholder.email}</p>`
-            : ""
-        }
-        ${
-          stakeholder.phoneNumber
-            ? `<p style="margin: 2px 0; color: gray; font-size: 12px;">📱 ${stakeholder.phoneNumber}</p>`
-            : ""
-        }
-        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px;">
-          <p style="margin: 0; color: gray;">Status: <span style="color: ${getStatusColor(
-            connection.status
-          )};">${connection.status || "Unknown"}</span></p>
-          ${
-            connection.dateJoined
-              ? `<p style="margin: 0; color: gray;">Joined: ${new Date(
-                  connection.dateJoined
-                ).toLocaleDateString()}</p>`
-              : ""
-          }
-        </div>
-      </div>
-    `);
-
-      // Add marker to the map
-      const marker = new mapboxgl.Marker({
-        element: el,
-        anchor: "center",
-      })
-        .setLngLat([stakeholder.locationLng, stakeholder.locationLat])
-        .setPopup(popup)
-        .addTo(map);
-
-      window.stakeholderMarkersArray = window.stakeholderMarkersArray || [];
-      window.stakeholderMarkersArray.push(marker);
-    });
-  };
-
-  // Helper function to get status color
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Active":
-        return "#059669";
-      case "Former":
-        return "#DC2626";
-      case "Pending":
-        return "#F59E0B";
-      case "Inactive":
-        return "#6B7280";
-      default:
-        return "#6B7280";
-    }
-  };
-
-  // Add this function to render connection lines
+  // Only draw lines when connected on both sides (treat connected === true as mutual)
   const renderConnectionLines = (map, connections) => {
-    console.log(
-      "Rendering 3D floating arc connections for",
-      connections.length,
-      "connections"
-    );
+    console.log("Rendering connections:", connections.length);
 
-    // Clean up any existing lines
+    // Cleanup previous
     if (window.connectionLinesArray) {
       window.connectionLinesArray.forEach((lineId) => {
         try {
@@ -1856,30 +1898,38 @@ export default function Startupmap({
           if (map.getLayer(`${lineId}-shadow`))
             map.removeLayer(`${lineId}-shadow`);
           if (map.getSource(lineId)) map.removeSource(lineId);
-        } catch (e) {
-          console.log("Error removing previous line:", e);
-        }
+          if (map.getSource(`${lineId}-shadow`))
+            map.removeSource(`${lineId}-shadow`);
+        } catch {}
       });
     }
     window.connectionLinesArray = [];
 
-    // Create 3D floating arcs
+    // Optional: dedupe by startup-stakeholder pair
+    const seen = new Set();
+
     connections.forEach((connection, index) => {
       try {
+        // Require connected === true (mutual/accepted)
+        if (!connection?.connected) return;
+
         const startup = connection.startup;
         const stakeholder = connection.stakeholder;
 
-        // Skip if missing location data
         if (
-          !stakeholder ||
           !startup ||
-          !stakeholder.locationLat ||
-          !stakeholder.locationLng ||
-          !startup.locationLat ||
-          !startup.locationLng
+          !stakeholder ||
+          typeof startup.locationLat !== "number" ||
+          typeof startup.locationLng !== "number" ||
+          typeof stakeholder.locationLat !== "number" ||
+          typeof stakeholder.locationLng !== "number"
         ) {
           return;
         }
+
+        const key = `${startup.id}-${stakeholder.id}`;
+        if (seen.has(key)) return;
+        seen.add(key);
 
         // Parse coordinates carefully
         const startLat = parseFloat(startup.locationLat);
@@ -1896,59 +1946,40 @@ export default function Startupmap({
           return;
         }
 
-        // Use a unique ID for each line
         const sourceId = `connection-line-${startup.id}-${stakeholder.id}-${index}`;
-        window.connectionLinesArray = window.connectionLinesArray || [];
         window.connectionLinesArray.push(sourceId);
 
-        // ORANGE color for all connections to match the image
-        const lineColor = "#FF7F00"; // Bright orange like in the image
+        const lineColor = "#FF7F00";
 
-        // Calculate the distance between points
         const distance = Math.sqrt(
           Math.pow(endLng - startLng, 2) + Math.pow(endLat - startLat, 2)
         );
 
-        // Set maximum height of the arc based on distance
         const maxHeight = Math.min(distance * 0.5, 0.1);
-
-        // Create multi-layer effect for 3D illusion (5 layers at different heights)
         const numLayers = 12;
         const layerPoints = [];
 
-        // Generate multiple arcs at different heights
         for (let layer = 0; layer < numLayers; layer++) {
-          const heightFactor = layer / (numLayers - 1); // 0 to 1
+          const heightFactor = layer / (numLayers - 1);
           const points = [];
           const steps = 40;
-
           for (let i = 0; i <= steps; i++) {
-            const t = i / steps; // 0 to 1 along the path
-
-            // Create a bell curve for height (maximum in the middle)
-            const heightMultiplier = 4 * t * (1 - t); // Peak of 1.0 at t=0.5
+            const t = i / steps;
+            const heightMultiplier = 4 * t * (1 - t);
             const currentHeight = maxHeight * heightMultiplier * heightFactor;
-
-            // Calculate point on the path
             const lng = startLng + (endLng - startLng) * t;
             const lat = startLat + (endLat - startLat) * t;
-
             points.push([lng, lat]);
           }
-
           layerPoints.push(points);
         }
 
-        // Add the ground shadow first
         map.addSource(`${sourceId}-shadow`, {
           type: "geojson",
           data: {
             type: "Feature",
             properties: {},
-            geometry: {
-              type: "LineString",
-              coordinates: layerPoints[0],
-            },
+            geometry: { type: "LineString", coordinates: layerPoints[0] },
           },
         });
 
@@ -1966,21 +1997,14 @@ export default function Startupmap({
             "line-width": 4,
             "line-opacity": 0.2,
             "line-blur": 3,
-            "line-translate": [3, 3], // Offset for shadow effect
+            "line-translate": [3, 3],
           },
         });
 
-        // Now add all the layers from bottom to top for 3D effect
-        for (let layer = 0; layer < numLayers; layer++) {
-          // Skip the bottom-most layer as we used it for the shadow
-          if (layer === 0) continue;
-
+        for (let layer = 1; layer < numLayers; layer++) {
           const layerId = `${sourceId}-layer-${layer}`;
-          const opacity = 0.3 + (layer / numLayers) * 0.7; // Higher layers are more opaque
-          const layerColor = layer === numLayers - 1 ? lineColor : lineColor;
-          const lineWidth = 1.5 + (layer / numLayers) * 2.5; // Higher layers are thicker
-
-          // Create a tiny vertical offset for each layer to help with 3D appearance
+          const opacity = 0.3 + (layer / numLayers) * 0.7;
+          const lineWidth = 1.5 + (layer / numLayers) * 2.5;
           const vertOffset = layer * 0.5;
 
           map.addSource(layerId, {
@@ -1988,10 +2012,7 @@ export default function Startupmap({
             data: {
               type: "Feature",
               properties: {},
-              geometry: {
-                type: "LineString",
-                coordinates: layerPoints[layer],
-              },
+              geometry: { type: "LineString", coordinates: layerPoints[layer] },
             },
           });
 
@@ -2003,22 +2024,20 @@ export default function Startupmap({
               visibility: showConnections ? "visible" : "none",
               "line-join": "round",
               "line-cap": "round",
-              "line-sort-key": 1000 + layer, // Ensure higher layers render on top
+              "line-sort-key": 1000 + layer,
             },
             paint: {
-              "line-color": layerColor,
+              "line-color": lineColor,
               "line-width": lineWidth,
               "line-opacity": opacity,
-              "line-translate": [0, -vertOffset], // Create tiny vertical separation
-              "line-translate-anchor": "viewport", // Keep consistent with camera
+              "line-translate": [0, -vertOffset],
+              "line-translate-anchor": "viewport",
             },
           });
 
-          // Add this layer ID to be cleaned up later
           window.connectionLinesArray.push(layerId);
         }
 
-        // Add the main visible line on top with glow
         map.addSource(sourceId, {
           type: "geojson",
           data: {
@@ -2026,12 +2045,11 @@ export default function Startupmap({
             properties: {},
             geometry: {
               type: "LineString",
-              coordinates: layerPoints[numLayers - 1], // Use the highest arc
+              coordinates: layerPoints[numLayers - 1],
             },
           },
         });
 
-        // Add glow effect
         map.addLayer({
           id: `${sourceId}-glow`,
           type: "line",
@@ -2040,7 +2058,7 @@ export default function Startupmap({
             visibility: showConnections ? "visible" : "none",
             "line-join": "round",
             "line-cap": "round",
-            "line-sort-key": 1500, // Very top
+            "line-sort-key": 1500,
           },
           paint: {
             "line-color": lineColor,
@@ -2051,7 +2069,6 @@ export default function Startupmap({
           },
         });
 
-        // Add the main line
         map.addLayer({
           id: sourceId,
           type: "line",
@@ -2060,70 +2077,20 @@ export default function Startupmap({
             visibility: showConnections ? "visible" : "none",
             "line-join": "round",
             "line-cap": "round",
-            "line-sort-key": 2000, // Absolute top
+            "line-sort-key": 2000,
           },
           paint: {
             "line-color": lineColor,
             "line-width": 3,
             "line-opacity": 1.0,
             "line-translate-anchor": "viewport",
-            // Add animated dashes effect
             "line-dasharray": [2, 1],
           },
         });
       } catch (error) {
-        console.error("Error creating 3D arc connection:", error);
+        console.error("Error creating connection line:", error);
       }
     });
-  };
-
-  // Add this function to toggle connections visibility
-  const toggleConnectionsVisibility = () => {
-    setShowConnections(!showConnections);
-
-    // Update visibility for all connection lines
-    const map = mapInstanceRef.current;
-    if (window.connectionLinesArray && map) {
-      window.connectionLinesArray.forEach((lineId) => {
-        if (map.getLayer(lineId)) {
-          map.setLayoutProperty(
-            lineId,
-            "visibility",
-            !showConnections ? "visible" : "none"
-          );
-        }
-
-        // Check for shadow layer
-        if (map.getLayer(`${lineId}-shadow`)) {
-          map.setLayoutProperty(
-            `${lineId}-shadow`,
-            "visibility",
-            !showConnections ? "visible" : "none"
-          );
-        }
-
-        // Check for glow layer
-        if (map.getLayer(`${lineId}-glow`)) {
-          map.setLayoutProperty(
-            `${lineId}-glow`,
-            "visibility",
-            !showConnections ? "visible" : "none"
-          );
-        }
-
-        // Check for all sub-layers
-        for (let i = 0; i < 12; i++) {
-          const layerId = `${lineId}-layer-${i}`;
-          if (map.getLayer(layerId)) {
-            map.setLayoutProperty(
-              layerId,
-              "visibility",
-              !showConnections ? "visible" : "none"
-            );
-          }
-        }
-      });
-    }
   };
 
   return (

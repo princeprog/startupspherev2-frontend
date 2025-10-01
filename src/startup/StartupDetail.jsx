@@ -303,8 +303,7 @@ export default function StartupDetail() {
 
       const regionCode = stakeholder.regionCode || "";
       setSelectedRegion(regionCode);
-      const regionObj =
-        regionsData.find((r) => r.code === regionCode) || null;
+      const regionObj = regionsData.find((r) => r.code === regionCode) || null;
 
       // 2) Load Provinces (if region chosen)
       let provincesData = [];
@@ -379,7 +378,9 @@ export default function StartupDetail() {
         role: stakeholderData.role || "Mentor",
         status: stakeholderData.status || "Active",
 
-        hasPhysicalLocation: !!(stakeholder.locationLat && stakeholder.locationLng),
+        hasPhysicalLocation: !!(
+          stakeholder.locationLat && stakeholder.locationLng
+        ),
         locationLat: stakeholder.locationLat || null,
         locationLng: stakeholder.locationLng || null,
         locationName: stakeholder.locationName || "",
@@ -957,7 +958,9 @@ export default function StartupDetail() {
         setBarangays([]);
 
         // Update form data with region name AND code
-        const selectedRegionObj = regions.find((r) => r.code === selectedRegion);
+        const selectedRegionObj = regions.find(
+          (r) => r.code === selectedRegion
+        );
         if (selectedRegionObj) {
           setStakeholderFormData((prev) => ({
             ...prev,
@@ -1007,7 +1010,9 @@ export default function StartupDetail() {
         setBarangays([]);
 
         // Update form data with province name AND code
-        const selectedProvinceObj = provinces.find((p) => p.code === selectedProvince);
+        const selectedProvinceObj = provinces.find(
+          (p) => p.code === selectedProvince
+        );
         if (selectedProvinceObj) {
           setStakeholderFormData((prev) => ({
             ...prev,
@@ -1084,6 +1089,7 @@ export default function StartupDetail() {
     stakeholderId: null,
     stakeholderName: "",
     isDeleting: false,
+    error: null,
   });
 
   // Update the delete handler to open the modal instead of showing a browser confirm
@@ -1095,90 +1101,83 @@ export default function StartupDetail() {
       stakeholderName: stakeholder.name,
       role: stakeholderData.role || "Stakeholder",
       isDeleting: false,
+      error: null,
     });
   };
 
   // Create a new function for the actual deletion process
+  // Create a new function for the actual deletion process
   const confirmDeleteStakeholder = async () => {
     const stakeholderId = deleteModal.stakeholderId;
 
-    // Find the stakeholder data to get both IDs
+    // Find the stakeholder data to get the actual stakeholder ID
     const stakeholderData = stakeholders.find(
       (item) => item.id === stakeholderId
     );
     if (!stakeholderData) {
-      showNotification("Could not find stakeholder data", "error");
-      setDeleteModal({ ...deleteModal, isOpen: false });
+      setDeleteModal({
+        ...deleteModal,
+        error: "Could not find stakeholder data",
+        isDeleting: false,
+      });
       return;
     }
 
     // Get the actual stakeholder ID from the nested structure
     const actualStakeholderId = stakeholderData.stakeholder?.id;
 
+    if (!actualStakeholderId) {
+      setDeleteModal({
+        ...deleteModal,
+        error: "Invalid stakeholder ID",
+        isDeleting: false,
+      });
+      return;
+    }
+
     // Start deletion and show loading state
-    setDeleteModal({ ...deleteModal, isDeleting: true });
+    setDeleteModal({ ...deleteModal, isDeleting: true, error: null });
 
     try {
-      // Step 1: Delete the startup-stakeholder association
-      console.log(`Deleting association with ID: ${stakeholderId}`);
-      const associationResponse = await fetch(
+      // UPDATED: Delete the stakeholder entity directly using the /stakeholders endpoint
+      console.log(`Deleting stakeholder with ID: ${actualStakeholderId}`);
+      const stakeholderResponse = await fetch(
         `${
           import.meta.env.VITE_BACKEND_URL
-        }/startup-stakeholders/${stakeholderId}`,
+        }/stakeholders/${actualStakeholderId}`,
         {
           method: "DELETE",
           credentials: "include",
         }
       );
 
-      if (!associationResponse.ok) {
-        const errorData = await associationResponse.json();
-        throw new Error(
-          errorData.message || "Error deleting stakeholder association"
-        );
-      }
-
-      // Step 2: Delete the stakeholder entity
-      if (actualStakeholderId) {
-        console.log(`Deleting stakeholder with ID: ${actualStakeholderId}`);
-        const stakeholderResponse = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/stakeholders/${actualStakeholderId}`,
-          {
-            method: "DELETE",
-            credentials: "include",
-          }
-        );
-
-        if (!stakeholderResponse.ok) {
-          const errorData = await stakeholderResponse.json();
-          throw new Error(
-            errorData.message || "Error deleting stakeholder entity"
-          );
-        }
-      } else {
-        console.warn("No stakeholder ID found, skipping stakeholder deletion");
+      if (!stakeholderResponse.ok) {
+        const errorData = await stakeholderResponse.json();
+        throw new Error(errorData.message || "Error deleting stakeholder");
       }
 
       // Refresh the stakeholders list after successful deletion
       await fetchStakeholders();
       showNotification(
-        `${deleteModal.stakeholderName} was deleted successfully`,
+        `${deleteModal.stakeholderName} was successfully removed`,
         "success"
       );
-    } catch (error) {
-      console.error("Error deleting stakeholder:", error);
-      showNotification(
-        "Failed to delete stakeholder: " + error.message,
-        "error"
-      );
-    } finally {
+
+      // Close modal and reset state
       setDeleteModal({
         isOpen: false,
         stakeholderId: null,
         stakeholderName: "",
+        role: "",
         isDeleting: false,
+        error: null,
+      });
+    } catch (error) {
+      console.error("Error deleting stakeholder:", error);
+      setDeleteModal({
+        ...deleteModal,
+        isDeleting: false,
+        error: error.message || "An unexpected error occurred",
       });
     }
   };
@@ -2936,10 +2935,22 @@ export default function StartupDetail() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Enhanced Delete Confirmation Modal with Animation */}
       {deleteModal.isOpen && (
-        <div className="fixed inset-0 bg-gray-900/30 bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden animate-fade-in-up">
+        <div className="fixed inset-0 overflow-y-auto z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-gray-900/50 bg-opacity-50 transition-opacity"
+            onClick={() =>
+              !deleteModal.isDeleting &&
+              setDeleteModal({ ...deleteModal, isOpen: false })
+            }
+          ></div>
+
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden transform transition-all 
+                    animate-[fadeIn_0.3s_ease-out] mx-4 sm:mx-0 relative"
+          >
+            {/* Header */}
             <div className="px-6 py-4 border-b border-gray-200 flex items-center">
               <div className="bg-red-100 p-2 rounded-full">
                 <Trash2 className="h-5 w-5 text-red-500" />
@@ -2949,20 +2960,34 @@ export default function StartupDetail() {
               </h3>
             </div>
 
+            {/* Body */}
             <div className="px-6 py-4">
-              <p className="text-gray-700 mb-3">
-                Are you sure you want to delete{" "}
-                <span className="font-semibold">
-                  {deleteModal.stakeholderName}
-                </span>
-                ?
-              </p>
-              <p className="text-sm text-gray-500">
-                This action will permanently remove this stakeholder and cannot
-                be undone. All associated data will be deleted.
-              </p>
+              {deleteModal.error ? (
+                <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-4">
+                  <div className="flex">
+                    <AlertCircle className="h-5 w-5 text-red-500 mr-2" />
+                    <p className="text-sm text-red-700">{deleteModal.error}</p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="text-gray-700 mb-3">
+                    Are you sure you want to delete{" "}
+                    <span className="font-semibold text-gray-900">
+                      {deleteModal.stakeholderName}
+                    </span>
+                    ?
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    This action will permanently remove this stakeholder from
+                    your startup. All associated data will be deleted and cannot
+                    be recovered.
+                  </p>
+                </>
+              )}
             </div>
 
+            {/* Footer with Actions */}
             <div className="px-6 py-3 bg-gray-50 flex justify-end space-x-3">
               <button
                 type="button"
@@ -2970,13 +2995,12 @@ export default function StartupDetail() {
                   setDeleteModal({ ...deleteModal, isOpen: false })
                 }
                 disabled={deleteModal.isDeleting}
-                className={`px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 
-                ${
-                  deleteModal.isDeleting
-                    ? "bg-gray-100 cursor-not-allowed"
-                    : "bg-white hover:bg-gray-50"
-                } 
-                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors`}
+                className={`px-4 py-2 border border-gray-300 rounded-md text-sm font-medium
+            ${
+              deleteModal.isDeleting
+                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                : "text-gray-700 bg-white hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            } transition-colors duration-200`}
               >
                 Cancel
               </button>
@@ -2985,13 +3009,11 @@ export default function StartupDetail() {
                 onClick={confirmDeleteStakeholder}
                 disabled={deleteModal.isDeleting}
                 className={`px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium 
-                text-white bg-red-600 ${
-                  deleteModal.isDeleting
-                    ? "opacity-70 cursor-not-allowed"
-                    : "hover:bg-red-700"
-                } 
-                focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors
-                inline-flex items-center`}
+            text-white ${
+              deleteModal.isDeleting
+                ? "bg-red-500 cursor-wait"
+                : "bg-red-600 hover:bg-red-700 focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            } transition-colors duration-200 inline-flex items-center`}
               >
                 {deleteModal.isDeleting ? (
                   <>
