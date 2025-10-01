@@ -10,14 +10,20 @@ import ProtectedRoute from "./security/ProtectedRoute";
 import { SidebarProvider } from "./context/SidebarContext";
 import Notification from "./Notifications/Notification";
 import StartupDetail from "./startup/StartupDetail";
+import AddMethodModal from "./startup/AddMethodModal"; 
 
 function App() {
   const mapInstanceRef = useRef(null);
   const [user, setUser] = useState(null);
+  const [isAddMethodModalOpen, setIsAddMethodModalOpen] = useState(false);
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
   };
+
+  const openAddMethodModal = () => {
+    setIsAddMethodModalOpen(true);
+  };
 
   return (
     <SidebarProvider>
@@ -38,7 +44,10 @@ function App() {
             }
           />
           <Route element={<ProtectedRoute />}>
-            <Route path="/startup-dashboard" element={<StartupDashboard />} />
+            <Route 
+              path="/startup-dashboard" 
+              element={<StartupDashboard openAddMethodModal={openAddMethodModal} />} 
+            />
             <Route
               path="/all-startup-dashboard"
               element={<AllStartupDashboard />}
@@ -52,7 +61,12 @@ function App() {
           </Route>
         </Route>
         <Route path="/add-startup" element={<Startupadd />} />
+        
       </Routes>
+      <AddMethodModal 
+        isOpen={isAddMethodModalOpen} 
+        onClose={() => setIsAddMethodModalOpen(false)} 
+      />
     </SidebarProvider>
   );
 }
