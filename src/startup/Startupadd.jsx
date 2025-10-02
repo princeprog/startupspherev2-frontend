@@ -313,6 +313,12 @@ export default function Startupadd() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+     if (name === "numberOfEmployees" || name === "operatingHours") {
+          if (/\D/.test(value)) {
+            toast.error("Only Accepting Numeral inputs");
+            return;
+        }
+    }
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -439,6 +445,10 @@ export default function Startupadd() {
 
   const validateContactInformation = () => {
     if (!formData.phoneNumber) return toast.error("Phone Number is required.");
+    const digits = formData.phoneNumber.replace("+63 ", "").replace(/\D/g, "");
+        if (digits.length !== 10) {
+            return toast.error("Phone number must contain exactly 10 digits (excluding +63 prefix).");
+         }
     if (!formData.contactEmail)
       return toast.error("Contact Email is required.");
     if (!formData.website) return toast.error("Website is required.");
@@ -451,6 +461,10 @@ export default function Startupadd() {
     if (!formData.city) return toast.error("City is required.");
     if (!formData.province) return toast.error("Province is required.");
     if (!formData.postalCode) return toast.error("Postal Code is required.");
+    if (formData.postalCode.length !== 4) {
+      return toast.error("Postal Code Must be 4 digits");
+    }
+
     return "";
   };
 
@@ -825,7 +839,7 @@ export default function Startupadd() {
           <form className="grid grid-cols-2 gap-6">
             <div>
               <label className="block mb-1 text-sm font-medium">
-                Company Name
+                Company Name <span className="text-red-500"> *</span>
               </label>
               <input
                 type="text"
@@ -839,7 +853,7 @@ export default function Startupadd() {
 
             <div>
               <label className="block mb-1 text-sm font-medium">
-                Company Description
+                Company Description <span className="text-red-500"> *</span>
               </label>
               <input
                 type="text"
@@ -853,7 +867,7 @@ export default function Startupadd() {
 
             <div>
               <label className="block mb-1 text-sm font-medium">
-                Founded Date
+                Founded Date <span className="text-red-500"> *</span>
               </label>
               <DatePicker
                 selected={
@@ -868,7 +882,7 @@ export default function Startupadd() {
 
             <div>
               <label className="block mb-1 text-sm font-medium">
-                Number of Employees
+                Number of Employees <span className="text-red-500"> *</span>
               </label>
               <input
                 type="text"
@@ -882,7 +896,7 @@ export default function Startupadd() {
 
             <div>
               <label className="block mb-1 text-sm font-medium">
-                Type of Company
+                Type of Company <span className="text-red-500"> *</span>
               </label>
               <select
                 name="typeOfCompany"
@@ -903,7 +917,9 @@ export default function Startupadd() {
             </div>
 
             <div>
-              <label className="block mb-1 text-sm font-medium">Industry</label>
+              <label className="block mb-1 text-sm font-medium">Industry
+                    <span className="text-red-500"> *</span>
+              </label>
               <select
                 name="industry"
                 className="w-full border border-gray-300 rounded-md px-4 py-2"
@@ -1134,7 +1150,7 @@ export default function Startupadd() {
           <form className="grid grid-cols-2 gap-6">
             <div>
               <label className="block mb-1 text-sm font-medium">
-                Phone Number
+                Phone Number <span className="text-red-500"> *</span>
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
@@ -1164,7 +1180,7 @@ export default function Startupadd() {
 
             <div>
               <label className="block mb-1 text-sm font-medium">
-                Contact Email
+                Contact Email <span className="text-red-500"> *</span>
               </label>
               <input
                 type="email"
@@ -1176,7 +1192,9 @@ export default function Startupadd() {
               />
             </div>
             <div>
-              <label className="block mb-1 text-sm font-medium">Website</label>
+              <label className="block mb-1 text-sm font-medium">Website
+                <span className="text-red-500"> *</span>
+              </label>
               <input
                 type="url"
                 name="website"
@@ -1255,7 +1273,7 @@ export default function Startupadd() {
                 }}
                 disabled={!selectedRegion}
               >
-                <option value="">Select Province</option>
+                <option value="">Select Province <span className="text-red-500"> *</span> </option>
                 {provinces.map((province) => (
                   <option key={province.code} value={province.code}>
                     {province.name}
@@ -1266,7 +1284,7 @@ export default function Startupadd() {
 
             <div>
               <label className="block mb-1 text-sm font-medium">
-                City/Municipality
+                City/Municipality <span className="text-red-500"> *</span>
               </label>
               <select
                 name="city"
@@ -1323,7 +1341,7 @@ export default function Startupadd() {
 
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <label className="block mb-1 text-sm font-medium">Street</label>
+                <label className="block mb-1 text-sm font-medium">Street <span className="text-red-500"> *</span></label>
                 <input
                   type="text"
                   name="streetAddress"
@@ -1336,7 +1354,7 @@ export default function Startupadd() {
 
               <div>
                 <label className="block mb-1 text-sm font-medium">
-                  Postal Code
+                  Postal Code <span className="text-red-500"> *</span>
                 </label>
                 <input
                   type="text"
@@ -1382,7 +1400,9 @@ export default function Startupadd() {
         {selectedTab === "Social Media Links" && (
           <form className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block mb-1 text-sm font-medium">Facebook</label>
+              <label className="block mb-1 text-sm font-medium">Facebook
+                    <span className="text-red-500"> *</span>
+              </label>
               <input
                 type="url"
                 name="facebook"
@@ -1418,7 +1438,9 @@ export default function Startupadd() {
               />
             </div>
             <div>
-              <label className="block mb-1 text-sm font-medium">LinkedIn</label>
+              <label className="block mb-1 text-sm font-medium">LinkedIn
+                    <span className="text-red-500"> *</span>
+              </label>
               <input
                 type="url"
                 name="linkedIn"
@@ -1450,7 +1472,7 @@ export default function Startupadd() {
           <form className="grid grid-cols-2 gap-6">
             <div>
               <label className="block mb-1 text-sm font-medium">
-                Funding Stage
+                Funding Stage <span className="text-red-500"> *</span>
               </label>
               <select
                 name="fundingStage"
@@ -1469,7 +1491,7 @@ export default function Startupadd() {
             </div>
             <div>
               <label className="block mb-1 text-sm font-medium">
-                Operating Hours
+                Operating Hours <span className="text-red-500"> *</span>
               </label>
               <input
                 type="text"
@@ -1482,7 +1504,7 @@ export default function Startupadd() {
             </div>
             <div>
               <label className="block mb-1 text-sm font-medium">
-                Business Activity
+                Business Activity <span className="text-red-500"> *</span>
               </label>
               <input
                 type="text"
