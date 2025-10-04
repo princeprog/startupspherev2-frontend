@@ -13,6 +13,7 @@ import StartupDetail from "./startup/StartupDetail";
 import AddMethodModal from "./startup/AddMethodModal"; 
 import CsvUploadPage from "./startup/CsvUploadPage";
 
+
 function App() {
   const mapInstanceRef = useRef(null);
   const [user, setUser] = useState(null);
