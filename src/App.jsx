@@ -11,6 +11,8 @@ import { SidebarProvider } from "./context/SidebarContext";
 import Notification from "./Notifications/Notification";
 import StartupDetail from "./startup/StartupDetail";
 import AddMethodModal from "./startup/AddMethodModal"; 
+import CsvUploadPage from "./startup/CsvUploadPage";
+
 
 function App() {
   const mapInstanceRef = useRef(null);
@@ -61,7 +63,7 @@ function App() {
           </Route>
         </Route>
         <Route path="/add-startup" element={<Startupadd />} />
-        
+        <Route path="/add-startup-csv" element={<CsvUploadPage />} /> 
       </Routes>
       <AddMethodModal 
         isOpen={isAddMethodModalOpen} 
