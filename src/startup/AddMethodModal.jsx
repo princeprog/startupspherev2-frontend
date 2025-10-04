@@ -8,19 +8,16 @@ const AddMethodModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   const handleManualInput = () => {
-    onClose(); // Close modal
-    navigate("/add-startup"); // Redirect to Startupadd.jsx
+    onClose(); 
+    navigate("/add-startup");
   };
 
   const handleCsvFile = () => {
-    // Placeholder for future CSV upload flow
-    onClose();
-    alert("CSV File upload flow selected. (Placeholder: redirect to CSV upload route)");
-    // navigate("/add-startup-csv"); // Example: redirect to a dedicated CSV upload route later
-  };
+    onClose();
+    navigate("/add-startup-csv"); 
+  };
 
   return (
-    // Key: This div creates the fixed, full-screen, semi-transparent overlay
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-opacity-10 backdrop-blur-sm"> 
       <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full mx-4 p-8 border border-gray-200 relative"> 
         <div className="flex justify-center items-start mb-6">

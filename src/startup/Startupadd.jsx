@@ -313,7 +313,7 @@ export default function Startupadd() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-     if (name === "numberOfEmployees" || name === "operatingHours") {
+     if (name === "numberOfEmployees") {
           if (/\D/.test(value)) {
             toast.error("Only Accepting Numeral inputs");
             return;
