@@ -67,6 +67,11 @@ function NotificationComponent() {
   const [error, setError] = useState(null);
   const [deletingIds, setDeletingIds] = useState([]);
   const [confirmingDelete, setConfirmingDelete] = useState(null);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [actionType, setActionType] = useState(null); // 'view' or 'review'
+  const [startupDetails, setStartupDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   const initiateDelete = (id) => {
     setConfirmingDelete(id);
@@ -132,16 +137,14 @@ function NotificationComponent() {
       content: item.remarks,
       isRead: item.viewed,
       action: determineAction(item),
-      entityId: item.startup?.id,
+      entityId: item.startup?.id, // Keep this consistent
       timestamp: item.createdAt || new Date().toISOString(),
       sender: item.startup
         ? {
             id: item.startup.id,
             name: item.startup.companyName,
             avatar: item.startup.photo
-              ? `${import.meta.env.VITE_BACKEND_URL}/startups/${
-                  item.startup.id
-                }/photo`
+              ? `data:image/jpeg;base64,${item.startup.photo}` // Direct base64 usage
               : null,
           }
         : null,
@@ -150,12 +153,16 @@ function NotificationComponent() {
   };
 
   // Helper to determine action based on notification content
+  // Helper to determine action based on notification content - update to always return an action
   const determineAction = (item) => {
-    if (item.viewed) return null;
-
     const message = item.remarks?.toLowerCase() || "";
 
-    if (message.includes("application") || message.includes("submitted")) {
+    if (
+      message.includes("application") ||
+      message.includes("submitted") ||
+      message.includes("approved") ||
+      message.includes("rejected")
+    ) {
       return "Review";
     } else if (message.includes("message") || message.includes("contact")) {
       return "Reply";
@@ -340,6 +347,24 @@ function NotificationComponent() {
     }`;
   };
 
+  // Add this function to your component
+  const getNotificationContentClass = (notification) => {
+    const content = notification.content?.toLowerCase() || "";
+
+    if (content.includes("rejected") || content.includes("wasn't approved")) {
+      return "px-3 py-2 border-l-4 border-red-500 bg-red-50 text-gray-900 rounded-r-md";
+    } else if (content.includes("approved")) {
+      return "px-3 py-2 border-l-4 border-green-500 bg-green-50 text-gray-900 rounded-r-md";
+    } else if (
+      content.includes("pending") ||
+      content.includes("being reviewed")
+    ) {
+      return "px-3 py-2 border-l-4 border-yellow-500 bg-yellow-50 text-gray-900 rounded-r-md";
+    } else {
+      return "text-gray-900";
+    }
+  };
+
   const getRandomStartupName = () => {
     const prefixes = [
       "Tech",
@@ -447,44 +472,56 @@ function NotificationComponent() {
   };
 
   // Handle marking a notification as read/unread
+  // Handle marking a notification as read only (no unread functionality)
   const handleToggleRead = async (id, currentReadStatus) => {
     try {
-      // Update on the server
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/notifications/${id}`,
-        {
-          method: "PUT",
-          credentials: "include",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ viewed: !currentReadStatus }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+      // If already read, no need to call API again
+      if (currentReadStatus) {
+        toast.info("This notification has already been read");
+        return true;
       }
 
-      // Update local state
+      // For marking as viewed - only available for unread notifications
+      const endpoint = `${
+        import.meta.env.VITE_BACKEND_URL
+      }/notifications/${id}/view`;
+
+      const response = await fetch(endpoint, {
+        method: "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        // Log specific error details for debugging
+        const errorText = await response.text().catch(() => "No error details");
+        console.warn(`Server responded with ${response.status}: ${errorText}`);
+
+        // Continue execution with local update only instead of throwing error
+        console.log("Server update failed, applying local update only");
+      }
+
+      // Update local state regardless of server response
+      // This ensures UI remains responsive even if the API fails
       const updatedNotifications = notifications.map((notif) =>
-        notif.id === id ? { ...notif, isRead: !currentReadStatus } : notif
+        notif.id === id ? { ...notif, isRead: true } : notif
       );
 
       setNotifications(updatedNotifications);
-      toast.success(
-        `Notification marked as ${currentReadStatus ? "unread" : "read"}`
-      );
+      toast.success("Notification marked as read");
+      return true; // Return success for callers
     } catch (error) {
       console.error("Failed to update notification:", error);
-      // Fallback to just updating UI for demo
+
+      // Fallback to just updating UI for demo/resilience
       const updatedNotifications = notifications.map((notif) =>
-        notif.id === id ? { ...notif, isRead: !currentReadStatus } : notif
+        notif.id === id ? { ...notif, isRead: true } : notif
       );
       setNotifications(updatedNotifications);
-      toast.success(
-        `Notification marked as ${currentReadStatus ? "unread" : "read"}`
-      );
+      toast.success("Notification marked as read");
+      return true; // Return success since we updated the UI
     }
   };
 
@@ -701,6 +738,304 @@ function NotificationComponent() {
 
     return counts;
   }, [notifications, typeFilters]);
+
+  // Handle notification action (View or Review)
+  // Handle notification action (View or Review)
+  const handleNotificationAction = async (notification, action) => {
+    try {
+      setActionType(action);
+      setSelectedNotification(notification);
+      setShowActionModal(true);
+      setLoadingDetails(true);
+
+      // Mark notification as read if it's not already
+      if (!notification.isRead) {
+        try {
+          // Always mark as viewed when opening the notification
+          const viewEndpoint = `${
+            import.meta.env.VITE_BACKEND_URL
+          }/notifications/${notification.id}/view`;
+
+          console.log(`Marking notification ${notification.id} as viewed`);
+          const viewResponse = await fetch(viewEndpoint, {
+            method: "PUT",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!viewResponse.ok) {
+            console.warn(
+              `Failed to mark notification as viewed: ${viewResponse.status}`
+            );
+          } else {
+            console.log(
+              `Successfully marked notification ${notification.id} as viewed`
+            );
+          }
+
+          // Update local state regardless of server response to maintain UI consistency
+          const updatedNotifications = notifications.map((notif) =>
+            notif.id === notification.id ? { ...notif, isRead: true } : notif
+          );
+          setNotifications(updatedNotifications);
+        } catch (err) {
+          console.warn("Failed to mark notification as read:", err);
+          // Continue execution despite this error to allow viewing the notification
+        }
+      }
+
+      // Use the correct startup ID - first try entityId, then check notification.rawData
+      let startupId = notification.entityId;
+
+      // If entityId is not available, check the rawData
+      if (!startupId && notification.rawData && notification.rawData.startup) {
+        startupId = notification.rawData.startup.id;
+      }
+
+      // Fallback to sender id if still not available
+      if (!startupId && notification.sender) {
+        startupId = notification.sender.id;
+      }
+
+      if (startupId) {
+        try {
+          console.log(`Fetching startup details with ID: ${startupId}`);
+          await fetchStartupDetails(startupId);
+        } catch (err) {
+          console.warn("Failed to fetch startup details:", err);
+          setLoadingDetails(false);
+
+          // Create a fallback from the notification's raw data if possible
+          if (notification.rawData && notification.rawData.startup) {
+            const startupData = notification.rawData.startup;
+            setStartupDetails({
+              id: startupId,
+              companyName: startupData.companyName || "Unknown Startup",
+              status: startupData.status || "Unknown",
+              industry: startupData.industry || "Information not available",
+              companyDescription:
+                startupData.companyDescription || "No description available",
+              city: startupData.city || "N/A",
+              province: startupData.province || "N/A",
+              photo: startupData.photo || null,
+              contactEmail: startupData.contactEmail || "N/A",
+              foundedDate: startupData.foundedDate || "N/A",
+              numberOfEmployees: startupData.numberOfEmployees || "N/A",
+              fundingStage: startupData.fundingStage || "N/A",
+            });
+          }
+        }
+      } else {
+        setLoadingDetails(false);
+      }
+    } catch (error) {
+      console.error(`Error handling ${action} action:`, error);
+      toast.error(
+        `Unable to process this ${action} request. Please try again.`
+      );
+      setLoadingDetails(false);
+    }
+  };
+
+  // Fetch startup details for the modal
+  const fetchStartupDetails = async (startupId) => {
+    try {
+      // First check if we already have these details cached
+      if (startupDetails && startupDetails.id === parseInt(startupId)) {
+        setLoadingDetails(false);
+        return;
+      }
+
+      console.log(`Fetching details for startup ID: ${startupId}`);
+
+      // Try to get the startup directly from the raw notification data first
+      const notifWithStartup = notifications.find(
+        (n) =>
+          n.rawData &&
+          n.rawData.startup &&
+          n.rawData.startup.id === parseInt(startupId)
+      );
+
+      if (
+        notifWithStartup &&
+        notifWithStartup.rawData &&
+        notifWithStartup.rawData.startup
+      ) {
+        console.log("Using startup data from notification");
+        const startupData = notifWithStartup.rawData.startup;
+
+        setStartupDetails({
+          id: startupId,
+          companyName: startupData.companyName || "Unknown Startup",
+          status: startupData.status || "Unknown",
+          industry: startupData.industry || "Information not available",
+          companyDescription:
+            startupData.companyDescription || "No description available",
+          city: startupData.city || "N/A",
+          province: startupData.province || "N/A",
+          photo: startupData.photo || null,
+          contactEmail: startupData.contactEmail || "N/A",
+          foundedDate: startupData.foundedDate || "N/A",
+          numberOfEmployees: startupData.numberOfEmployees || "N/A",
+          fundingStage: startupData.fundingStage || "N/A",
+        });
+
+        setLoadingDetails(false);
+        return;
+      }
+
+      // If we don't have the data in notifications, make an API call
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log(`API response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "No error details");
+        console.warn(`Server responded with ${response.status}: ${errorText}`);
+        throw new Error(`Failed to fetch startup details (${response.status})`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data) {
+        console.log("Successfully loaded startup details:", result.data.id);
+        setStartupDetails(result.data);
+      } else if (result.data) {
+        console.log("Loaded startup details from direct data:", result.data.id);
+        setStartupDetails(result.data);
+      } else {
+        console.warn("API returned success but no data");
+        throw new Error(
+          result.message || "Failed to fetch startup details - no data returned"
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching startup details:", error);
+
+      // Create fallback from selected notification if possible
+      if (
+        selectedNotification &&
+        selectedNotification.rawData &&
+        selectedNotification.rawData.startup
+      ) {
+        const startupData = selectedNotification.rawData.startup;
+        setStartupDetails({
+          id: startupId,
+          companyName: startupData.companyName || "Unknown Startup",
+          status: startupData.status || "Unknown",
+          industry: startupData.industry || "Information not available",
+          companyDescription:
+            startupData.companyDescription || "No description available",
+          city: startupData.city || "N/A",
+          province: startupData.province || "N/A",
+          photo: startupData.photo || null,
+        });
+      } else {
+        // Ultimate fallback
+        const emergencyFallback = {
+          id: startupId || "unknown",
+          companyName:
+            selectedNotification?.sender?.name || "Startup Information",
+          status: "Unknown",
+          industry: "Information not available",
+          companyDescription: "We encountered an issue loading the details.",
+          city: "N/A",
+          province: "N/A",
+        };
+
+        setStartupDetails(emergencyFallback);
+      }
+
+      toast.error(
+        "Unable to load complete startup details. Showing limited information.",
+        {
+          autoClose: 3000,
+        }
+      );
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  // Close the action modal
+  const closeActionModal = () => {
+    setShowActionModal(false);
+    setSelectedNotification(null);
+    setStartupDetails(null);
+    setActionType(null);
+  };
+
+  // Navigate to startup profile (for "View" actions)
+  const navigateToStartupProfile = (startupId) => {
+    // This would typically be done with React Router
+    // But for now we'll just redirect with window.location
+    window.location.href = `/startups/${startupId}`;
+  };
+
+  // Update the submitReview function to handle view-only access
+  const submitReview = async () => {
+    // Close the modal - no actual submission needed since users can only view
+    closeActionModal();
+  };
+
+  // Update the modal footer section
+  <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+    {!loadingDetails && startupDetails && (
+      <button
+        onClick={() => navigateToStartupProfile(startupDetails.id)}
+        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+      >
+        View Full Profile
+      </button>
+    )}
+    <button
+      onClick={closeActionModal}
+      className="px-4 py-2 ml-3 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+    >
+      Close
+    </button>
+  </div>;
+
+  // Function to determine notification action type based on content
+  const getActionType = (notification) => {
+    // Always return the action type regardless of read status
+    // If there's no action defined, default to "View"
+    return (
+      notification.action ||
+      // Determine action based on content for notifications without explicit action
+      (notification.content?.toLowerCase().includes("application")
+        ? "Review"
+        : "View")
+    );
+  };
+
+  // Action button renderer with proper click handlers
+  const renderActionButton = (notification) => {
+    const actionType = getActionType(notification);
+    if (!actionType) return null;
+
+    return (
+      <button
+        className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+        onClick={() =>
+          handleNotificationAction(notification, actionType.toLowerCase())
+        }
+      >
+        {actionType}
+      </button>
+    );
+  };
 
   if (error) {
     return (
@@ -993,9 +1328,16 @@ function NotificationComponent() {
                               {notification.sender.name}
                             </div>
                           )}
-                          <div className="text-sm text-gray-900">
+
+                          {/* Enhanced notification content with status-based styling */}
+                          <div
+                            className={`text-sm ${getNotificationContentClass(
+                              notification
+                            )}`}
+                          >
                             {notification.content}
                           </div>
+
                           <div className="mt-1 flex items-center text-xs text-gray-500">
                             <MdAccessTimeFilled className="flex-shrink-0 mr-1.5 h-3 w-3 text-gray-400" />
                             <span>{formatDate(notification.timestamp)}</span>
@@ -1011,11 +1353,9 @@ function NotificationComponent() {
                             </span>
                           </div>
 
-                          {notification.action && (
+                          {getActionType(notification) && (
                             <div className="mt-2">
-                              <button className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                                {notification.action}
-                              </button>
+                              {renderActionButton(notification)}
                             </div>
                           )}
                         </div>
@@ -1032,19 +1372,19 @@ function NotificationComponent() {
                             className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors"
                             title={
                               notification.isRead
-                                ? "Mark as unread"
+                                ? "Already read"
                                 : "Mark as read"
                             }
                             aria-label={
                               notification.isRead
-                                ? "Mark as unread"
+                                ? "Already read"
                                 : "Mark as read"
                             }
                           >
                             {notification.isRead ? (
-                              <FaRegCircle className="h-5 w-5" />
-                            ) : (
                               <FaCheckCircle className="h-5 w-5" />
+                            ) : (
+                              <FaRegCircle className="h-5 w-5" />
                             )}
                           </button>
 
@@ -1135,6 +1475,347 @@ function NotificationComponent() {
           </div>
         </div>
       )}
+
+      {/* Add new Action Modals */}
+      {showActionModal && selectedNotification && (
+        <div className="fixed inset-0 bg-black/30 bg-opacity-30 z-50 flex items-center justify-center p-4">
+          <div
+            className="bg-white rounded-lg w-full max-w-3xl overflow-hidden shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {actionType === "review"
+                  ? "Your Startup Application"
+                  : "Startup Details"}
+              </h3>
+              <button
+                onClick={closeActionModal}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <svg
+                  className="h-6 w-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  ></path>
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 max-h-[70vh] overflow-y-auto">
+              {loadingDetails ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <CgSpinner className="h-10 w-10 text-blue-500 animate-spin" />
+                  <p className="mt-4 text-gray-500">Loading details...</p>
+                </div>
+              ) : startupDetails ? (
+                <div>
+                  {/* Startup Details */}
+                  <div className="flex items-start">
+                    {startupDetails.photo ? (
+                      <img
+                        src={
+                          typeof startupDetails.photo === "string" &&
+                          startupDetails.photo.startsWith("/9j")
+                            ? `data:image/jpeg;base64,${startupDetails.photo}`
+                            : `${import.meta.env.VITE_BACKEND_URL}/startups/${
+                                startupDetails.id
+                              }/photo`
+                        }
+                        alt={startupDetails.companyName}
+                        className="h-24 w-24 object-cover rounded-lg"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src =
+                            "https://via.placeholder.com/150?text=No+Image";
+                        }}
+                      />
+                    ) : (
+                      <div className="h-24 w-24 bg-gray-200 rounded-lg flex items-center justify-center text-gray-400">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-12 w-12"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                          />
+                        </svg>
+                      </div>
+                    )}
+
+                    <div className="ml-6">
+                      <h4 className="text-xl font-bold text-gray-900">
+                        {startupDetails.companyName}
+                      </h4>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {startupDetails.industry &&
+                          startupDetails.industry.charAt(0).toUpperCase() +
+                            startupDetails.industry.slice(1).replace("_", " ")}
+                      </p>
+                      <div className="mt-2 flex items-center">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            startupDetails.status === "Approved"
+                              ? "bg-green-100 text-green-800"
+                              : startupDetails.status === "Pending"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {startupDetails.status}
+                        </span>
+                        <span className="mx-2 text-gray-300">|</span>
+                        <span className="text-sm text-gray-500">
+                          {startupDetails.city}, {startupDetails.province}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Startup Description */}
+                  <div className="mt-6">
+                    <h5 className="font-medium text-gray-900">About</h5>
+                    <p className="mt-2 text-gray-600">
+                      {startupDetails.companyDescription ||
+                        "No description provided."}
+                    </p>
+                  </div>
+
+                  {/* Basic Details */}
+                  <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-2">
+                    <div>
+                      <h5 className="font-medium text-gray-900">Founded</h5>
+                      <p className="mt-1 text-gray-600">
+                        {startupDetails.foundedDate || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-900">Employees</h5>
+                      <p className="mt-1 text-gray-600">
+                        {startupDetails.numberOfEmployees || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-900">
+                        Funding Stage
+                      </h5>
+                      <p className="mt-1 text-gray-600">
+                        {startupDetails.fundingStage
+                          ? startupDetails.fundingStage
+                              .charAt(0)
+                              .toUpperCase() +
+                            startupDetails.fundingStage
+                              .slice(1)
+                              .replace("_", " ")
+                          : "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <h5 className="font-medium text-gray-900">
+                        Contact Email
+                      </h5>
+                      <p className="mt-1 text-gray-600">
+                        {startupDetails.contactEmail || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Review Form - Only for review action */}
+                  {actionType === "review" && (
+                    <ReviewForm
+                      startupId={startupDetails.id}
+                      onSubmit={submitReview}
+                      currentStatus={startupDetails.status}
+                    />
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-gray-600 mb-4">
+                    No additional details are available for this notification.
+                  </p>
+                  <div
+                    className={`inline-block text-sm ${getNotificationContentClass(
+                      selectedNotification
+                    )}`}
+                  >
+                    {selectedNotification.content}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              {!loadingDetails && startupDetails && actionType === "view" && (
+                <button
+                  onClick={() => navigateToStartupProfile(startupDetails.id)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  View Full Profile
+                </button>
+              )}
+              {!loadingDetails && actionType !== "review" && (
+                <button
+                  onClick={closeActionModal}
+                  className="px-4 py-2 ml-3 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                >
+                  Close
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Replace the ReviewForm component with this enhanced version
+function ReviewForm({ startupId, onSubmit, currentStatus }) {
+  return (
+    <div className="mt-8 border-t border-gray-200 pt-6">
+      <h5 className="font-medium text-gray-900 mb-4">Application Status</h5>
+
+      <div className="mb-6">
+        {currentStatus === "Approved" ? (
+          <div className="bg-green-50 border border-green-200 rounded-md overflow-hidden">
+            <div className="bg-green-100 px-4 py-3 flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-green-500 mr-2"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="font-medium text-green-800">Approved</span>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-sm text-gray-600">
+                Congratulations! Your startup application has been approved and
+                is now visible on our platform. You can now access all the
+                features available to startups.
+              </p>
+              <div className="mt-3 flex">
+                <button
+                  onClick={() =>
+                    (window.location.href = `/startups/${startupId}`)
+                  }
+                  className="text-sm text-green-700 hover:text-green-900 font-medium flex items-center"
+                >
+                  View your startup profile
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 ml-1"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : currentStatus === "Pending" ? (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md overflow-hidden">
+            <div className="bg-yellow-100 px-4 py-3 flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-yellow-500 mr-2"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="font-medium text-yellow-800">Under Review</span>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-sm text-gray-600">
+                We're currently reviewing your startup application. This process
+                typically takes 2-3 business days. You'll receive a notification
+                once the review is complete.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-red-50 border border-red-200 rounded-md overflow-hidden">
+            <div className="bg-red-100 px-4 py-3 flex items-center">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-red-500 mr-2"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
+              </svg>
+              <span className="font-medium text-red-800">Not Approved</span>
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-sm text-gray-600">
+                Thank you for your submission. Unfortunately, your startup
+                application wasn't approved at this time.
+              </p>
+              <p className="text-sm text-gray-600 mt-2">
+                You may submit a new application with updated information that
+                meets our guidelines.
+              </p>
+              <div className="mt-3 flex">
+                <button
+                  onClick={() => (window.location.href = "/startup-dashboard")}
+                  className="text-sm text-red-700 hover:text-red-900 font-medium flex items-center"
+                >
+                  Create a new application
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4 ml-1"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

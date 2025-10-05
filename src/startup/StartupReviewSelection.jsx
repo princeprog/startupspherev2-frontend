@@ -25,10 +25,19 @@ import {
   ChevronRight,
   Search,
   RefreshCw,
+  SlidersHorizontal,
 } from "lucide-react";
-import { toast } from "react-toastify"
+import { toast } from "react-toastify";
 
-export default function EnhancedStartupReviewSection({ startupId }) {
+export default function EnhancedStartupReviewSection({ 
+  startupId, 
+  industry, 
+  region, 
+  status, 
+  searchQuery,
+  filteredStartups: externalFilteredStartups,
+  onRefresh
+}) {
   const [startups, setStartups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,10 +45,10 @@ export default function EnhancedStartupReviewSection({ startupId }) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   const [filters, setFilters] = useState({
-    search: "",
-    industry: "",
-    status: "",
-    country: "",
+    search: searchQuery || "",
+    industry: industry !== "All" ? industry : "",
+    status: status !== "all" ? status : "",
+    region: region !== "All Regions" ? region : "",
     dateRange: { start: null, end: null },
   });
   const [filtersVisible, setFiltersVisible] = useState(false);
@@ -50,7 +59,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [uniqueIndustries, setUniqueIndustries] = useState([]);
-  const [uniqueCountries, setUniqueCountries] = useState([]);
+  const [uniqueRegions, setUniqueRegions] = useState([]);
   const [uniqueStatuses, setUniqueStatuses] = useState([]);
 
   // API Interaction States
@@ -60,26 +69,46 @@ export default function EnhancedStartupReviewSection({ startupId }) {
     message: "",
   });
   const [actionVisible, setActionVisible] = useState(false);
+  const [filterLoading, setFilterLoading] = useState(false);
 
-  // Fetch startups data
+  // Update internal filters when external filters change
   useEffect(() => {
-    fetchStartups();
-  }, [startupId]); // Now also watches for changes in startupId
-
-  // Extract unique filter options
-  useEffect(() => {
-    if (startups.length > 0) {
-      setUniqueIndustries([
-        ...new Set(startups.map((startup) => startup.industry).filter(Boolean)),
-      ]);
-      setUniqueCountries([
-        ...new Set(startups.map((startup) => startup.country).filter(Boolean)),
-      ]);
-      setUniqueStatuses([
-        ...new Set(startups.map((startup) => startup.status).filter(Boolean)),
-      ]);
+    if (searchQuery !== undefined) {
+      setFilters(prev => ({ ...prev, search: searchQuery || "" }));
     }
-  }, [startups]);
+    if (industry !== undefined) {
+      setFilters(prev => ({ ...prev, industry: industry !== "All" ? industry : "" }));
+    }
+    if (status !== undefined) {
+      setFilters(prev => ({ ...prev, status: status !== "all" ? status : "" }));
+    }
+    if (region !== undefined) {
+      setFilters(prev => ({ ...prev, region: region !== "All Regions" ? region : "" }));
+    }
+  }, [searchQuery, industry, status, region]);
+
+  // Fetch startups data or use externally provided filtered startups
+  useEffect(() => {
+    if (externalFilteredStartups) {
+      setStartups(externalFilteredStartups);
+      setLoading(false);
+      
+      // Extract unique values for filter dropdowns from the provided data
+      if (externalFilteredStartups.length > 0) {
+        setUniqueIndustries([
+          ...new Set(externalFilteredStartups.map(s => s.industry).filter(Boolean)),
+        ]);
+        setUniqueRegions([
+          ...new Set(externalFilteredStartups.map(s => s.city || s.region).filter(Boolean)),
+        ]);
+        setUniqueStatuses([
+          ...new Set(externalFilteredStartups.map(s => s.status).filter(Boolean)),
+        ]);
+      }
+    } else {
+      fetchStartups();
+    }
+  }, [externalFilteredStartups]);
 
   // Effect to handle auto-opening preview when startupId is provided
   useEffect(() => {
@@ -99,21 +128,49 @@ export default function EnhancedStartupReviewSection({ startupId }) {
     try {
       setLoading(true);
       setError(null);
-
       
-      // If a specific startupId is provided, fetch only that startup or use submitted endpoint
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      
+      if (filters.industry) {
+        queryParams.append("industry", filters.industry);
+      }
+      
+      if (filters.region) {
+        queryParams.append("region", filters.region);
+      }
+      
+      if (filters.status) {
+        queryParams.append("status", filters.status);
+      }
+      
+      if (filters.search.trim()) {
+        queryParams.append("search", filters.search.trim());
+      }
+      
+      if (filters.dateRange.start) {
+        queryParams.append("startDate", filters.dateRange.start);
+      }
+      
+      if (filters.dateRange.end) {
+        queryParams.append("endDate", filters.dateRange.end);
+      }
+      
+      // Fetch startups with filters
+      const apiUrl = startupId 
+        ? `${import.meta.env.VITE_BACKEND_URL}/startups/submitted`
+        : `${import.meta.env.VITE_BACKEND_URL}/startups/review?${queryParams.toString()}`;
+      
+      const response = await fetch(apiUrl, { credentials: "include" });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch startups: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // If a specific startupId is requested, filter for that startup
       if (startupId) {
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/startups/submitted`,
-          { credentials: "include" }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch startups: ${response.status}`);
-        }
-
-        const data = await response.json();
-        // Filter to find the specific startup if needed
         const filteredData = Array.isArray(data) ? 
           data.filter(s => s.id === parseInt(startupId)) : 
           [];
@@ -126,18 +183,20 @@ export default function EnhancedStartupReviewSection({ startupId }) {
           setIsPreviewOpen(true);
         }
       } else {
-        // Regular fetch for all startups
-        const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/startups/email-verified`,
-          { credentials: "include" }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch startups: ${response.status}`);
-        }
-
-        const data = await response.json();
         setStartups(data);
+      }
+      
+      // Extract unique values for filter dropdowns
+      if (data.length > 0) {
+        setUniqueIndustries([
+          ...new Set(data.map(startup => startup.industry).filter(Boolean)),
+        ]);
+        setUniqueRegions([
+          ...new Set(data.map(startup => startup.city || startup.region).filter(Boolean)),
+        ]);
+        setUniqueStatuses([
+          ...new Set(data.map(startup => startup.status).filter(Boolean)),
+        ]);
       }
     } catch (err) {
       console.error("Error fetching startups:", err);
@@ -145,6 +204,12 @@ export default function EnhancedStartupReviewSection({ startupId }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handler for applying filters
+  const handleApplyFilters = () => {
+    setCurrentPage(1); // Reset to first page when filters change
+    fetchStartups();
   };
 
   // Handler for approving a startup
@@ -176,7 +241,13 @@ export default function EnhancedStartupReviewSection({ startupId }) {
       // Update local state
       setStartups(startups.filter((startup) => startup.id !== id));
       setActionResult({ success: true, message: successMessage });
-      fetchStartups();
+      
+      // If there was an external refresh function provided, call it
+      if (typeof onRefresh === 'function') {
+        onRefresh();
+      } else {
+        fetchStartups();
+      }
 
       if (selectedStartup && selectedStartup.id === id) {
         setIsPreviewOpen(false);
@@ -198,8 +269,6 @@ export default function EnhancedStartupReviewSection({ startupId }) {
     }
   };
 
-  // Rest of your component remains the same...
-  
   // Export startups to CSV
   const exportToCSV = () => {
     const headers = [
@@ -225,7 +294,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
     ]);
 
     const csvContent = [headers, ...csvData]
-      .map((row) => row.map((cell) => `"${cell}"`).join(","))
+      .map((row) => row.map((cell) => `"${cell || ""}"`).join(","))
       .join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv" });
@@ -236,6 +305,8 @@ export default function EnhancedStartupReviewSection({ startupId }) {
       new Date().toISOString().split("T")[0]
     }.csv`;
     link.click();
+    
+    toast.success("Export completed successfully");
   };
 
   // Sort function for data
@@ -253,49 +324,59 @@ export default function EnhancedStartupReviewSection({ startupId }) {
       search: "",
       industry: "",
       status: "",
-      country: "",
+      region: "",
       dateRange: { start: null, end: null },
     });
     setSortConfig({ key: "companyName", direction: "asc" });
     setCurrentPage(1);
+    
+    // Call the parent component's reset function if provided
+    if (typeof onRefresh === 'function') {
+      onRefresh();
+    } else {
+      fetchStartups();
+    }
   };
 
   // Apply filters to startups data
   const filteredStartups = useMemo(() => {
     let result = [...startups];
 
-    // Apply search filter
-    if (filters.search) {
+    // Apply search filter locally (in case server filtering doesn't cover all fields)
+    if (filters.search && !externalFilteredStartups) {
       const searchLower = filters.search.toLowerCase();
       result = result.filter(
         (startup) =>
-          startup.companyName.toLowerCase().includes(searchLower) ||
-          startup.industry?.toLowerCase().includes(searchLower) ||
-          startup.companyDescription?.toLowerCase().includes(searchLower) ||
-          startup.city?.toLowerCase().includes(searchLower) ||
-          startup.contactEmail?.toLowerCase().includes(searchLower)
+          (startup.companyName || "").toLowerCase().includes(searchLower) ||
+          (startup.industry || "").toLowerCase().includes(searchLower) ||
+          (startup.companyDescription || "").toLowerCase().includes(searchLower) ||
+          (startup.city || "").toLowerCase().includes(searchLower) ||
+          (startup.contactEmail || "").toLowerCase().includes(searchLower)
       );
     }
 
-    // Apply industry filter
-    if (filters.industry) {
+    // Apply industry filter locally (if not already filtered by server)
+    if (filters.industry && !externalFilteredStartups) {
       result = result.filter(
         (startup) => startup.industry === filters.industry
       );
     }
 
-    // Apply status filter
-    if (filters.status) {
+    // Apply status filter locally (if not already filtered by server)
+    if (filters.status && !externalFilteredStartups) {
       result = result.filter((startup) => startup.status === filters.status);
     }
 
-    // Apply country filter
-    if (filters.country) {
-      result = result.filter((startup) => startup.country === filters.country);
+    // Apply region filter locally (if not already filtered by server)
+    if (filters.region && !externalFilteredStartups) {
+      result = result.filter((startup) => 
+        startup.city === filters.region || 
+        startup.region === filters.region
+      );
     }
 
     // Apply date range filter
-    if (filters.dateRange.start && filters.dateRange.end) {
+    if (filters.dateRange.start && filters.dateRange.end && !externalFilteredStartups) {
       const startDate = new Date(filters.dateRange.start);
       const endDate = new Date(filters.dateRange.end);
       result = result.filter((startup) => {
@@ -324,7 +405,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
     }
 
     return result;
-  }, [startups, filters, sortConfig]);
+  }, [startups, filters, sortConfig, externalFilteredStartups]);
 
   const totalPages = Math.ceil(filteredStartups.length / itemsPerPage);
   const paginatedStartups = useMemo(() => {
@@ -401,7 +482,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
             onClick={() => setFiltersVisible(!filtersVisible)}
             className="px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded flex items-center hover:bg-blue-100 transition-colors"
           >
-            <Filter size={16} className="mr-1" />
+            <SlidersHorizontal size={16} className="mr-1" />
             {filtersVisible ? "Hide Filters" : "Show Filters"}
           </button>
 
@@ -414,7 +495,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
           </button>
 
           <button
-            onClick={fetchStartups}
+            onClick={typeof onRefresh === 'function' ? onRefresh : fetchStartups}
             className="px-3 py-2 bg-gray-50 text-gray-700 border border-gray-200 rounded flex items-center hover:bg-gray-100 transition-colors"
           >
             <RefreshCw size={16} className="mr-1" />
@@ -476,23 +557,23 @@ export default function EnhancedStartupReviewSection({ startupId }) {
 
             <div>
               <label
-                htmlFor="country-filter"
+                htmlFor="region-filter"
                 className="block text-sm font-medium text-gray-700 mb-1"
               >
-                Country
+                Region
               </label>
               <select
-                id="country-filter"
-                value={filters.country}
+                id="region-filter"
+                value={filters.region}
                 onChange={(e) =>
-                  setFilters({ ...filters, country: e.target.value })
+                  setFilters({ ...filters, region: e.target.value })
                 }
                 className="w-full text-black p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="">All Countries</option>
-                {uniqueCountries.map((country) => (
-                  <option key={country} value={country}>
-                    {country}
+                <option value="">All Regions</option>
+                {uniqueRegions.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
                   </option>
                 ))}
               </select>
@@ -540,12 +621,30 @@ export default function EnhancedStartupReviewSection({ startupId }) {
               />
             </div>
 
-            <div className="col-span-1 sm:col-span-2 lg:col-span-4 flex justify-end">
+            <div className="col-span-1 sm:col-span-2 lg:col-span-4 flex justify-end gap-2">
               <button
                 onClick={resetFilters}
-                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 mr-2"
+                className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50"
               >
                 Reset Filters
+              </button>
+              
+              <button
+                onClick={handleApplyFilters}
+                disabled={filterLoading}
+                className="px-4 py-2 text-white bg-blue-600 border border-blue-700 rounded-md shadow-sm hover:bg-blue-700 flex items-center"
+              >
+                {filterLoading ? (
+                  <>
+                    <Loader size={14} className="animate-spin mr-2" />
+                    Filtering...
+                  </>
+                ) : (
+                  <>
+                    <Filter size={14} className="mr-2" />
+                    Apply Filters
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -559,6 +658,9 @@ export default function EnhancedStartupReviewSection({ startupId }) {
             placeholder="Search by name, industry, description..."
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') handleApplyFilters();
+            }}
             className="pl-10 pr-4 py-2 text-gray-700 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
           />
           <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
@@ -636,7 +738,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
           {filters.search ||
           filters.industry ||
           filters.status ||
-          filters.country ||
+          filters.region ||
           filters.dateRange.start ||
           filters.dateRange.end ? (
             <button
@@ -719,14 +821,14 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                 </th>
                 <th
                   className="p-3 text-left text-sm font-medium border-b"
-                  onClick={() => handleSort("country")}
+                  onClick={() => handleSort("city")}
                 >
                   <div className="flex items-center cursor-pointer group">
                     Location
                     <ArrowUpDown
                       size={14}
                       className={`ml-1 ${
-                        sortConfig.key === "country"
+                        sortConfig.key === "city"
                           ? "text-blue-600"
                           : "text-gray-400 group-hover:text-gray-600"
                       }`}
@@ -749,7 +851,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                 >
                   <td className="p-3">
                     <div className="font-medium text-gray-900">
-                      {startup.companyName}
+                      {startup.companyName || 'Unnamed Startup'}
                     </div>
                     <div className="text-xs text-gray-500 mt-1 line-clamp-2">
                       {startup.companyDescription?.substring(0, 80)}
@@ -769,20 +871,19 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                   </td>
                   <td className="p-3">
                     <div className="flex items-center text-xs">
-                      <Calendar size={14} className="mr-1 text-gray-400 " />
+                      <Calendar size={14} className="mr-1 text-gray-400" />
                       {formatDate(startup.foundedDate)}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       {startup.typeOfCompany || "N/A"}
                     </div>
                   </td>
-                  <td className="p-3">{renderStatusBadge(startup.status)}</td>
+                  <td className="p-3">{renderStatusBadge(startup.status || "Pending")}</td>
                   <td className="p-3">
                     <div className="flex items-center text-sm">
                       <Map size={14} className="mr-1 text-gray-400" />
-                      {startup.city || "N/A"}, {startup.province || ""}
+                      {startup.city || "N/A"}{startup.province ? `, ${startup.province}` : ""}
                     </div>
-                    
                   </td>
                   <td className="p-3">
                     <div className="flex items-center text-sm">
@@ -810,7 +911,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                         <Eye size={16} />
                       </button>
 
-                      {startup.status === "In Review" && (
+                      {(startup.status === "In Review" || startup.status === "Pending") && (
                         <>
                           <button
                             onClick={() => handleApprove(startup.id)}
@@ -864,6 +965,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-blue-600 hover:bg-blue-50"
               }`}
+              aria-label="First page"
             >
               <ChevronLeft size={16} className="ml-[-14px]" />
             </button>
@@ -876,6 +978,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-blue-600 hover:bg-blue-50"
               }`}
+              aria-label="Previous page"
             ></button>
 
             <div className="flex space-x-1">
@@ -900,6 +1003,8 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                         ? "bg-blue-600 text-white"
                         : "hover:bg-blue-50 text-gray-700"
                     }`}
+                    aria-label={`Page ${pageNum}`}
+                    aria-current={currentPage === pageNum ? "page" : undefined}
                   >
                     {pageNum}
                   </button>
@@ -915,6 +1020,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-blue-600 hover:bg-blue-50"
               }`}
+              aria-label="Next page"
             ></button>
 
             <button
@@ -925,6 +1031,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-blue-600 hover:bg-blue-50"
               }`}
+              aria-label="Last page"
             >
               <ChevronRight size={16} className="ml-[-14px]" />
             </button>
@@ -935,13 +1042,13 @@ export default function EnhancedStartupReviewSection({ startupId }) {
       {isPreviewOpen && selectedStartup && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl w-4/5 max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 text-white p-4 flex justify-between items-center">
+            <div className="bg-gray-50 p-4 border-b border-gray-200 flex justify-between items-center">
               <h2 className="text-xl font-semibold flex items-center text-blue-900">
                 <Building className="mr-2" size={20} />
-                {selectedStartup.companyName}
+                {selectedStartup.companyName || "Startup Details"}
               </h2>
               <div className="flex items-center space-x-3">
-                {selectedStartup.status === "In Review" && (
+                {(selectedStartup.status === "In Review" || selectedStartup.status === "Pending") && (
                   <>
                     <button
                       onClick={() => handleReject(selectedStartup.id)}
@@ -971,7 +1078,8 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                 )}
                 <button
                   onClick={() => setIsPreviewOpen(false)}
-                  className="p-1 hover:bg-blue-700 text-black rounded-full transition-colors"
+                  className="p-1 hover:bg-gray-200 text-gray-600 rounded-full transition-colors"
+                  aria-label="Close"
                 >
                   <X size={20} />
                 </button>
@@ -983,8 +1091,12 @@ export default function EnhancedStartupReviewSection({ startupId }) {
               <div className="flex items-center justify-between mb-6 bg-blue-50 p-3 rounded-lg border border-blue-100">
                 <div className="flex items-center">
                   <Info size={18} className="text-blue-700 mr-2" />
-                  <span className={`text-sm text-blue-800 ${selectedStartup.status === "Approved" ? 'text-green-500':selectedStartup.status === "Rejected" ? 'text-red-700': ''}`}>
-                    Status: <strong>{selectedStartup.status}</strong>
+                  <span className={`text-sm font-medium ${
+                    selectedStartup.status === "Approved" ? 'text-green-700' :
+                    selectedStartup.status === "Rejected" ? 'text-red-700' : 
+                    'text-blue-800'
+                  }`}>
+                    Status: <strong>{selectedStartup.status || "Pending"}</strong>
                   </span>
                 </div>
                 <div className="flex items-center space-x-4">
@@ -1021,7 +1133,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                           Company Name
                         </p>
                         <p className="text-gray-800 font-medium">
-                          {selectedStartup.companyName}
+                          {selectedStartup.companyName || "N/A"}
                         </p>
                       </div>
 
@@ -1039,7 +1151,7 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                           Industry
                         </p>
                         <p className="text-gray-800">
-                          {selectedStartup.industry}
+                          {selectedStartup.industry || "N/A"}
                         </p>
                       </div>
 
@@ -1171,8 +1283,8 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                         <p className="text-sm font-medium text-gray-500 flex items-center">
                           <Mail size={14} className="mr-1" /> Email
                         </p>
-                        <p className="text-gray-800">
-                          {selectedStartup.contactEmail}
+                        <p className="text-gray-800 break-all">
+                          {selectedStartup.contactEmail || "N/A"}
                         </p>
                       </div>
 
@@ -1190,13 +1302,11 @@ export default function EnhancedStartupReviewSection({ startupId }) {
                           <Map size={14} className="mr-1" /> Location
                         </p>
                         <p className="text-gray-800">
-                          {selectedStartup.city || "N/A"},{" "}
-                          {selectedStartup.province || ""},{" "}
-                          {selectedStartup.country || ""}
+                          {selectedStartup.city || "N/A"}{selectedStartup.province ? `, ${selectedStartup.province}` : ""}{selectedStartup.country ? `, ${selectedStartup.country}` : ""}
                         </p>
                         <p className="text-gray-500 text-sm">
                           {selectedStartup.streetAddress || ""}{" "}
-                          {selectedStartup.postalCode || ""}
+                          {selectedStartup.postalCode ? selectedStartup.postalCode : ""}
                         </p>
                       </div>
                     </div>

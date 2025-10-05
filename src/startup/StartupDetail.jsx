@@ -40,10 +40,37 @@ export default function StartupDetail() {
   const [notification, setNotification] = useState(null);
   const [editDataReady, setEditDataReady] = useState(false);
 
-  // Add this validation function
+  // Validation functions
   const validateEmail = (email) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
+  };
+  
+  // Validate Philippine phone numbers (format: +639XXXXXXXXX or 09XXXXXXXXX)
+  const validatePhilippinePhone = (phone) => {
+    // Allow empty phone numbers (optional field)
+    if (!phone || phone.trim() === '') return true;
+    
+    // Clean the input - remove spaces, dashes, etc.
+    const cleanPhone = phone.replace(/\s+|-|\(|\)/g, '');
+    
+    // Check for valid Philippine phone number formats
+    const phoneRegex = /^(\+?63|0)9\d{9}$/;
+    return phoneRegex.test(cleanPhone);
+  };
+  
+  // Format name to ensure proper capitalization
+  const formatName = (name) => {
+    if (!name) return '';
+    
+    // Split the name into parts (by spaces)
+    return name.split(' ')
+      .map(part => {
+        if (part.length === 0) return '';
+        // Capitalize first letter of each part
+        return part.charAt(0).toUpperCase() + part.slice(1);
+      })
+      .join(' ');
   };
 
   // For stakeholder management
@@ -82,6 +109,7 @@ export default function StartupDetail() {
 
   // ADD: guard ref to suppress cascading effects during prefill
   const isPrefillingRef = useRef(false);
+  const [formError, setFormError] = useState(null);
 
   // New state for expanded stakeholders
   const [expandedStakeholders, setExpandedStakeholders] = useState({});
@@ -192,23 +220,33 @@ export default function StartupDetail() {
   const handleAddStakeholder = async (e) => {
     e.preventDefault();
 
+    // Reset any previous form errors
+    setFormError(null);
+
     if (!validateForm()) return;
 
     setIsSubmitting(true);
 
     try {
-      // Extract stakeholder data including location codes
+      // Format and clean data before submission
+      const formattedStakeholderData = {
+        ...stakeholderFormData,
+        name: formatName(stakeholderFormData.name),
+        email: stakeholderFormData.email.trim(),
+        phoneNumber: stakeholderFormData.phoneNumber ? 
+          stakeholderFormData.phoneNumber.replace(/\s+|-|\(|\)/g, '') : 
+          stakeholderFormData.phoneNumber
+      };
+      
       const { role, status, hasPhysicalLocation, ...stakeholderData } =
-        stakeholderFormData;
+        formattedStakeholderData;
 
-      // Remove location data if hasPhysicalLocation is false
       if (!hasPhysicalLocation) {
         delete stakeholderData.locationLat;
         delete stakeholderData.locationLng;
         delete stakeholderData.locationName;
       }
 
-      // Create stakeholder with the updated data structure
       const stakeholderResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/stakeholders`,
         {
@@ -224,16 +262,26 @@ export default function StartupDetail() {
       const responseData = await stakeholderResponse.json();
 
       if (!stakeholderResponse.ok) {
-        // Handle errors as before
+        // Handle duplicate email error within the form
         if (
-          responseData.message?.toLowerCase().includes("duplicate") ||
-          responseData.message?.toLowerCase().includes("already exists")
+          responseData.error?.toLowerCase().includes("email already exists") ||
+          responseData.message?.toLowerCase().includes("already registered") ||
+          responseData.message?.toLowerCase().includes("duplicate")
         ) {
-          throw new Error(
-            "A stakeholder with this email address already exists. Please use a different email."
+          setFormError(
+            "A stakeholder with this email address is already registered. Please use a different email address."
           );
+          setIsSubmitting(false);
+          return;
         }
-        throw new Error(responseData.message || "Error creating stakeholder");
+
+        // Handle other errors
+        setFormError(
+          responseData.message ||
+            "An error occurred while adding the stakeholder. Please try again."
+        );
+        setIsSubmitting(false);
+        return;
       }
 
       // Continue with association as before
@@ -255,12 +303,13 @@ export default function StartupDetail() {
         }
       );
 
-      // Continue with existing code...
       if (!associationResponse.ok) {
         const errorData = await associationResponse.json();
-        throw new Error(
-          errorData.message || "Error associating stakeholder with startup"
+        setFormError(
+          errorData.message || "Error associating stakeholder with startup."
         );
+        setIsSubmitting(false);
+        return;
       }
 
       await fetchStakeholders();
@@ -269,7 +318,9 @@ export default function StartupDetail() {
       showNotification("Stakeholder added successfully!", "success");
     } catch (error) {
       console.error("Error adding stakeholder:", error);
-      showNotification(error.message, "error");
+      setFormError(
+        "An unexpected error occurred while adding the stakeholder. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -533,86 +584,48 @@ export default function StartupDetail() {
   // Modified handleUpdateStakeholder to include location codes
   const handleUpdateStakeholder = async (e) => {
     e.preventDefault();
+    setFormError(null);
+    
+    if (!validateForm()) return;
+    
     setIsSubmitting(true);
 
     try {
-      // Get the correct stakeholder ID depending on structure
-      const stakeholderId = editingStakeholder.stakeholder
-        ? editingStakeholder.stakeholder.id
-        : editingStakeholder.id;
-
-      // Extract role, status, and hasPhysicalLocation
+      // Format and clean data before submission
+      const formattedStakeholderData = {
+        ...stakeholderFormData,
+        name: formatName(stakeholderFormData.name),
+        email: stakeholderFormData.email.trim().toLowerCase(),
+        phoneNumber: stakeholderFormData.phoneNumber ? 
+          stakeholderFormData.phoneNumber.replace(/\s+|-|\(|\)/g, '') : 
+          stakeholderFormData.phoneNumber
+      };
+      
+      // Continue with existing stakeholderFormData but using formatted data
       const { role, status, hasPhysicalLocation, ...stakeholderData } =
-        stakeholderFormData;
-
-      // Remove location data if hasPhysicalLocation is false
-      if (!hasPhysicalLocation) {
-        delete stakeholderData.locationLat;
-        delete stakeholderData.locationLng;
-        delete stakeholderData.locationName;
-      }
-
-      // Update stakeholder with the updated data structure
-      const stakeholderResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/stakeholders/${stakeholderId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify(stakeholderData),
-        }
-      );
-
-      const responseData = await stakeholderResponse.json();
+        formattedStakeholderData;
+      // ... existing code ...
 
       if (!stakeholderResponse.ok) {
         if (
           responseData.message?.toLowerCase().includes("duplicate") ||
           responseData.message?.toLowerCase().includes("already exists")
         ) {
-          throw new Error(
+          setFormError(
             "A stakeholder with this email address already exists. Please use a different email."
           );
+          setIsSubmitting(false);
+          return;
         }
-        throw new Error(responseData.message || "Error updating stakeholder");
+        setFormError(responseData.message || "Error updating stakeholder");
+        setIsSubmitting(false);
+        return;
       }
 
-      // Update the association (role and status)
-      const associationId = editingStakeholder.id;
-      const associationResponse = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/startup-stakeholders/${associationId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            role: role,
-            status: status,
-          }),
-        }
-      );
-
-      if (!associationResponse.ok) {
-        const errorData = await associationResponse.json();
-        throw new Error(
-          errorData.message || "Error updating stakeholder role/status"
-        );
-      }
-
-      await fetchStakeholders();
-      setShowStakeholderForm(false);
-      setEditingStakeholder(null);
-      resetStakeholderForm();
-      showNotification("Stakeholder updated successfully!", "success");
+      // ... rest of existing code ...
     } catch (error) {
       console.error("Error updating stakeholder:", error);
-      showNotification(error.message, "error");
+      setFormError(error.message || "An unexpected error occurred");
     } finally {
       setIsSubmitting(false);
     }
@@ -692,6 +705,13 @@ export default function StartupDetail() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const closeStakeholderModal = () => {
+    setShowStakeholderForm(false);
+    setEditingStakeholder(null);
+    setEditDataReady(false);
+    setFormError(null);
   };
 
   const findClosestMatch = (name, options) => {
@@ -804,6 +824,8 @@ export default function StartupDetail() {
             ? "bg-green-50 border border-green-100"
             : "bg-red-50 border border-red-100"
         }`}
+        role="alert"
+        aria-live="assertive"
       >
         {notification.type === "success" ? (
           <CheckCircle2
@@ -843,6 +865,7 @@ export default function StartupDetail() {
               ? "hover:bg-green-100 text-green-500"
               : "hover:bg-red-100 text-red-500"
           }`}
+          aria-label="Close notification"
         >
           <X size={16} />
         </button>
@@ -857,6 +880,22 @@ export default function StartupDetail() {
       return false;
     }
 
+    // Validate name has at least two parts (first and last name)
+    const nameParts = stakeholderFormData.name.trim().split(/\s+/);
+    if (nameParts.length < 2) {
+      showNotification("Please enter both first and last name.", "error");
+      return false;
+    }
+
+    // Check for gibberish names (too short parts or unusual characters)
+    const hasGibberishName = nameParts.some(part => 
+      part.length < 2 || /[^a-zA-Z\-']/.test(part)
+    );
+    if (hasGibberishName) {
+      showNotification("Please enter a valid name without special characters or numbers.", "error");
+      return false;
+    }
+
     if (!stakeholderFormData.email.trim()) {
       showNotification("Please enter an email address.", "error");
       return false;
@@ -864,6 +903,12 @@ export default function StartupDetail() {
 
     if (!validateEmail(stakeholderFormData.email)) {
       showNotification("Please enter a valid email address.", "error");
+      return false;
+    }
+    
+    // Validate phone number if provided
+    if (stakeholderFormData.phoneNumber && !validatePhilippinePhone(stakeholderFormData.phoneNumber)) {
+      showNotification("Please enter a valid Philippine phone number (format: +63917XXXXXXX or 0917XXXXXXX).", "error");
       return false;
     }
 
@@ -1181,6 +1226,10 @@ export default function StartupDetail() {
       });
     }
   };
+
+  // Add a helper to check if startup is verified/approved
+  const isStartupVerified =
+    startup?.emailVerified === true && startup?.status === "Approved";
 
   if (loading) {
     return (
@@ -1643,17 +1692,59 @@ export default function StartupDetail() {
                         setEditingStakeholder(null);
                         setShowStakeholderForm(true);
                       }}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                      className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
+                        isStartupVerified
+                          ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                          : "bg-gray-300 cursor-not-allowed"
+                      }`}
+                      disabled={!isStartupVerified}
+                      title={
+                        isStartupVerified
+                          ? "Add Stakeholder"
+                          : "You cannot add stakeholders until this startup is verified and approved."
+                      }
                     >
                       <Plus size={16} className="mr-2" />
                       Add Stakeholder
                     </button>
                   </div>
 
-                  {/* Stakeholder form - Enhanced Professional Design */}
-                  {showStakeholderForm && (
+                  {/* Professional notice if not verified/approved */}
+                  {!isStartupVerified && (
+                    <div className="px-6 py-6 bg-yellow-50 border-b border-yellow-200 flex items-center">
+                      <AlertCircle className="text-yellow-500 mr-3" size={24} />
+                      <div>
+                        <h4 className="text-md font-semibold text-yellow-800 mb-1">
+                          Startup Not Yet Verified or Approved
+                        </h4>
+                        <p className="text-sm text-yellow-700">
+                          You cannot add stakeholders until this startup has
+                          been verified and approved by the administrator.
+                          <br />
+                          <span className="font-medium">
+                            Current Status:
+                          </span>{" "}
+                          <span className="inline-block px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 font-semibold text-xs">
+                            {startup?.status || "Pending"}
+                          </span>
+                          {startup?.emailVerified === false && (
+                            <>
+                              {" "}
+                              <span className="inline-block px-2 py-0.5 rounded bg-yellow-100 text-yellow-800 font-semibold text-xs">
+                                Email Not Verified
+                              </span>
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Stakeholder form - only show if verified/approved */}
+                  {showStakeholderForm && isStartupVerified && (
                     <div className="fixed inset-0 bg-black/30 bg-opacity-50 z-50 flex justify-center items-center p-4 overflow-y-auto">
-                      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
+                      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] flex flex-col">
+                        {/* Modal Header - sticky at top */}
                         <div className="sticky top-0 z-10 bg-white border-b border-gray-200">
                           <div className="px-6 py-4 flex items-center justify-between">
                             <h3 className="text-lg font-semibold text-gray-900">
@@ -1663,11 +1754,7 @@ export default function StartupDetail() {
                             </h3>
                             <button
                               type="button"
-                              onClick={() => {
-                                setShowStakeholderForm(false);
-                                setEditingStakeholder(null);
-                                setEditDataReady(false);
-                              }}
+                              onClick={closeStakeholderModal}
                               className="rounded-full p-1 hover:bg-gray-100 text-gray-400 hover:text-gray-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                               aria-label="Close"
                             >
@@ -1676,8 +1763,34 @@ export default function StartupDetail() {
                           </div>
                         </div>
 
-                        {/* Show loading animation while address data is being loaded */}
-                        {addressDataLoading ? (
+                        {/* Content area with scrolling */}
+                        <div className="flex-1 overflow-y-auto">
+                          {/* Error message display - positioned properly inside the modal */}
+                          {formError && (
+                            <div className="px-6 pt-4">
+                              <div className="bg-red-50 border border-red-100 rounded-md p-4">
+                                <div className="flex">
+                                  <div className="flex-shrink-0">
+                                    <AlertCircle
+                                      className="h-5 w-5 text-red-400"
+                                      aria-hidden="true"
+                                    />
+                                  </div>
+                                  <div className="ml-3">
+                                    <h3 className="text-sm font-medium text-red-800">
+                                      There was a problem with your submission
+                                    </h3>
+                                    <div className="mt-2 text-sm text-red-700">
+                                      {formError}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Show loading animation while address data is being loaded */}
+                          {addressDataLoading ? (
                           <div className="flex flex-col items-center justify-center p-12">
                             <div className="w-16 h-16 border-4 border-t-blue-600 border-blue-200 rounded-full animate-spin mb-4"></div>
                             <h4 className="text-lg font-medium text-gray-800">
@@ -1725,12 +1838,13 @@ export default function StartupDetail() {
                           </div>
                         ) : (
                           <form
+                            id="stakeholder-form"
                             onSubmit={
                               editingStakeholder
                                 ? handleUpdateStakeholder
                                 : handleAddStakeholder
                             }
-                            className="p-6 overflow-y-auto max-h-[calc(90vh-4rem)]"
+                            className="p-6"
                           >
                             <div className="space-y-8">
                               {/* Basic Information */}
@@ -1756,14 +1870,26 @@ export default function StartupDetail() {
                                       id="name"
                                       required
                                       value={stakeholderFormData.name}
-                                      onChange={(e) =>
+                                      onChange={(e) => {
+                                        // Prevent numbers and special characters except hyphen and apostrophe
+                                        const value = e.target.value.replace(/[^a-zA-Z\s\-']/g, '');
                                         setStakeholderFormData({
                                           ...stakeholderFormData,
-                                          name: e.target.value,
-                                        })
-                                      }
+                                          name: value,
+                                        });
+                                      }}
+                                      onBlur={(e) => {
+                                        // Format name on blur with proper capitalization
+                                        const formattedName = formatName(e.target.value);
+                                        setStakeholderFormData({
+                                          ...stakeholderFormData,
+                                          name: formattedName,
+                                        });
+                                      }}
                                       className="block text-gray-800 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
                                       placeholder="John Smith"
+                                      pattern="^[A-Za-z\s\-']+$"
+                                      title="Name should only contain letters, spaces, hyphens, and apostrophes"
                                     />
                                   </div>
 
@@ -1856,9 +1982,11 @@ export default function StartupDetail() {
                                         required
                                         value={stakeholderFormData.email}
                                         onChange={(e) => {
+                                          // Convert to lowercase and trim whitespace for consistency
+                                          const cleanEmail = e.target.value.trim().toLowerCase();
                                           setStakeholderFormData({
                                             ...stakeholderFormData,
-                                            email: e.target.value,
+                                            email: cleanEmail,
                                           });
                                         }}
                                         className={`block text-gray-800 w-full px-3 py-2 border ${
@@ -1898,17 +2026,49 @@ export default function StartupDetail() {
                                         />
                                       </div>
                                       <input
-                                        type="text"
+                                        type="tel"
                                         id="phoneNumber"
                                         value={stakeholderFormData.phoneNumber}
-                                        onChange={(e) =>
+                                        onChange={(e) => {
+                                          // Only allow numbers, spaces, +, and hyphens
+                                          const value = e.target.value.replace(/[^\d\s+\-]/g, '');
                                           setStakeholderFormData({
                                             ...stakeholderFormData,
-                                            phoneNumber: e.target.value,
-                                          })
-                                        }
+                                            phoneNumber: value,
+                                          });
+                                        }}
+                                        onBlur={(e) => {
+                                          // Format the phone number properly on blur
+                                          let value = e.target.value;
+                                          // Don't process if empty
+                                          if (!value.trim()) return;
+                                          
+                                          // Strip all non-digits
+                                          const digitsOnly = value.replace(/\D/g, '');
+                                          
+                                          // Format based on Philippine number pattern
+                                          if (digitsOnly.length === 10 && digitsOnly.startsWith('9')) {
+                                            // Format as 09xx xxx xxxx
+                                            value = `0${digitsOnly.substring(0, 1)} ${digitsOnly.substring(1, 4)} ${digitsOnly.substring(4, 7)} ${digitsOnly.substring(7)}`;
+                                          } else if (digitsOnly.length === 11 && digitsOnly.startsWith('09')) {
+                                            // Format as 09xx xxx xxxx
+                                            value = `${digitsOnly.substring(0, 2)} ${digitsOnly.substring(2, 5)} ${digitsOnly.substring(5, 8)} ${digitsOnly.substring(8)}`;
+                                          } else if (digitsOnly.length === 12 && digitsOnly.startsWith('639')) {
+                                            // Format as +63 9xx xxx xxxx
+                                            value = `+${digitsOnly.substring(0, 2)} ${digitsOnly.substring(2, 5)} ${digitsOnly.substring(5, 8)} ${digitsOnly.substring(8)}`;
+                                          } else if (digitsOnly.length === 13 && digitsOnly.startsWith('6309')) {
+                                            // Correct common mistake format
+                                            value = `+63 ${digitsOnly.substring(2, 5)} ${digitsOnly.substring(5, 8)} ${digitsOnly.substring(8)}`;
+                                          }
+                                          
+                                          setStakeholderFormData({
+                                            ...stakeholderFormData,
+                                            phoneNumber: value,
+                                          });
+                                        }}
                                         className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
                                         placeholder="+63 919 123 4567"
+                                        title="Enter a valid Philippine phone number: +63 9XX XXX XXXX or 09XX XXX XXXX"
                                       />
                                     </div>
                                   </div>
@@ -2393,72 +2553,74 @@ export default function StartupDetail() {
                                 )}
                               </fieldset>
 
-                              {/* Form Buttons */}
-                              <div className="mt-8 border-t border-gray-200 pt-5">
-                                <div className="flex justify-end space-x-3">
-                                  <button
-                                    type="button"
-                                    disabled={isSubmitting}
-                                    onClick={() => {
-                                      setShowStakeholderForm(false);
-                                      setEditingStakeholder(null);
-                                    }}
-                                    className={`px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
-                                      isSubmitting
-                                        ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                        : "text-gray-700 bg-white hover:bg-gray-50"
-                                    } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors`}
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className={`px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                                      isSubmitting
-                                        ? "bg-blue-500 cursor-not-allowed"
-                                        : "bg-blue-600 hover:bg-blue-700"
-                                    } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors inline-flex items-center`}
-                                  >
-                                    {isSubmitting ? (
-                                      <>
-                                        <svg
-                                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                                          xmlns="http://www.w3.org/2000/svg"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                        >
-                                          <circle
-                                            className="opacity-25"
-                                            cx="12"
-                                            cy="12"
-                                            r="10"
-                                            stroke="currentColor"
-                                            strokeWidth="4"
-                                          ></circle>
-                                          <path
-                                            className="opacity-75"
-                                            fill="currentColor"
-                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                          ></path>
-                                        </svg>
-                                        {editingStakeholder
-                                          ? "Saving..."
-                                          : "Adding..."}
-                                      </>
-                                    ) : (
-                                      <>
-                                        {editingStakeholder
-                                          ? "Save Changes"
-                                          : "Add Stakeholder"}
-                                      </>
-                                    )}
-                                  </button>
-                                </div>
-                              </div>
+                              {/* Form content ends here - no buttons in the form */}
                             </div>
                           </form>
                         )}
+                      </div>
+                      
+                      {/* Form Buttons - sticky at bottom */}
+                      {!addressDataLoading && (
+                        <div className="sticky bottom-0 border-t border-gray-200 bg-white p-4 flex justify-end space-x-3">
+                          {/* Update this button in the form buttons section */}
+                          <button
+                            type="button"
+                            disabled={isSubmitting}
+                            onClick={closeStakeholderModal}
+                            className={`px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
+                              isSubmitting
+                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                : "text-gray-700 bg-white hover:bg-gray-50"
+                            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors`}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            form="stakeholder-form"
+                            disabled={isSubmitting}
+                            className={`px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                              isSubmitting
+                                ? "bg-blue-500 cursor-not-allowed"
+                                : "bg-blue-600 hover:bg-blue-700"
+                            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors inline-flex items-center`}
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <svg
+                                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  ></circle>
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                  ></path>
+                                </svg>
+                                {editingStakeholder
+                                  ? "Saving..."
+                                  : "Adding..."}
+                              </>
+                            ) : (
+                              <>
+                                {editingStakeholder
+                                  ? "Save Changes"
+                                  : "Add Stakeholder"}
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
                       </div>
                     </div>
                   )}
@@ -2850,7 +3012,9 @@ export default function StartupDetail() {
                           No stakeholders
                         </h3>
                         <p className="mt-1 text-sm text-gray-500">
-                          Get started by adding a new stakeholder.
+                          {isStartupVerified
+                            ? "Get started by adding a new stakeholder."
+                            : "You cannot add stakeholders until this startup is verified and approved."}
                         </p>
                         <div className="mt-6">
                           <button
@@ -2859,7 +3023,17 @@ export default function StartupDetail() {
                               resetStakeholderForm();
                               setShowStakeholderForm(true);
                             }}
-                            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            className={`inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
+                              isStartupVerified
+                                ? "bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                : "bg-gray-300 cursor-not-allowed"
+                            }`}
+                            disabled={!isStartupVerified}
+                            title={
+                              isStartupVerified
+                                ? "Add Stakeholder"
+                                : "You cannot add stakeholders until this startup is verified and approved."
+                            }
                           >
                             <Plus size={16} className="-ml-1 mr-2" />
                             Add Stakeholder
