@@ -90,6 +90,10 @@ export default function AllStartupDashboard() {
   });
   const [availableRegions, setAvailableRegions] = useState([]);
 
+  // Add these new state variables at the top of your component with other state declarations
+  const [psgcRegions, setPsgcRegions] = useState([]);
+  const [psgcLoading, setPsgcLoading] = useState(false);
+
   const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8"];
 
   const [role, setRole] = useState(null);
@@ -957,6 +961,117 @@ export default function AllStartupDashboard() {
     );
   };
 
+  // Add these new state variables for review filtering
+  const [reviewFilterStatus, setReviewFilterStatus] = useState("all");
+  const [reviewSearchQuery, setReviewSearchQuery] = useState("");
+  const [filteredStartups, setFilteredStartups] = useState([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+
+  // Add this new function to handle review filtering
+  const handleReviewFilter = async () => {
+    setReviewLoading(true);
+    try {
+      // Build query parameters
+      const queryParams = new URLSearchParams();
+      
+      if (selectedIndustry !== "All") {
+        queryParams.append("industry", selectedIndustry);
+      }
+      
+      // Use region code if available, otherwise use name
+      if (reportFormData.region !== "All Regions") {
+        // Find selected region in PSGC data
+        const selectedRegionData = psgcRegions.find(
+          r => r.name === reportFormData.region || r.regionName === reportFormData.region
+        );
+        
+        if (selectedRegionData) {
+          queryParams.append("regionCode", selectedRegionData.code);
+          queryParams.append("region", selectedRegionData.name);
+        } else {
+          queryParams.append("region", reportFormData.region);
+        }
+      }
+      
+      if (reviewFilterStatus !== "all") {
+        queryParams.append("status", reviewFilterStatus);
+      }
+      
+      if (reviewSearchQuery.trim()) {
+        queryParams.append("search", reviewSearchQuery.trim());
+      }
+      
+      // Fetch startups with filters
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/review?${queryParams.toString()}`,
+        {
+          credentials: "include",
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch startups for review");
+      }
+      
+      const data = await response.json();
+      setFilteredStartups(data);
+      
+      toast.success(`Found ${data.length} startups matching your criteria`);
+    } catch (error) {
+      console.error("Error applying filters:", error);
+      toast.error("Failed to apply filters. Please try again.");
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  // Reset filters function
+  const resetReviewFilters = () => {
+    setSelectedIndustry("All");
+    setReportFormData(prev => ({...prev, region: "All Regions"}));
+    setReviewFilterStatus("all");
+    setReviewSearchQuery("");
+    // Trigger a refetch with reset filters
+    handleReviewFilter();
+  };
+  
+  // Add this function to fetch PSGC regions data
+  const fetchPsgcRegions = async () => {
+    setPsgcLoading(true);
+    try {
+      // Fetch regions from PSGC API
+      const response = await fetch(`https://psgc.gitlab.io/api/regions/`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch PSGC regions');
+      }
+      
+      const data = await response.json();
+      setPsgcRegions(data);
+      
+      // Update available regions with standardized PSGC regions
+      const standardizedRegions = data.map(region => ({
+        code: region.code,
+        name: region.name,
+        regionName: region.regionName || region.name
+      }));
+      
+      setAvailableRegions(standardizedRegions);
+    } catch (error) {
+      console.error("Error fetching PSGC regions:", error);
+      toast.error("Failed to load region data. Using local data instead.");
+    } finally {
+      setPsgcLoading(false);
+    }
+  };
+
+  // Call this function when the component mounts or the activeTab changes to "review"
+  useEffect(() => {
+    if (activeTab === "review") {
+      fetchPsgcRegions();
+    }
+  }, [activeTab]);
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <main className="flex-grow p-6">
@@ -1688,14 +1803,24 @@ export default function AllStartupDashboard() {
                     name="region"
                     value={reportFormData.region}
                     onChange={handleReportFormChange}
+                    disabled={psgcLoading}
                   >
-                    <option>All Regions</option>
-                    {availableRegions.map((region, index) => (
-                      <option key={index} value={region}>
-                        {region}
-                      </option>
-                    ))}
+                    <option value="All Regions">All Regions</option>
+                    {psgcLoading ? (
+                      <option value="" disabled>Loading regions...</option>
+                    ) : (
+                      availableRegions.map((region, index) => (
+                        <option key={region.code || index} value={region.name || region}>
+                          {region.regionName || region.name || region}
+                        </option>
+                      ))
+                    )}
                   </select>
+                  {psgcLoading && (
+                    <div className="absolute right-10 top-2.5">
+                      <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1932,16 +2057,186 @@ export default function AllStartupDashboard() {
 
         {activeTab === "review" && (
           <div className="p-4">
-            <h2 className="text-xl font-semibold mb-4 text-blue-900">
-              Startup Review
-              {location.state?.startupName && (
-                <span className="ml-2 text-base font-normal text-amber-600">
-                  (Reviewing: {location.state.startupName})
-                </span>
-              )}
+            <h2 className="text-xl font-semibold mb-4 text-blue-900 flex items-center justify-between">
+              <div>
+                Startup Review
+                {location.state?.startupName && (
+                  <span className="ml-2 text-base font-normal text-amber-600">
+                    (Reviewing: {location.state.startupName})
+                  </span>
+                )}
+              </div>
+              <button 
+                onClick={refreshDashboard}
+                className="text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded-md flex items-center hover:bg-blue-100"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 12a9 9 0 0 0 6.7 15L13 21"></path><path d="M14 18H8"></path><path d="M17 14h-3"></path></svg>
+                Refresh Data
+              </button>
             </h2>
+            
             <div className="bg-white rounded-lg shadow">
-              <StartupReviewSection startupId={selectedReviewStartupId} />
+              <div className="p-5 border-b border-gray-200">
+                <h3 className="text-md font-medium text-gray-800 mb-4">Filter Startups for Review</h3>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-xs font-medium text-gray-600">Industry</label>
+                    <select
+                      className="border-gray-300 border rounded-md p-2 text-sm w-44 text-gray-800"
+                      value={selectedIndustry}
+                      onChange={(e) => setSelectedIndustry(e.target.value)}
+                    >
+                      <option value="All">All Industries</option>
+                      {industries.map((industry, index) => (
+                        <option key={index} value={industry}>
+                          {industry}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-xs font-medium text-gray-600">Region</label>
+                    <select
+                      className="border-gray-300 border rounded-md p-2 text-sm w-44 text-gray-800"
+                      value={reportFormData.region}
+                      onChange={(e) => 
+                        setReportFormData(prev => ({...prev, region: e.target.value}))
+                      }
+                      disabled={psgcLoading}
+                    >
+                      <option value="All Regions">All Regions</option>
+                      {psgcLoading ? (
+                        <option value="" disabled>Loading regions...</option>
+                      ) : (
+                        availableRegions.map((region, index) => (
+                          <option key={region.code || index} value={region.name || region}>
+                            {region.regionName || region.name || region}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    {psgcLoading && (
+                      <div className="absolute right-10 top-2.5">
+                        <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-xs font-medium text-gray-600">Status</label>
+                    <select
+                      className="border-gray-300 border rounded-md p-2 text-sm w-44 text-gray-800"
+                      value={reviewFilterStatus}
+                      onChange={(e) => setReviewFilterStatus(e.target.value)}
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value="pending">Pending Review</option>
+                      <option value="approved">Approved</option>
+                      <option value="rejected">Needs Revision</option>
+                    </select>
+                  </div>
+                  
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-xs font-medium text-gray-600">Search</label>
+                    <div className="relative">
+                      <Search className="h-4 w-4 absolute left-3 top-2.5 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search startups..."
+                        className="pl-9 pr-4 py-2 border border-gray-300 text-gray-800 rounded-md text-sm w-64"
+                        value={reviewSearchQuery}
+                        onChange={(e) => setReviewSearchQuery(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter') handleReviewFilter();
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-end space-x-2 ml-auto">
+                    <button 
+                      onClick={resetReviewFilters}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-100 transition-colors"
+                    >
+                      Reset
+                    </button>
+                    <button 
+                      onClick={handleReviewFilter}
+                      disabled={reviewLoading}
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm flex items-center hover:bg-indigo-700 transition-colors disabled:bg-indigo-400"
+                    >
+                      {reviewLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Filtering...
+                        </>
+                      ) : (
+                        <>
+                          <Filter className="h-4 w-4 mr-1" />
+                          Apply Filters
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-5">
+                {reviewLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="w-6 h-6 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mr-2"></div>
+                    <p className="text-gray-600">Loading startups for review...</p>
+                  </div>
+                ) : (
+                  <StartupReviewSection 
+                    startupId={selectedReviewStartupId}
+                    industry={selectedIndustry}
+                    region={reportFormData.region}
+                    status={reviewFilterStatus}
+                    searchQuery={reviewSearchQuery}
+                    filteredStartups={filteredStartups.length > 0 ? filteredStartups : null}
+                    onRefresh={handleReviewFilter}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Statistics for Review Progress */}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-white p-4 rounded-lg shadow">
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Pending Reviews</h3>
+                <div className="flex items-center">
+                  <div className="p-2 bg-amber-100 rounded mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                  </div>
+                  <span className="text-xl font-semibold text-gray-800">
+                    {filteredStartups.filter(s => s.reviewStatus === "pending")?.length || 0}
+                  </span>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow">
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Approved Startups</h3>
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-100 rounded mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                  </div>
+                  <span className="text-xl font-semibold text-gray-800">
+                    {filteredStartups.filter(s => s.reviewStatus === "approved")?.length || 0}
+                  </span>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow">
+                <h3 className="text-sm font-medium text-gray-600 mb-1">Needs Revision</h3>
+                <div className="flex items-center">
+                  <div className="p-2 bg-red-100 rounded mr-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                  </div>
+                  <span className="text-xl font-semibold text-gray-800">
+                    {filteredStartups.filter(s => s.reviewStatus === "rejected")?.length || 0}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         )}
