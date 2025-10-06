@@ -26,23 +26,39 @@ import {
   Search,
   RefreshCw,
   SlidersHorizontal,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
-export default function EnhancedStartupReviewSection({ 
-  startupId, 
-  industry, 
-  region, 
-  status, 
+export default function EnhancedStartupReviewSection({
+  startupId,
+  industry,
+  region,
+  status,
   searchQuery,
   filteredStartups: externalFilteredStartups,
-  onRefresh
+  onRefresh,
 }) {
   const [startups, setStartups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStartup, setSelectedStartup] = useState(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
+  const [rejectionComment, setRejectionComment] = useState("");
+  const [pendingRejectionId, setPendingRejectionId] = useState(null);
+  const [commonRejectionReasons, setCommonRejectionReasons] = useState([
+    "Incomplete company information",
+    "Business description is too vague or unclear",
+    "Contact information is invalid or missing",
+    "Website or social media links are not functional",
+    "Business model doesn't qualify as a startup",
+    "Duplicate submission",
+    "Violates platform terms and conditions",
+    "Contains inappropriate or misleading content",
+    "Organization is no longer active",
+    "Other (please specify)",
+  ]);
 
   const [filters, setFilters] = useState({
     search: searchQuery || "",
@@ -74,16 +90,25 @@ export default function EnhancedStartupReviewSection({
   // Update internal filters when external filters change
   useEffect(() => {
     if (searchQuery !== undefined) {
-      setFilters(prev => ({ ...prev, search: searchQuery || "" }));
+      setFilters((prev) => ({ ...prev, search: searchQuery || "" }));
     }
     if (industry !== undefined) {
-      setFilters(prev => ({ ...prev, industry: industry !== "All" ? industry : "" }));
+      setFilters((prev) => ({
+        ...prev,
+        industry: industry !== "All" ? industry : "",
+      }));
     }
     if (status !== undefined) {
-      setFilters(prev => ({ ...prev, status: status !== "all" ? status : "" }));
+      setFilters((prev) => ({
+        ...prev,
+        status: status !== "all" ? status : "",
+      }));
     }
     if (region !== undefined) {
-      setFilters(prev => ({ ...prev, region: region !== "All Regions" ? region : "" }));
+      setFilters((prev) => ({
+        ...prev,
+        region: region !== "All Regions" ? region : "",
+      }));
     }
   }, [searchQuery, industry, status, region]);
 
@@ -92,17 +117,25 @@ export default function EnhancedStartupReviewSection({
     if (externalFilteredStartups) {
       setStartups(externalFilteredStartups);
       setLoading(false);
-      
+
       // Extract unique values for filter dropdowns from the provided data
       if (externalFilteredStartups.length > 0) {
         setUniqueIndustries([
-          ...new Set(externalFilteredStartups.map(s => s.industry).filter(Boolean)),
+          ...new Set(
+            externalFilteredStartups.map((s) => s.industry).filter(Boolean)
+          ),
         ]);
         setUniqueRegions([
-          ...new Set(externalFilteredStartups.map(s => s.city || s.region).filter(Boolean)),
+          ...new Set(
+            externalFilteredStartups
+              .map((s) => s.city || s.region)
+              .filter(Boolean)
+          ),
         ]);
         setUniqueStatuses([
-          ...new Set(externalFilteredStartups.map(s => s.status).filter(Boolean)),
+          ...new Set(
+            externalFilteredStartups.map((s) => s.status).filter(Boolean)
+          ),
         ]);
       }
     } else {
@@ -113,7 +146,9 @@ export default function EnhancedStartupReviewSection({
   // Effect to handle auto-opening preview when startupId is provided
   useEffect(() => {
     if (startupId && startups.length > 0) {
-      const targetStartup = startups.find(startup => startup.id === parseInt(startupId));
+      const targetStartup = startups.find(
+        (startup) => startup.id === parseInt(startupId)
+      );
       if (targetStartup) {
         setSelectedStartup(targetStartup);
         setIsPreviewOpen(true);
@@ -128,39 +163,41 @@ export default function EnhancedStartupReviewSection({
     try {
       setLoading(true);
       setError(null);
-      
+
       // Build query parameters
       const queryParams = new URLSearchParams();
-      
+
       if (filters.industry) {
         queryParams.append("industry", filters.industry);
       }
-      
+
       if (filters.region) {
         queryParams.append("region", filters.region);
       }
-      
+
       if (filters.status) {
         queryParams.append("status", filters.status);
       }
-      
+
       if (filters.search.trim()) {
         queryParams.append("search", filters.search.trim());
       }
-      
+
       if (filters.dateRange.start) {
         queryParams.append("startDate", filters.dateRange.start);
       }
-      
+
       if (filters.dateRange.end) {
         queryParams.append("endDate", filters.dateRange.end);
       }
-      
+
       // Fetch startups with filters
-      const apiUrl = startupId 
+      const apiUrl = startupId
         ? `${import.meta.env.VITE_BACKEND_URL}/startups/submitted`
-        : `${import.meta.env.VITE_BACKEND_URL}/startups/review?${queryParams.toString()}`;
-      
+        : `${
+            import.meta.env.VITE_BACKEND_URL
+          }/startups/review?${queryParams.toString()}`;
+
       const response = await fetch(apiUrl, { credentials: "include" });
 
       if (!response.ok) {
@@ -168,15 +205,15 @@ export default function EnhancedStartupReviewSection({
       }
 
       const data = await response.json();
-      
+
       // If a specific startupId is requested, filter for that startup
       if (startupId) {
-        const filteredData = Array.isArray(data) ? 
-          data.filter(s => s.id === parseInt(startupId)) : 
-          [];
-        
+        const filteredData = Array.isArray(data)
+          ? data.filter((s) => s.id === parseInt(startupId))
+          : [];
+
         setStartups(filteredData.length > 0 ? filteredData : data);
-        
+
         // If we have the specific startup, auto-select it
         if (filteredData.length > 0) {
           setSelectedStartup(filteredData[0]);
@@ -185,17 +222,21 @@ export default function EnhancedStartupReviewSection({
       } else {
         setStartups(data);
       }
-      
+
       // Extract unique values for filter dropdowns
       if (data.length > 0) {
         setUniqueIndustries([
-          ...new Set(data.map(startup => startup.industry).filter(Boolean)),
+          ...new Set(data.map((startup) => startup.industry).filter(Boolean)),
         ]);
         setUniqueRegions([
-          ...new Set(data.map(startup => startup.city || startup.region).filter(Boolean)),
+          ...new Set(
+            data
+              .map((startup) => startup.city || startup.region)
+              .filter(Boolean)
+          ),
         ]);
         setUniqueStatuses([
-          ...new Set(data.map(startup => startup.status).filter(Boolean)),
+          ...new Set(data.map((startup) => startup.status).filter(Boolean)),
         ]);
       }
     } catch (err) {
@@ -217,22 +258,91 @@ export default function EnhancedStartupReviewSection({
     await handleStartupAction(id, "approve", "Startup approved successfully!");
   };
 
-  // Handler for rejecting a startup
-  const handleReject = async (id) => {
-    await handleStartupAction(id, "reject", "Startup rejected successfully!");
+  // Handler for initiating startup rejection
+  const handleInitiateReject = (id) => {
+    setPendingRejectionId(id);
+    setRejectionComment("");
+    setIsRejectionModalOpen(true);
+  };
+
+  // Handler for submitting rejection with comment
+  // Handler for submitting rejection with comment
+  const handleReject = async () => {
+    if (!rejectionComment.trim()) {
+      toast.error("Please provide a reason for rejection");
+      return;
+    }
+
+    // Create a proper payload with comments
+    const rejectionPayload = {
+      comments: rejectionComment.trim(),
+    };
+
+    console.log("Rejection payload:", rejectionPayload);
+
+    await handleStartupAction(
+      pendingRejectionId,
+      "reject",
+      "Startup rejected successfully!",
+      rejectionPayload
+    );
+
+    setIsRejectionModalOpen(false);
+    setPendingRejectionId(null);
+    setRejectionComment("");
   };
 
   // Generic action handler for startup operations
-  const handleStartupAction = async (id, action, successMessage) => {
+  // Generic action handler for startup operations
+  // Generic action handler for startup operations
+  const handleStartupAction = async (
+    id,
+    action,
+    successMessage,
+    additionalData = {}
+  ) => {
     try {
       setIsActionLoading(true);
+
+      // Create proper payload based on the action type
+      const payload = { ...additionalData };
+
+      // Make sure payload structure matches what backend expects
+      if (action === "reject" && additionalData.comments) {
+        // Ensure we're following the exact API format
+        payload.comments = additionalData.comments;
+        payload.remarks = `Startup ${id} rejected: ${additionalData.comments.substring(
+          0,
+          30
+        )}${additionalData.comments.length > 30 ? "..." : ""}`;
+      } else if (action === "approve") {
+        // For approvals, provide default comments if none present
+        payload.comments =
+          additionalData.comments || "Startup application approved";
+        payload.remarks = additionalData.remarks || `Startup ${id} approved`;
+      }
+
+      console.log(`Sending ${action} request with payload:`, payload);
+
+      const requestOptions = {
+        method: "PUT",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload), // Always send the payload as JSON
+      };
+
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/notifications/startups/${id}/${action}`,
-        {
-          method: "PUT",
-          credentials: "include",
-        }
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/notifications/startups/${id}/${action}`,
+        requestOptions
       );
+
+      // For debugging - log the raw response
+      const responseText = await response.text();
+      console.log(`API Response (${response.status}):`, responseText);
 
       if (!response.ok) {
         throw new Error(`Failed to ${action} startup: ${response.status}`);
@@ -241,9 +351,9 @@ export default function EnhancedStartupReviewSection({
       // Update local state
       setStartups(startups.filter((startup) => startup.id !== id));
       setActionResult({ success: true, message: successMessage });
-      
+
       // If there was an external refresh function provided, call it
-      if (typeof onRefresh === 'function') {
+      if (typeof onRefresh === "function") {
         onRefresh();
       } else {
         fetchStartups();
@@ -253,10 +363,9 @@ export default function EnhancedStartupReviewSection({
         setIsPreviewOpen(false);
         setSelectedStartup(null);
       }
-      
+
       // Show toast notification
       toast.success(successMessage);
-      
     } catch (err) {
       console.error(`Failed to ${action} startup:`, err);
       setActionResult({ success: false, message: err.message });
@@ -305,7 +414,7 @@ export default function EnhancedStartupReviewSection({
       new Date().toISOString().split("T")[0]
     }.csv`;
     link.click();
-    
+
     toast.success("Export completed successfully");
   };
 
@@ -329,9 +438,9 @@ export default function EnhancedStartupReviewSection({
     });
     setSortConfig({ key: "companyName", direction: "asc" });
     setCurrentPage(1);
-    
+
     // Call the parent component's reset function if provided
-    if (typeof onRefresh === 'function') {
+    if (typeof onRefresh === "function") {
       onRefresh();
     } else {
       fetchStartups();
@@ -349,7 +458,9 @@ export default function EnhancedStartupReviewSection({
         (startup) =>
           (startup.companyName || "").toLowerCase().includes(searchLower) ||
           (startup.industry || "").toLowerCase().includes(searchLower) ||
-          (startup.companyDescription || "").toLowerCase().includes(searchLower) ||
+          (startup.companyDescription || "")
+            .toLowerCase()
+            .includes(searchLower) ||
           (startup.city || "").toLowerCase().includes(searchLower) ||
           (startup.contactEmail || "").toLowerCase().includes(searchLower)
       );
@@ -369,14 +480,18 @@ export default function EnhancedStartupReviewSection({
 
     // Apply region filter locally (if not already filtered by server)
     if (filters.region && !externalFilteredStartups) {
-      result = result.filter((startup) => 
-        startup.city === filters.region || 
-        startup.region === filters.region
+      result = result.filter(
+        (startup) =>
+          startup.city === filters.region || startup.region === filters.region
       );
     }
 
     // Apply date range filter
-    if (filters.dateRange.start && filters.dateRange.end && !externalFilteredStartups) {
+    if (
+      filters.dateRange.start &&
+      filters.dateRange.end &&
+      !externalFilteredStartups
+    ) {
       const startDate = new Date(filters.dateRange.start);
       const endDate = new Date(filters.dateRange.end);
       result = result.filter((startup) => {
@@ -495,7 +610,9 @@ export default function EnhancedStartupReviewSection({
           </button>
 
           <button
-            onClick={typeof onRefresh === 'function' ? onRefresh : fetchStartups}
+            onClick={
+              typeof onRefresh === "function" ? onRefresh : fetchStartups
+            }
             className="px-3 py-2 bg-gray-50 text-gray-700 border border-gray-200 rounded flex items-center hover:bg-gray-100 transition-colors"
           >
             <RefreshCw size={16} className="mr-1" />
@@ -628,7 +745,7 @@ export default function EnhancedStartupReviewSection({
               >
                 Reset Filters
               </button>
-              
+
               <button
                 onClick={handleApplyFilters}
                 disabled={filterLoading}
@@ -659,7 +776,7 @@ export default function EnhancedStartupReviewSection({
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
             onKeyPress={(e) => {
-              if (e.key === 'Enter') handleApplyFilters();
+              if (e.key === "Enter") handleApplyFilters();
             }}
             className="pl-10 pr-4 py-2 text-gray-700 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full"
           />
@@ -851,7 +968,7 @@ export default function EnhancedStartupReviewSection({
                 >
                   <td className="p-3">
                     <div className="font-medium text-gray-900">
-                      {startup.companyName || 'Unnamed Startup'}
+                      {startup.companyName || "Unnamed Startup"}
                     </div>
                     <div className="text-xs text-gray-500 mt-1 line-clamp-2">
                       {startup.companyDescription?.substring(0, 80)}
@@ -878,11 +995,14 @@ export default function EnhancedStartupReviewSection({
                       {startup.typeOfCompany || "N/A"}
                     </div>
                   </td>
-                  <td className="p-3">{renderStatusBadge(startup.status || "Pending")}</td>
+                  <td className="p-3">
+                    {renderStatusBadge(startup.status || "Pending")}
+                  </td>
                   <td className="p-3">
                     <div className="flex items-center text-sm">
                       <Map size={14} className="mr-1 text-gray-400" />
-                      {startup.city || "N/A"}{startup.province ? `, ${startup.province}` : ""}
+                      {startup.city || "N/A"}
+                      {startup.province ? `, ${startup.province}` : ""}
                     </div>
                   </td>
                   <td className="p-3">
@@ -911,7 +1031,8 @@ export default function EnhancedStartupReviewSection({
                         <Eye size={16} />
                       </button>
 
-                      {(startup.status === "In Review" || startup.status === "Pending") && (
+                      {(startup.status === "In Review" ||
+                        startup.status === "Pending") && (
                         <>
                           <button
                             onClick={() => handleApprove(startup.id)}
@@ -927,7 +1048,7 @@ export default function EnhancedStartupReviewSection({
                             )}
                           </button>
                           <button
-                            onClick={() => handleReject(startup.id)}
+                            onClick={() => handleInitiateReject(startup.id)}
                             className="p-1.5 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
                             title="Reject"
                             disabled={isActionLoading}
@@ -1048,10 +1169,11 @@ export default function EnhancedStartupReviewSection({
                 {selectedStartup.companyName || "Startup Details"}
               </h2>
               <div className="flex items-center space-x-3">
-                {(selectedStartup.status === "In Review" || selectedStartup.status === "Pending") && (
+                {(selectedStartup.status === "In Review" ||
+                  selectedStartup.status === "Pending") && (
                   <>
                     <button
-                      onClick={() => handleReject(selectedStartup.id)}
+                      onClick={() => handleInitiateReject(selectedStartup.id)}
                       disabled={isActionLoading}
                       className="px-3 py-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center text-sm disabled:opacity-50"
                     >
@@ -1091,12 +1213,17 @@ export default function EnhancedStartupReviewSection({
               <div className="flex items-center justify-between mb-6 bg-blue-50 p-3 rounded-lg border border-blue-100">
                 <div className="flex items-center">
                   <Info size={18} className="text-blue-700 mr-2" />
-                  <span className={`text-sm font-medium ${
-                    selectedStartup.status === "Approved" ? 'text-green-700' :
-                    selectedStartup.status === "Rejected" ? 'text-red-700' : 
-                    'text-blue-800'
-                  }`}>
-                    Status: <strong>{selectedStartup.status || "Pending"}</strong>
+                  <span
+                    className={`text-sm font-medium ${
+                      selectedStartup.status === "Approved"
+                        ? "text-green-700"
+                        : selectedStartup.status === "Rejected"
+                        ? "text-red-700"
+                        : "text-blue-800"
+                    }`}
+                  >
+                    Status:{" "}
+                    <strong>{selectedStartup.status || "Pending"}</strong>
                   </span>
                 </div>
                 <div className="flex items-center space-x-4">
@@ -1302,11 +1429,19 @@ export default function EnhancedStartupReviewSection({
                           <Map size={14} className="mr-1" /> Location
                         </p>
                         <p className="text-gray-800">
-                          {selectedStartup.city || "N/A"}{selectedStartup.province ? `, ${selectedStartup.province}` : ""}{selectedStartup.country ? `, ${selectedStartup.country}` : ""}
+                          {selectedStartup.city || "N/A"}
+                          {selectedStartup.province
+                            ? `, ${selectedStartup.province}`
+                            : ""}
+                          {selectedStartup.country
+                            ? `, ${selectedStartup.country}`
+                            : ""}
                         </p>
                         <p className="text-gray-500 text-sm">
                           {selectedStartup.streetAddress || ""}{" "}
-                          {selectedStartup.postalCode ? selectedStartup.postalCode : ""}
+                          {selectedStartup.postalCode
+                            ? selectedStartup.postalCode
+                            : ""}
                         </p>
                       </div>
                     </div>
@@ -1539,6 +1674,97 @@ export default function EnhancedStartupReviewSection({
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add the rejection modal */}
+      {isRejectionModalOpen && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="bg-red-50 p-4 border-b border-red-100 flex justify-between items-center">
+              <h3 className="text-lg font-medium flex items-center text-red-800">
+                <MessageSquare className="mr-2" size={20} />
+                Provide Rejection Reason
+              </h3>
+              <button
+                onClick={() => setIsRejectionModalOpen(false)}
+                className="p-1 hover:bg-red-200 text-red-600 rounded-full transition-colors"
+                aria-label="Close"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <p className="mb-4 text-gray-600">
+                Please select or provide a reason for rejecting this startup.
+                This feedback will help the startup owner understand what needs
+                to be improved.
+              </p>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Common Reasons:
+                </label>
+                <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded-md p-2">
+                  {commonRejectionReasons.map((reason, index) => (
+                    <div key={index} className="flex items-start">
+                      <button
+                        type="button"
+                        onClick={() => setRejectionComment(reason)}
+                        className={`text-left text-gray-800 px-3 py-2 rounded-md w-full ${
+                          rejectionComment === reason
+                            ? "bg-red-100 text-red-800"
+                            : "hover:bg-gray-100"
+                        }`}
+                      >
+                        {reason}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label
+                  htmlFor="rejectionComment"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  {rejectionComment === "Other (please specify)" ||
+                  !commonRejectionReasons.includes(rejectionComment)
+                    ? "Please specify:"
+                    : "Additional comments (optional):"}
+                </label>
+                <textarea
+                  id="rejectionComment"
+                  value={rejectionComment}
+                  onChange={(e) => setRejectionComment(e.target.value)}
+                  rows={3}
+                  placeholder="Enter rejection reason..."
+                  className="w-full text-gray-800 p-2 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-2 mt-6">
+                <button
+                  onClick={() => setIsRejectionModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReject}
+                  disabled={isActionLoading || !rejectionComment.trim()}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 flex items-center"
+                >
+                  {isActionLoading ? (
+                    <Loader size={16} className="mr-2 animate-spin" />
+                  ) : null}
+                  Submit Rejection
+                </button>
               </div>
             </div>
           </div>

@@ -824,6 +824,7 @@ function NotificationComponent() {
               foundedDate: startupData.foundedDate || "N/A",
               numberOfEmployees: startupData.numberOfEmployees || "N/A",
               fundingStage: startupData.fundingStage || "N/A",
+              comments: startupData.comments || notification.rawData.comments,
             });
           }
         }
@@ -880,6 +881,7 @@ function NotificationComponent() {
           foundedDate: startupData.foundedDate || "N/A",
           numberOfEmployees: startupData.numberOfEmployees || "N/A",
           fundingStage: startupData.fundingStage || "N/A",
+          comments: startupData.comments || notifWithStartup.rawData.comments,
         });
 
         setLoadingDetails(false);
@@ -910,10 +912,19 @@ function NotificationComponent() {
 
       if (result.success && result.data) {
         console.log("Successfully loaded startup details:", result.data.id);
-        setStartupDetails(result.data);
+        setStartupDetails({
+          ...result.data,
+          // Make sure comments are included if they exist
+          comments:
+            result.data.comments || selectedNotification?.rawData?.comments,
+        });
       } else if (result.data) {
         console.log("Loaded startup details from direct data:", result.data.id);
-        setStartupDetails(result.data);
+        setStartupDetails({
+          ...result.data,
+          comments:
+            result.data.comments || selectedNotification?.rawData?.comments,
+        });
       } else {
         console.warn("API returned success but no data");
         throw new Error(
@@ -1642,6 +1653,10 @@ function NotificationComponent() {
                       startupId={startupDetails.id}
                       onSubmit={submitReview}
                       currentStatus={startupDetails.status}
+                      rejectionComment={
+                        startupDetails.comments ||
+                        selectedNotification?.rawData?.comments
+                      }
                     />
                   )}
                 </div>
@@ -1688,7 +1703,7 @@ function NotificationComponent() {
 }
 
 // Replace the ReviewForm component with this enhanced version
-function ReviewForm({ startupId, onSubmit, currentStatus }) {
+function ReviewForm({ startupId, onSubmit, currentStatus, rejectionComment }) {
   return (
     <div className="mt-8 border-t border-gray-200 pt-6">
       <h5 className="font-medium text-gray-900 mb-4">Application Status</h5>
@@ -1741,7 +1756,7 @@ function ReviewForm({ startupId, onSubmit, currentStatus }) {
               </div>
             </div>
           </div>
-        ) : currentStatus === "Pending" ? (
+        ) : currentStatus === "Pending" || currentStatus === "In Review" ? (
           <div className="bg-yellow-50 border border-yellow-200 rounded-md overflow-hidden">
             <div className="bg-yellow-100 px-4 py-3 flex items-center">
               <svg
@@ -1788,10 +1803,22 @@ function ReviewForm({ startupId, onSubmit, currentStatus }) {
                 Thank you for your submission. Unfortunately, your startup
                 application wasn't approved at this time.
               </p>
-              <p className="text-sm text-gray-600 mt-2">
+
+              {/* Display rejection comment if available */}
+              {rejectionComment && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-md">
+                  <h6 className="text-sm font-medium text-red-800 mb-1">
+                    Reason for rejection:
+                  </h6>
+                  <p className="text-sm text-gray-700">{rejectionComment}</p>
+                </div>
+              )}
+
+              <p className="text-sm text-gray-600 mt-3">
                 You may submit a new application with updated information that
-                meets our guidelines.
+                addresses the feedback provided.
               </p>
+
               <div className="mt-3 flex">
                 <button
                   onClick={() => (window.location.href = "/startup-dashboard")}
