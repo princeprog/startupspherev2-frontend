@@ -8,6 +8,8 @@ import {
   Building,
   Map as MapIcon,
   User,
+  Filter,
+  Check,
 } from "lucide-react";
 import debounce from "lodash/debounce";
 import Login from "../modals/Login";
@@ -15,6 +17,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
+import "../App.css";
 
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
@@ -31,10 +34,8 @@ export default function Startupmap({
   const geocoderContainerRef = useRef(null);
   const [is3DActive, setIs3DActive] = useState(true);
   const [startupMarkers, setStartupMarkers] = useState([]);
-  // const [investorMarkers, setInvestorMarkers] = useState([]); // removed
   const [searchInput, setSearchInput] = useState("");
   const [filteredStartups, setFilteredStartups] = useState([]);
-  // const [filteredInvestors, setFilteredInvestors] = useState([]); // removed
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [currentGeojsonBoundary, setCurrentGeojsonBoundary] = useState(null);
   const [searchSuggestions, setSearchSuggestions] = useState([]);
@@ -53,6 +54,137 @@ export default function Startupmap({
   const [stakeholderMarkers, setStakeholderMarkers] = useState([]);
   const [filteredStakeholders, setFilteredStakeholders] = useState([]);
 
+  // Add new state variables for industry filtering
+  const [industries, setIndustries] = useState([]);
+  const [selectedIndustry, setSelectedIndustry] = useState(null);
+  const [showIndustryFilter, setShowIndustryFilter] = useState(false);
+
+  // Function to load industries
+  const loadIndustries = async () => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/industries`,
+        {
+          credentials: "include",
+        }
+      );
+      if (!response.ok) {
+        throw new Error(`Failed to load industries: ${response.status}`);
+      }
+      const industryData = await response.json();
+
+      // Sort alphabetically and filter out empty values
+      const sortedIndustries = industryData
+        .filter((industry) => industry && industry.trim())
+        .sort((a, b) => a.localeCompare(b));
+
+      setIndustries(sortedIndustries);
+    } catch (error) {
+      console.error("Failed to load industries:", error);
+    }
+  };
+
+  // Call loadIndustries on component mount
+  useEffect(() => {
+    loadIndustries();
+  }, []);
+
+  // Modify loadStartupMarkers to include industry filtering
+  const loadStartupMarkers = async (map) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/approved`,
+        {
+          credentials: "include",
+        }
+      );
+      const startups = await response.json();
+      setStartupMarkers(startups);
+
+      // Apply industry filter if one is selected
+      const filtered = selectedIndustry
+        ? startups.filter(
+            (startup) =>
+              startup.industry &&
+              startup.industry.toLowerCase() === selectedIndustry.toLowerCase()
+          )
+        : startups;
+
+      setFilteredStartups(filtered);
+
+      // Render startup markers based on filtered results
+      renderStartupMarkers(map, filtered);
+
+      return startups;
+    } catch (error) {
+      console.error("Failed to load startups:", error);
+      return [];
+    }
+  };
+
+  // Update loadStartupMarkers when selectedIndustry changes
+  useEffect(() => {
+    if (mapInstanceRef.current) {
+      loadStartupMarkers(mapInstanceRef.current);
+    }
+  }, [selectedIndustry]);
+
+  // Handle industry selection
+  const handleIndustrySelect = (industry) => {
+    setSelectedIndustry(industry === selectedIndustry ? null : industry);
+    setShowIndustryFilter(false);
+  };
+
+  // Industry Filter Component
+  // Industry Filter Component - Updated to use fetched industries
+  // Update the Industry Filter Component to be more clean and professional
+  const IndustryFilterComponent = () => (
+    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex flex-wrap justify-center gap-1.5 max-w-4xl px-3 py-2">
+      {/* Industries displayed as clean buttons without container */}
+      <button
+        key="all-industries"
+        className={`px-3 py-1 rounded-full text-sm transition-all ${
+          !selectedIndustry
+            ? "bg-blue-600 text-white font-medium shadow-md"
+            : "bg-white/90 text-gray-700 shadow-sm hover:bg-gray-100/90"
+        }`}
+        onClick={() => handleIndustrySelect(null)}
+      >
+        All Industries
+      </button>
+
+      {industries.map((industry) => (
+        <button
+          key={industry}
+          className={`px-3 py-1 rounded-full text-sm transition-all ${
+            selectedIndustry === industry
+              ? "bg-blue-600 text-white font-medium shadow-md"
+              : "bg-white/90 text-gray-700 shadow-sm hover:bg-gray-100/90"
+          }`}
+          onClick={() => handleIndustrySelect(industry)}
+        >
+          {industry}
+        </button>
+      ))}
+
+      {/* Dropdown is removed - all industries are shown directly */}
+    </div>
+  );
+
+  // Add click outside handler for industry filter
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".industry-filter") && showIndustryFilter) {
+        setShowIndustryFilter(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showIndustryFilter]);
+
   const saveToSearchHistory = (query, result) => {
     const newHistory = [
       {
@@ -69,28 +201,6 @@ export default function Startupmap({
 
     setSearchHistory(newHistory);
     localStorage.setItem("mapSearchHistory", JSON.stringify(newHistory));
-  };
-
-  const loadStartupMarkers = async (map) => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/startups/approved`,
-        {
-          credentials: "include",
-        }
-      );
-      const startups = await response.json();
-      setStartupMarkers(startups);
-      setFilteredStartups(startups);
-
-      // Render startup markers
-      renderStartupMarkers(map, startups);
-
-      return startups;
-    } catch (error) {
-      console.error("Failed to load startups:", error);
-      return [];
-    }
   };
 
   const renderStartupMarkers = (map, startups) => {
@@ -154,14 +264,14 @@ export default function Startupmap({
   // Add this function near the top of your component
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
-      case 'active':
-        return '#10B981'; // Green
-      case 'pending':
-        return '#F59E0B'; // Amber
-      case 'declined':
-        return '#EF4444'; // Red
+      case "active":
+        return "#10B981"; // Green
+      case "pending":
+        return "#F59E0B"; // Amber
+      case "declined":
+        return "#EF4444"; // Red
       default:
-        return '#6B7280'; // Gray for unknown status
+        return "#6B7280"; // Gray for unknown status
     }
   };
 
@@ -175,15 +285,15 @@ export default function Startupmap({
 
     // Keep track of stakeholders we've already rendered to avoid duplicates
     const renderedStakeholderIds = new Set();
-    
+
     // Process each item - could be a connection object or a stakeholder directly
     items.forEach((item) => {
       // Determine if we're dealing with a connection or direct stakeholder
       const stakeholder = item.stakeholder || item;
       const connection = item.stakeholder ? item : null;
-      
+
       if (!stakeholder || !stakeholder.id) {
-        console.warn('Invalid stakeholder data:', item);
+        console.warn("Invalid stakeholder data:", item);
         return;
       }
 
@@ -223,59 +333,94 @@ export default function Startupmap({
       // Create a popup with stakeholder information
       const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
       <div style="color: black; font-family: Arial, sans-serif; max-width: 250px;">
-        <h3 style="margin: 0; color: black; font-weight: bold;">${stakeholder.name || 'Unknown'}</h3>
-        ${connection ? 
-          `<p style="margin: 0; color: #805AD5; font-weight: 500;">${connection.role || "Stakeholder"}</p>` : 
-          `<p style="margin: 0; color: #805AD5; font-weight: 500;">Stakeholder</p>`
+        <h3 style="margin: 0; color: black; font-weight: bold;">${
+          stakeholder.name || "Unknown"
+        }</h3>
+        ${
+          connection
+            ? `<p style="margin: 0; color: #805AD5; font-weight: 500;">${
+                connection.role || "Stakeholder"
+              }</p>`
+            : `<p style="margin: 0; color: #805AD5; font-weight: 500;">Stakeholder</p>`
         }
-        <p style="margin: 5px 0 0; color: black; font-size: 13px;">${stakeholder.locationName || ""}</p>
-        ${stakeholder.email
-          ? `<p style="margin: 2px 0; color: gray; font-size: 12px;">✉️ ${stakeholder.email}</p>`
-          : ""}
-        ${stakeholder.phoneNumber
-          ? `<p style="margin: 2px 0; color: gray; font-size: 12px;">📱 ${stakeholder.phoneNumber}</p>`
-          : ""}
-        ${connection ? 
-          `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px;">
-            <p style="margin: 0; color: gray;">Status: <span style="color: ${getStatusColor(connection.status)};">${connection.status || "Unknown"}</span></p>
-            ${connection.dateJoined
-              ? `<p style="margin: 0; color: gray;">Joined: ${new Date(connection.dateJoined).toLocaleDateString()}</p>`
-              : ""}
-          </div>` : ""
+        <p style="margin: 5px 0 0; color: black; font-size: 13px;">${
+          stakeholder.locationName || ""
+        }</p>
+        ${
+          stakeholder.email
+            ? `<p style="margin: 2px 0; color: gray; font-size: 12px;">✉️ ${stakeholder.email}</p>`
+            : ""
+        }
+        ${
+          stakeholder.phoneNumber
+            ? `<p style="margin: 2px 0; color: gray; font-size: 12px;">📱 ${stakeholder.phoneNumber}</p>`
+            : ""
+        }
+        ${
+          connection
+            ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px;">
+            <p style="margin: 0; color: gray;">Status: <span style="color: ${getStatusColor(
+              connection.status
+            )};">${connection.status || "Unknown"}</span></p>
+            ${
+              connection.dateJoined
+                ? `<p style="margin: 0; color: gray;">Joined: ${new Date(
+                    connection.dateJoined
+                  ).toLocaleDateString()}</p>`
+                : ""
+            }
+          </div>`
+            : ""
         }
       </div>
     `);
 
-    try {
-      // Parse coordinates if they're stored as strings
-      const lng = typeof stakeholder.locationLng === 'string' 
-        ? parseFloat(stakeholder.locationLng) 
-        : stakeholder.locationLng;
-        
-      const lat = typeof stakeholder.locationLat === 'string'
-        ? parseFloat(stakeholder.locationLat)
-        : stakeholder.locationLat;
-      
-      if (isNaN(lng) || isNaN(lat) || lng < -180 || lng > 180 || lat < -90 || lat > 90) {
-        console.warn(`Invalid coordinates for stakeholder ${stakeholder.id}:`, lng, lat);
-        return;
+      try {
+        // Parse coordinates if they're stored as strings
+        const lng =
+          typeof stakeholder.locationLng === "string"
+            ? parseFloat(stakeholder.locationLng)
+            : stakeholder.locationLng;
+
+        const lat =
+          typeof stakeholder.locationLat === "string"
+            ? parseFloat(stakeholder.locationLat)
+            : stakeholder.locationLat;
+
+        if (
+          isNaN(lng) ||
+          isNaN(lat) ||
+          lng < -180 ||
+          lng > 180 ||
+          lat < -90 ||
+          lat > 90
+        ) {
+          console.warn(
+            `Invalid coordinates for stakeholder ${stakeholder.id}:`,
+            lng,
+            lat
+          );
+          return;
+        }
+
+        // Add marker to the map
+        const marker = new mapboxgl.Marker({
+          element: el,
+          anchor: "center",
+        })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(map);
+
+        window.stakeholderMarkersArray = window.stakeholderMarkersArray || [];
+        window.stakeholderMarkersArray.push(marker);
+      } catch (error) {
+        console.error(
+          `Error adding marker for stakeholder ${stakeholder.id}:`,
+          error
+        );
       }
-
-      // Add marker to the map
-      const marker = new mapboxgl.Marker({
-        element: el,
-        anchor: "center",
-      })
-        .setLngLat([lng, lat])
-        .setPopup(popup)
-        .addTo(map);
-
-      window.stakeholderMarkersArray = window.stakeholderMarkersArray || [];
-      window.stakeholderMarkersArray.push(marker);
-    } catch (error) {
-      console.error(`Error adding marker for stakeholder ${stakeholder.id}:`, error);
-    }
-  });
+    });
   };
 
   const loadStakeholders = async (map) => {
@@ -2101,6 +2246,7 @@ export default function Startupmap({
         style={{ width: "100%", height: "100%" }}
       />
       <SearchComponent />
+      <IndustryFilterComponent />
 
       {/* 3D Toggle Button */}
       <button
@@ -2146,7 +2292,7 @@ export default function Startupmap({
         )}
       </button>
 
-      {/* Add this new Connections Toggle Button */}
+      {/* Connections Toggle Button */}
       <button
         onClick={toggleConnectionsVisibility}
         className="absolute bottom-4 left-28 bg-white bg-opacity-90 backdrop-blur-sm px-3 py-2 rounded-md shadow-md z-10 flex items-center gap-1 text-sm font-medium text-gray-700 hover:bg-white transition duration-200"
