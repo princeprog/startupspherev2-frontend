@@ -16,6 +16,7 @@ import CsvUploadPage from "./startup/CsvUploadPage";
 
 function App() {
   const mapInstanceRef = useRef(null);
+  const highlightStakeholderRef = useRef(null);
   const [user, setUser] = useState(null);
   const [isAddMethodModalOpen, setIsAddMethodModalOpen] = useState(false);
 
@@ -24,16 +25,22 @@ function App() {
   };
 
   const openAddMethodModal = () => {
-    setIsAddMethodModalOpen(true);
-  };
-
-  return (
+    setIsAddMethodModalOpen(true);
+  };
+  
+  const handleHighlightStakeholder = (highlightFn) => {
+    highlightStakeholderRef.current = highlightFn;
+  };  return (
     <SidebarProvider>
       <Routes>
         <Route
           path="/"
           element={
-            <Sidebar mapInstanceRef={mapInstanceRef} setUserDetails={setUser} />
+            <Sidebar 
+              mapInstanceRef={mapInstanceRef} 
+              setUserDetails={setUser}
+              highlightStakeholderRef={highlightStakeholderRef} 
+            />
           }
         >
           <Route
@@ -42,6 +49,7 @@ function App() {
               <Startupmap
                 mapInstanceRef={mapInstanceRef}
                 onLoginSuccess={handleLoginSuccess}
+                onHighlightStakeholder={handleHighlightStakeholder}
               />
             }
           />
