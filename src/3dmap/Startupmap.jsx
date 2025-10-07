@@ -26,6 +26,7 @@ export default function Startupmap({
   mapInstanceRef,
   onMapClick,
   onLoginSuccess,
+  onHighlightStakeholder,
 }) {
   const [openLogin, setOpenLogin] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
@@ -45,6 +46,7 @@ export default function Startupmap({
   const suggestionsRef = useRef(null);
   const [recentSearches, setRecentSearches] = useState([]);
   const [searchCategory, setSearchCategory] = useState("all"); // all, startup, stakeholder, place
+  const [activeStakeholderId, setActiveStakeholderId] = useState(null);
   const [searchHistory, setSearchHistory] = useState(
     JSON.parse(localStorage.getItem("mapSearchHistory") || "[]")
   );
@@ -54,42 +56,7 @@ export default function Startupmap({
   const [stakeholderMarkers, setStakeholderMarkers] = useState([]);
   const [filteredStakeholders, setFilteredStakeholders] = useState([]);
 
-  // Add new state variables for industry filtering
-  const [industries, setIndustries] = useState([]);
-  const [selectedIndustry, setSelectedIndustry] = useState(null);
-  const [showIndustryFilter, setShowIndustryFilter] = useState(false);
-
-  // Function to load industries
-  const loadIndustries = async () => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/startups/industries`,
-        {
-          credentials: "include",
-        }
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to load industries: ${response.status}`);
-      }
-      const industryData = await response.json();
-
-      // Sort alphabetically and filter out empty values
-      const sortedIndustries = industryData
-        .filter((industry) => industry && industry.trim())
-        .sort((a, b) => a.localeCompare(b));
-
-      setIndustries(sortedIndustries);
-    } catch (error) {
-      console.error("Failed to load industries:", error);
-    }
-  };
-
-  // Call loadIndustries on component mount
-  useEffect(() => {
-    loadIndustries();
-  }, []);
-
-  // Modify loadStartupMarkers to include industry filtering
+  // Modify loadStartupMarkers to remove industry filtering
   const loadStartupMarkers = async (map) => {
     try {
       const response = await fetch(
@@ -100,107 +67,16 @@ export default function Startupmap({
       );
       const startups = await response.json();
       setStartupMarkers(startups);
+      setFilteredStartups(startups);
 
-      // Apply industry filter if one is selected
-      const filtered = selectedIndustry
-        ? startups.filter(
-            (startup) =>
-              startup.industry &&
-              startup.industry.toLowerCase() === selectedIndustry.toLowerCase()
-          )
-        : startups;
-
-      setFilteredStartups(filtered);
-
-      // Render startup markers based on filtered results
-      renderStartupMarkers(map, filtered);
+      // Render all startup markers (no filtering)
+      renderStartupMarkers(map, startups);
 
       return startups;
     } catch (error) {
       console.error("Failed to load startups:", error);
       return [];
     }
-  };
-
-  // Update loadStartupMarkers when selectedIndustry changes
-  useEffect(() => {
-    if (mapInstanceRef.current) {
-      loadStartupMarkers(mapInstanceRef.current);
-    }
-  }, [selectedIndustry]);
-
-  // Handle industry selection
-  const handleIndustrySelect = (industry) => {
-    setSelectedIndustry(industry === selectedIndustry ? null : industry);
-    setShowIndustryFilter(false);
-  };
-
-  // Industry Filter Component
-  // Industry Filter Component - Updated to use fetched industries
-  // Update the Industry Filter Component to be more clean and professional
-  const IndustryFilterComponent = () => (
-    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 flex flex-wrap justify-center gap-1.5 max-w-4xl px-3 py-2">
-      {/* Industries displayed as clean buttons without container */}
-      <button
-        key="all-industries"
-        className={`px-3 py-1 rounded-full text-sm transition-all ${
-          !selectedIndustry
-            ? "bg-blue-600 text-white font-medium shadow-md"
-            : "bg-white/90 text-gray-700 shadow-sm hover:bg-gray-100/90"
-        }`}
-        onClick={() => handleIndustrySelect(null)}
-      >
-        All Industries
-      </button>
-
-      {industries.map((industry) => (
-        <button
-          key={industry}
-          className={`px-3 py-1 rounded-full text-sm transition-all ${
-            selectedIndustry === industry
-              ? "bg-blue-600 text-white font-medium shadow-md"
-              : "bg-white/90 text-gray-700 shadow-sm hover:bg-gray-100/90"
-          }`}
-          onClick={() => handleIndustrySelect(industry)}
-        >
-          {industry}
-        </button>
-      ))}
-
-      {/* Dropdown is removed - all industries are shown directly */}
-    </div>
-  );
-
-  // Add click outside handler for industry filter
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!event.target.closest(".industry-filter") && showIndustryFilter) {
-        setShowIndustryFilter(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showIndustryFilter]);
-
-  const saveToSearchHistory = (query, result) => {
-    const newHistory = [
-      {
-        query,
-        result: result.name || result.text,
-        coordinates: result.center,
-        timestamp: new Date().toISOString(),
-        type: result.type || "place",
-      },
-      ...searchHistory.filter(
-        (item) => item.query !== query && searchHistory.length < 5
-      ),
-    ].slice(0, 5);
-
-    setSearchHistory(newHistory);
-    localStorage.setItem("mapSearchHistory", JSON.stringify(newHistory));
   };
 
   const renderStartupMarkers = (map, startups) => {
@@ -275,11 +151,18 @@ export default function Startupmap({
     }
   };
 
-  // Replace the renderStakeholderMarkers function with this updated version
+  // Enhanced renderStakeholderMarkers function with better visibility
   const renderStakeholderMarkers = (map, items) => {
+    console.log("Rendering stakeholder markers, count:", items?.length);
+    
     // Clear existing stakeholder markers if needed
-    if (window.stakeholderMarkersArray) {
-      window.stakeholderMarkersArray.forEach((marker) => marker.remove());
+    if (window.stakeholderMarkersArray && Array.isArray(window.stakeholderMarkersArray)) {
+      console.log("Removing existing stakeholder markers:", window.stakeholderMarkersArray.length);
+      window.stakeholderMarkersArray.forEach((marker) => {
+        if (marker && typeof marker.remove === 'function') {
+          marker.remove();
+        }
+      });
     }
     window.stakeholderMarkersArray = [];
 
@@ -287,12 +170,12 @@ export default function Startupmap({
     const renderedStakeholderIds = new Set();
 
     // Process each item - could be a connection object or a stakeholder directly
-    items.forEach((item) => {
+    items?.forEach((item) => {
       // Determine if we're dealing with a connection or direct stakeholder
       const stakeholder = item.stakeholder || item;
       const connection = item.stakeholder ? item : null;
 
-      if (!stakeholder || !stakeholder.id) {
+      if (!stakeholder || !stakeholder.id) {  
         console.warn("Invalid stakeholder data:", item);
         return;
       }
@@ -303,89 +186,378 @@ export default function Startupmap({
         !stakeholder.locationLat ||
         !stakeholder.locationLng
       ) {
+        if (!stakeholder.locationLat || !stakeholder.locationLng) {
+          console.log(`Skipping stakeholder ${stakeholder.id} (${stakeholder.name}) - missing location data`);
+        }
         return;
       }
 
       renderedStakeholderIds.add(stakeholder.id);
+      console.log(`Adding marker for stakeholder ${stakeholder.id} (${stakeholder.name})`);
 
       // Create a DOM element for the stakeholder marker
       const el = document.createElement("div");
       el.className = "stakeholder-marker";
-      el.style.width = "35px";
-      el.style.height = "35px";
-      el.style.backgroundColor = "#805AD5"; // Purple for stakeholders
+      el.setAttribute("data-stakeholder-id", stakeholder.id); // Add data attribute for easy identification
+      
+      // Check if this stakeholder is active/selected
+      const isActive = stakeholder.id === activeStakeholderId;
+      console.log(`Stakeholder ${stakeholder.id} active status:`, isActive);
+      
+      // Enhanced size for professional look
+      el.style.width = isActive ? "56px" : "44px";
+      el.style.height = isActive ? "56px" : "44px";
+      
+      // Create a more elegant gradient background with subtle shine effect
+      const gradientColor = isActive 
+        ? "linear-gradient(135deg, #3B82F6, #1E40AF)" 
+        : "linear-gradient(135deg, #4F46E5 10%, #3730A3 100%)";
+      el.style.background = gradientColor;
+      
       el.style.borderRadius = "50%";
-      el.style.border = "2px solid white";
+      el.style.border = isActive 
+        ? "3px solid rgba(251, 191, 36, 0.9)" 
+        : "2px solid rgba(255, 255, 255, 0.9)";
+      el.style.backdropFilter = "blur(5px)"; // Subtle glass effect
       el.style.cursor = "pointer";
       el.style.display = "flex";
       el.style.alignItems = "center";
       el.style.justifyContent = "center";
-
-      // Add user icon inside the marker
+      el.style.zIndex = isActive ? 99999 : 9999;
+      el.style.willChange = "transform"; // Optimize performance
+      el.style.pointerEvents = "all"; // Ensure marker captures pointer events
+      el.style.position = "relative"; // Ensure proper stacking context
+      
+      // Add more professional user icon with initials if available
       const iconDiv = document.createElement("div");
-      iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><path d="M20 21v-2a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v2"></path></svg>`;
+      iconDiv.style.display = "flex";
+      iconDiv.style.alignItems = "center";
+      iconDiv.style.justifyContent = "center";
+      iconDiv.style.width = "100%";
+      iconDiv.style.height = "100%";
+      iconDiv.style.position = "relative";
+      
+      // Inner circle for visual enhancement
+      const innerCircle = document.createElement("div");
+      innerCircle.style.position = "absolute";
+      innerCircle.style.width = isActive ? "70%" : "75%";
+      innerCircle.style.height = isActive ? "70%" : "75%";
+      innerCircle.style.borderRadius = "50%";
+      innerCircle.style.background = "rgba(255, 255, 255, 0.15)";
+      iconDiv.appendChild(innerCircle);
+      
+      // Get initials from stakeholder name if available
+      let initials = "";
+      if (stakeholder.name) {
+        const nameParts = stakeholder.name.split(" ");
+        if (nameParts.length >= 2) {
+          initials = `${nameParts[0].charAt(0)}${nameParts[nameParts.length-1].charAt(0)}`;
+        } else if (nameParts.length === 1) {
+          initials = nameParts[0].substring(0, 2);
+        }
+      }
+      
+      // If we have initials, show them, otherwise use icon
+      const textElement = document.createElement("div");
+      textElement.style.position = "relative";
+      textElement.style.zIndex = "2";
+      
+      if (initials) {
+        textElement.style.color = "white";
+        textElement.style.fontFamily = "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif";
+        textElement.style.fontSize = isActive ? "18px" : "15px";
+        textElement.style.fontWeight = "600";
+        textElement.style.letterSpacing = "0.5px";
+        textElement.style.textShadow = "0 1px 2px rgba(0, 0, 0, 0.1)";
+        textElement.textContent = initials.toUpperCase();
+      } else {
+        textElement.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${isActive ? '24' : '20'}" height="${isActive ? '24' : '20'}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>`;
+      }
+      iconDiv.appendChild(textElement);
       el.appendChild(iconDiv);
 
-      // Add 3D effect
-      el.style.boxShadow = "0 0 15px rgba(128, 90, 213, 0.7)";
-      el.style.transform = "translate(-50%, -50%)";
-
-      // Create a popup with stakeholder information
-      const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
-      <div style="color: black; font-family: Arial, sans-serif; max-width: 250px;">
-        <h3 style="margin: 0; color: black; font-weight: bold;">${
-          stakeholder.name || "Unknown"
-        }</h3>
-        ${
-          connection
-            ? `<p style="margin: 0; color: #805AD5; font-weight: 500;">${
-                connection.role || "Stakeholder"
-              }</p>`
-            : `<p style="margin: 0; color: #805AD5; font-weight: 500;">Stakeholder</p>`
-        }
-        <p style="margin: 5px 0 0; color: black; font-size: 13px;">${
-          stakeholder.locationName || ""
-        }</p>
-        ${
-          stakeholder.email
-            ? `<p style="margin: 2px 0; color: gray; font-size: 12px;">✉️ ${stakeholder.email}</p>`
-            : ""
-        }
-        ${
-          stakeholder.phoneNumber
-            ? `<p style="margin: 2px 0; color: gray; font-size: 12px;">📱 ${stakeholder.phoneNumber}</p>`
-            : ""
-        }
-        ${
-          connection
-            ? `<div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; font-size: 12px;">
-            <p style="margin: 0; color: gray;">Status: <span style="color: ${getStatusColor(
-              connection.status
-            )};">${connection.status || "Unknown"}</span></p>
-            ${
-              connection.dateJoined
-                ? `<p style="margin: 0; color: gray;">Joined: ${new Date(
-                    connection.dateJoined
-                  ).toLocaleDateString()}</p>`
-                : ""
+      // Refined subtle shadow for professional look
+      el.style.boxShadow = isActive 
+        ? "0 0 15px rgba(251, 191, 36, 0.6), 0 0 30px rgba(37, 99, 235, 0.5), 0 6px 12px rgba(0, 0, 0, 0.25)" 
+        : "0 0 10px rgba(79, 70, 229, 0.5), 0 4px 8px rgba(0, 0, 0, 0.2)";
+      
+      // Apply translate transform with hardware acceleration
+      el.style.transform = "translate(-50%, -50%) translateZ(0)";
+      
+      // Add refined animation keyframes for professional effects if they don't exist
+      if (!document.getElementById('stakeholder-marker-keyframes')) {
+        const style = document.createElement('style');
+        style.id = 'stakeholder-marker-keyframes';
+        style.innerHTML = `
+          @keyframes subtle-pulse {
+            0% { 
+              box-shadow: 0 0 10px rgba(79, 70, 229, 0.5), 0 4px 8px rgba(0, 0, 0, 0.2);
+              transform: translate(-50%, -50%) scale(1) translateZ(0);
             }
-          </div>`
-            : ""
-        }
+            50% { 
+              box-shadow: 0 0 15px rgba(79, 70, 229, 0.6), 0 5px 10px rgba(0, 0, 0, 0.25);
+              transform: translate(-50%, -50%) scale(1.03) translateZ(0);
+            }
+            100% { 
+              box-shadow: 0 0 10px rgba(79, 70, 229, 0.5), 0 4px 8px rgba(0, 0, 0, 0.2);
+              transform: translate(-50%, -50%) scale(1) translateZ(0);
+            }
+          }
+          @keyframes highlight-pulse {
+            0% { 
+              box-shadow: 0 0 15px rgba(251, 191, 36, 0.6), 0 0 30px rgba(37, 99, 235, 0.5), 0 6px 12px rgba(0, 0, 0, 0.25);
+              border-color: rgba(251, 191, 36, 0.85);
+            }
+            50% { 
+              box-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 35px rgba(37, 99, 235, 0.6), 0 8px 16px rgba(0, 0, 0, 0.3);
+              border-color: rgba(251, 191, 36, 1);
+            }
+            100% { 
+              box-shadow: 0 0 15px rgba(251, 191, 36, 0.6), 0 0 30px rgba(37, 99, 235, 0.5), 0 6px 12px rgba(0, 0, 0, 0.25);
+              border-color: rgba(251, 191, 36, 0.85);
+            }
+          }
+          @keyframes float {
+            0% { transform: translate(-50%, -50%) translateY(0) translateZ(0); }
+            50% { transform: translate(-50%, -50%) translateY(-3px) translateZ(0); }
+            100% { transform: translate(-50%, -50%) translateY(0) translateZ(0); }
+          }
+          @keyframes popup-appear {
+            0% { opacity: 0; transform: translateY(10px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          /* Fixed marker positioning */
+          .mapboxgl-marker {
+            z-index: 9999 !important; 
+          }
+          
+          /* Apply fixed positioning to marker containers to prevent movement */
+          .marker-container {
+            position: relative !important;
+            z-index: 9999 !important;
+            transform: none !important;
+          }
+          
+          .marker-container.active {
+            z-index: 99999 !important;
+          }
+          
+          /* Professional popup styling */
+          .mapboxgl-popup.stakeholder-popup {
+            z-index: 100000 !important;
+          }
+          
+          .mapboxgl-popup.stakeholder-popup .mapboxgl-popup-content {
+            animation: popup-appear 0.25s ease-out forwards;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 5px 10px rgba(0, 0, 0, 0.08);
+            border-radius: 12px;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            overflow: hidden;
+            padding: 0;
+            max-width: 340px;
+          }
+          
+          /* Improved popup tip styling */
+          .mapboxgl-popup.stakeholder-popup .mapboxgl-popup-tip {
+            border-top-color: #fff;
+            border-bottom-color: #4338CA;
+            filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07));
+          }
+          
+          .mapboxgl-popup.stakeholder-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+            border-bottom-color: #4338CA;
+          }
+          
+          .mapboxgl-popup.stakeholder-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+            border-top-color: #fff;
+          }
+          
+          /* Professional close button */
+          .mapboxgl-popup.stakeholder-popup .mapboxgl-popup-close-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
+            padding: 3px 8px;
+            background: rgba(0, 0, 0, 0.1);
+            border: none;
+            border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease;
+            z-index: 999;
+          }
+          
+          .mapboxgl-popup.stakeholder-popup .mapboxgl-popup-close-button:hover {
+            color: #fff;
+            background: rgba(0, 0, 0, 0.25);
+            transform: scale(1.1);
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      // Add refined animations for professional look
+      if (!isActive) {
+        el.style.animation = "subtle-pulse 3s infinite ease-in-out";
+      } else {
+        // Add a combination of highlight and float for the active marker
+        el.style.animation = "highlight-pulse 2s infinite ease-in-out, float 2s infinite alternate ease-in-out";
+      }
+      
+      // Apply CSS to ensure marker stays above other elements
+      el.style.position = "relative"; // Helps with stacking context
+
+      // Create a popup with stakeholder information - enhanced professional design
+      const popup = new mapboxgl.Popup({ 
+        offset: 25,
+        closeButton: true,
+        closeOnClick: false,
+        className: 'stakeholder-popup',
+        maxWidth: '340px',
+        anchor: 'bottom'
+      }).setHTML(`
+      <div style="color: #1F2937; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif; width: 100%; padding: 0; overflow: hidden; border-radius: 12px;">
+        <!-- Header with enhanced professional gradient background -->
+        <div style="background: linear-gradient(135deg, #4F46E5, #3B82F6); padding: 20px; position: relative; border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+          <!-- Floating badge for organization if available -->
+          ${stakeholder.organization ? 
+            `<div style="position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.15); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2); border-radius: 30px; padding: 4px 12px; font-size: 12px; color: white; font-weight: 500; letter-spacing: 0.3px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+              ${stakeholder.organization}
+            </div>` : ``
+          }
+          
+          <!-- Stakeholder avatar with initials - enhanced professional design -->
+          <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <div style="width: 48px; height: 48px; min-width: 48px; background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1)); border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; color: white; font-size: 18px; margin-right: 16px; box-shadow: 0 3px 8px rgba(0,0,0,0.12), inset 0 1px 1px rgba(255,255,255,0.15);">
+              ${stakeholder.name ? stakeholder.name.split(' ').map(part => part.charAt(0)).slice(0, 2).join('').toUpperCase() : '?'}
+            </div>
+            
+            <!-- Name and title with enhanced typography -->
+            <div>
+              <h3 style="margin: 0; color: white; font-weight: 600; font-size: 18px; line-height: 1.3; letter-spacing: 0.2px; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">${stakeholder.name || "Unknown Stakeholder"}</h3>
+              ${
+                connection
+                  ? `<p style="margin: 4px 0 0; color: rgba(255, 255, 255, 0.9); font-weight: 500; font-size: 14px; display: flex; align-items: center;">
+                      <span style="display: inline-block; width: 8px; height: 8px; background: rgba(255,255,255,0.6); border-radius: 50%; margin-right: 6px;"></span>
+                      ${connection.role || "Stakeholder"}
+                    </p>`
+                  : `<p style="margin: 4px 0 0; color: rgba(255, 255, 255, 0.9); font-weight: 500; font-size: 14px; display: flex; align-items: center;">
+                      <span style="display: inline-block; width: 8px; height: 8px; background: rgba(255,255,255,0.6); border-radius: 50%; margin-right: 6px;"></span>
+                      Stakeholder
+                    </p>`
+              }
+            </div>
+          </div>
+        </div>
+        
+        <!-- Content area with clean layout -->
+        <div style="padding: 16px 20px; background: white;">
+          <!-- Location with icon -->
+          ${stakeholder.locationName ? 
+            `<div style="display: flex; align-items: center; margin-bottom: 12px;">
+              <div style="min-width: 22px; width: 22px; height: 22px; background: rgba(59, 130, 246, 0.08); border-radius: 50%; color: #3B82F6; display: flex; align-items: center; justify-content: center; margin-right: 10px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+              </div>
+              <p style="margin: 0; color: #4B5563; font-size: 14px; flex: 1; font-weight: 400;">${stakeholder.locationName}</p>
+            </div>` : ""
+          }
+          
+          <!-- Email with icon -->
+          ${stakeholder.email ? 
+            `<div style="display: flex; align-items: center; margin-bottom: 12px;">
+              <div style="min-width: 22px; width: 22px; height: 22px; background: rgba(59, 130, 246, 0.08); border-radius: 50%; color: #3B82F6; display: flex; align-items: center; justify-content: center; margin-right: 10px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+              </div>
+              <p style="margin: 0; color: #4B5563; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis;">
+                <a href="mailto:${stakeholder.email}" style="color: #4F46E5; text-decoration: none; font-weight: 400;">${stakeholder.email}</a>
+              </p>
+            </div>` : ""
+          }
+          
+          <!-- Phone with icon -->
+          ${stakeholder.phoneNumber ? 
+            `<div style="display: flex; align-items: center; margin-bottom: ${connection ? '12px' : '0px'};">
+              <div style="min-width: 22px; width: 22px; height: 22px; background: rgba(59, 130, 246, 0.08); border-radius: 50%; color: #3B82F6; display: flex; align-items: center; justify-content: center; margin-right: 10px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+              </div>
+              <p style="margin: 0; color: #4B5563; font-size: 14px; flex: 1;">
+                <a href="tel:${stakeholder.phoneNumber}" style="color: #4F46E5; text-decoration: none; font-weight: 400;">${stakeholder.phoneNumber}</a>
+              </p>
+            </div>` : ""
+          }
+          
+          <!-- Connection details in a elegant card-like section -->
+          ${connection ? 
+            `<div style="margin-top: ${stakeholder.email || stakeholder.phoneNumber || stakeholder.locationName ? '16px' : '0'}; padding: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 13px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${connection.dateJoined ? '8px' : '0px'};">
+                <span style="color: #64748B; font-weight: 500;">Status</span>
+                <span style="color: ${getStatusColor(connection.status)}; font-weight: 600; background: ${getStatusColor(connection.status)}15; padding: 3px 10px; border-radius: 20px; font-size: 12px; letter-spacing: 0.2px;">
+                  ${connection.status || "Unknown"}
+                </span>
+              </div>
+              ${connection.dateJoined ? 
+                `<div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="color: #64748B; font-weight: 500;">Joined</span>
+                  <span style="color: #334155; font-weight: 500; font-size: 12px;">${new Date(connection.dateJoined).toLocaleDateString(undefined, {year: 'numeric', month: 'short', day: 'numeric'})}</span>
+                </div>` : ""
+              }
+            </div>` : ""
+          }
+          
+          <!-- Enhanced footer with professional action buttons -->
+          <div style="margin-top: ${(connection || stakeholder.phoneNumber || stakeholder.email || stakeholder.locationName) ? '18px' : '12px'}; padding: 16px 0 12px; border-top: 1px solid #F1F5F9; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <button onclick="window.open('${stakeholder.website || '#'}')" 
+                style="background: #F1F5F9; color: #4B5563; border: none; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s ease; margin-right: 8px; ${!stakeholder.website ? 'opacity: 0.5; pointer-events: none;' : ''}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="2" y1="12" x2="22" y2="12"></line>
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                </svg>
+                Website
+              </button>
+            </div>
+            <button onclick="map.flyTo({center: [${stakeholder.locationLng}, ${stakeholder.locationLat}], zoom: 16, essential: true})" 
+              style="background: #4F46E5; color: white; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2); transition: all 0.2s ease; background-image: linear-gradient(135deg, #4F46E5, #6366F1);">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+              </svg>
+              Center on Map
+            </button>
+          </div>
+        </div>
       </div>
     `);
 
       try {
-        // Parse coordinates if they're stored as strings
-        const lng =
-          typeof stakeholder.locationLng === "string"
-            ? parseFloat(stakeholder.locationLng)
-            : stakeholder.locationLng;
-
-        const lat =
-          typeof stakeholder.locationLat === "string"
-            ? parseFloat(stakeholder.locationLat)
-            : stakeholder.locationLat;
+        // Parse coordinates correctly - ensure we have numeric values
+        let lng = stakeholder.locationLng;
+        let lat = stakeholder.locationLat;
+        
+        // Convert to numbers if they're strings
+        if (typeof lng === "string") lng = parseFloat(lng);
+        if (typeof lat === "string") lat = parseFloat(lat);
+        
+        // Debug coordinates
+        console.log(`Processing stakeholder ${stakeholder.id} coordinates:`, {
+          originalLng: stakeholder.locationLng,
+          originalLat: stakeholder.locationLat,
+          parsedLng: lng,
+          parsedLat: lat
+        });
 
         if (
           isNaN(lng) ||
@@ -403,14 +575,141 @@ export default function Startupmap({
           return;
         }
 
-        // Add marker to the map
+        console.log(`Adding marker at coordinates [${lng}, ${lat}] for stakeholder ${stakeholder.id}`);
+        
+        // Ensure the coordinates are in the correct order: [longitude, latitude]
+        // MapboxGL requires this specific order
+        const coordinates = [lng, lat];
+        
+        // Create a container for the marker to ensure proper z-index and positioning
+        const markerContainer = document.createElement("div");
+        markerContainer.className = "marker-container";
+        markerContainer.classList.add(isActive ? "active" : "");
+        markerContainer.style.zIndex = isActive ? "99999" : "9999";
+        // Don't set position absolute - this is what's causing the movement to top-left
+        markerContainer.style.pointerEvents = "all";
+        markerContainer.style.willChange = "transform";
+        markerContainer.style.cursor = "pointer";
+        markerContainer.style.transition = "transform 0.2s ease-out, z-index 0.1s";
+        markerContainer.appendChild(el);
+        
+        // Add hover effect to the container - fix the transform to not affect positioning
+        markerContainer.addEventListener('mouseenter', () => {
+          // Use scale on the inner element to avoid position shifts
+          el.style.transform = 'translate(-50%, -50%) scale(1.05) translateZ(0)';
+          markerContainer.style.zIndex = "99999";
+        });
+        
+        markerContainer.addEventListener('mouseleave', () => {
+          // Restore original transform
+          el.style.transform = 'translate(-50%, -50%) translateZ(0)';
+          markerContainer.style.zIndex = isActive ? "99999" : "9999";
+        });
+
+        // Add marker to the map with improved configuration
         const marker = new mapboxgl.Marker({
-          element: el,
+          element: markerContainer,
           anchor: "center",
+          // Increase the priority of the marker and fix positioning
+          pitchAlignment: 'map', // Keep marker flat against the map
+          rotation: 0, // Keep marker oriented upright
+          rotationAlignment: 'viewport', // Align marker to viewport for better visibility
+          offset: [0, 0], // No offset to prevent position shifting
+          draggable: false, // Not draggable for stability
         })
-          .setLngLat([lng, lat])
+          .setLngLat(coordinates)
           .setPopup(popup)
           .addTo(map);
+        
+        // Store original lngLat to restore position if needed
+        marker._originalLngLat = coordinates;
+        
+        // Fix position monitoring - restore if position is lost
+        const checkAndRestorePosition = () => {
+          const currentCoords = marker.getLngLat();
+          // If position is invalid or changed unexpectedly, restore it
+          if (!currentCoords || 
+              (Math.abs(currentCoords.lng - coordinates[0]) > 0.0001) || 
+              (Math.abs(currentCoords.lat - coordinates[1]) > 0.0001)) {
+            console.log("Restoring marker position for stakeholder", stakeholder.id);
+            marker.setLngLat(coordinates);
+          }
+        };
+        
+        // Monitor map events to ensure marker stays in position
+        map.on('move', checkAndRestorePosition);
+        map.on('zoom', checkAndRestorePosition);
+        
+        // If this is the active stakeholder, open the popup automatically for better visibility
+        if (isActive) {
+          marker.togglePopup(); // Show popup for active stakeholder
+          
+          // Ensure the popup is visible and properly positioned
+          setTimeout(() => {
+            const popupEl = document.querySelector('.stakeholder-popup');
+            if (popupEl) {
+              popupEl.style.zIndex = "100000";
+            }
+          }, 100);
+        }
+
+        // Add click event to the marker for highlighting
+        markerContainer.addEventListener('click', (e) => {
+          e.stopPropagation(); // Prevent event bubbling
+          e.preventDefault(); // Prevent default behavior
+          console.log(`Marker clicked for stakeholder ${stakeholder.id}`);
+          
+          // Ensure this marker appears on top of everything when clicked
+          markerContainer.style.zIndex = "99999";
+          markerContainer.classList.add("active");
+          
+          // Handle highlighting - first remove highlight from all markers
+          setActiveStakeholderId(stakeholder.id);
+          
+          // If using Sidebar, also notify it about the highlighted stakeholder
+          if (onHighlightStakeholder && typeof onHighlightStakeholder === 'function') {
+            try {
+              // This will call back to the Sidebar component if it's registered for notifications
+              highlightStakeholder(stakeholder.id);
+            } catch (error) {
+              console.error("Error notifying highlight stakeholder:", error);
+            }
+          }
+          
+          // Center the map on the marker to ensure visibility - smoother animation
+          map.flyTo({
+            center: coordinates,
+            zoom: Math.max(map.getZoom(), 14.5),
+            essential: true,
+            speed: 0.8, // Slightly slower for better UX
+            curve: 1.2, // Smoother curve
+            padding: {top: 100, bottom: 100, left: 100, right: 100} // Add padding to avoid popup being cut off
+          });
+          
+          // Show popup immediately for better UX
+          marker.togglePopup();
+          
+          // Apply enhanced styling to popup
+          const popupElement = document.querySelector('.stakeholder-popup');
+          if (popupElement) {
+            popupElement.style.zIndex = "100000";
+          }
+          
+          // Don't re-render all markers as this is causing the positioning issue
+          // Instead, apply active styles directly to this marker
+          el.style.width = "56px";
+          el.style.height = "56px";
+          el.style.border = "3px solid rgba(251, 191, 36, 0.9)";
+          el.style.boxShadow = "0 0 15px rgba(251, 191, 36, 0.6), 0 0 30px rgba(37, 99, 235, 0.5), 0 6px 12px rgba(0, 0, 0, 0.25)";
+          el.style.background = "linear-gradient(135deg, #3B82F6, #1E40AF)";
+          el.style.animation = "highlight-pulse 2s infinite ease-in-out, float 2s infinite alternate ease-in-out";
+          
+          // Update text size if using initials
+          const textElement = el.querySelector('div > div');
+          if (textElement && initials) {
+            textElement.style.fontSize = "18px";
+          }
+        });
 
         window.stakeholderMarkersArray = window.stakeholderMarkersArray || [];
         window.stakeholderMarkersArray.push(marker);
@@ -421,10 +720,91 @@ export default function Startupmap({
         );
       }
     });
+    
+    console.log("Finished rendering stakeholder markers, count:", window.stakeholderMarkersArray?.length);
   };
+
+  const highlightStakeholder = useCallback((stakeholderId) => {
+    console.log("Highlighting stakeholder:", stakeholderId);
+    
+    // Update the active stakeholder ID
+    setActiveStakeholderId(stakeholderId);
+    
+    // Re-render markers to reflect the highlighted state
+    if (mapInstanceRef.current) {
+      // First, find the stakeholder in the markers array to ensure it exists
+      const stakeholder = stakeholderMarkers.find(s => s.id === stakeholderId);
+      
+      if (stakeholder) {
+        console.log("Found stakeholder to highlight:", stakeholder.name);
+        
+        // Immediate render to make sure marker is visible before any map movement
+        renderStakeholderMarkers(mapInstanceRef.current, stakeholderMarkers);
+        
+        // Use multiple timeouts to ensure markers are consistently rendered during and after animations
+        const rerenderMarkers = () => {
+          console.log("Re-rendering stakeholder markers (timeout)");
+          if (mapInstanceRef.current) {
+            renderStakeholderMarkers(mapInstanceRef.current, stakeholderMarkers);
+          }
+        };
+        
+        // Add permanent map event listeners to ensure markers always reappear
+        if (!mapInstanceRef.current._stakeholderMarkersListener) {
+          // Add persistent event listeners for continuous visibility
+          mapInstanceRef.current.on('moveend', rerenderMarkers);
+          mapInstanceRef.current.on('zoomend', rerenderMarkers);
+          mapInstanceRef.current.on('render', () => {
+            // Check if markers are visible, if not re-render them
+            if (!window.stakeholderMarkersArray || window.stakeholderMarkersArray.length === 0) {
+              rerenderMarkers();
+            }
+          });
+          
+          // Flag to prevent adding multiple listeners
+          mapInstanceRef.current._stakeholderMarkersListener = true;
+        }
+        
+        // Schedule multiple redraws to ensure visibility during and after animations
+        setTimeout(rerenderMarkers, 100);
+        setTimeout(rerenderMarkers, 500);
+        setTimeout(rerenderMarkers, 1000);
+        setTimeout(rerenderMarkers, 2000); // Extended timeout for slower connections
+        
+        // Also add one-time event listeners for this specific movement
+        mapInstanceRef.current.once('moveend', () => {
+          console.log("Map movement ended, re-rendering stakeholder markers");
+          renderStakeholderMarkers(mapInstanceRef.current, stakeholderMarkers);
+          
+          // Additional render after a short delay to ensure markers appear after map settles
+          setTimeout(() => {
+            console.log("Final re-rendering after map movement");
+            renderStakeholderMarkers(mapInstanceRef.current, stakeholderMarkers);
+          }, 200);
+        });
+        
+        // Also listen for zoom changes
+        mapInstanceRef.current.once('zoomend', () => {
+          console.log("Map zoom ended, re-rendering stakeholder markers");
+          renderStakeholderMarkers(mapInstanceRef.current, stakeholderMarkers);
+        });
+      } else {
+        console.warn(`Stakeholder with ID ${stakeholderId} not found for highlighting`);
+      }
+    }
+  }, [stakeholderMarkers]);
+  
+  // Handle external highlight stakeholder requests
+  useEffect(() => {
+    if (onHighlightStakeholder && typeof onHighlightStakeholder === 'function') {
+      console.log("Setting up highlightStakeholder ref callback");
+      onHighlightStakeholder(highlightStakeholder);
+    }
+  }, [onHighlightStakeholder, highlightStakeholder]);
 
   const loadStakeholders = async (map) => {
     try {
+      console.log("Loading stakeholders...");
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/stakeholders`,
         { credentials: "include" }
@@ -434,10 +814,50 @@ export default function Startupmap({
         return [];
       }
       const stakeholders = await response.json();
+      console.log("Stakeholders loaded:", stakeholders.length);
+      
+      // Filter out stakeholders without location data and ensure coordinates are valid
+      const stakeholdersWithLocation = stakeholders.filter(stakeholder => {
+        // Check if location data exists
+        if (!stakeholder.locationLat || !stakeholder.locationLng) return false;
+        
+        // Parse coordinates if they're stored as strings
+        const lat = typeof stakeholder.locationLat === "string" ? parseFloat(stakeholder.locationLat) : stakeholder.locationLat;
+        const lng = typeof stakeholder.locationLng === "string" ? parseFloat(stakeholder.locationLng) : stakeholder.locationLng;
+        
+        // Validate coordinates are within valid ranges
+        return !isNaN(lat) && !isNaN(lng) && 
+               lat >= -90 && lat <= 90 && 
+               lng >= -180 && lng <= 180;
+      });
+      
+      console.log("Stakeholders with valid location data:", stakeholdersWithLocation.length);
+      stakeholdersWithLocation.forEach(s => {
+        console.log(`Stakeholder ${s.id} (${s.name}) has location: [${s.locationLng}, ${s.locationLat}]`);
+      });
+      
+      // Set all stakeholders for filtering purposes
       setStakeholderMarkers(stakeholders);
       setFilteredStakeholders(stakeholders);
 
-      renderStakeholderMarkers(map, stakeholders);
+      // Render only stakeholders with location data
+      console.log("Rendering stakeholders with location data...");
+      // Initial render of stakeholder markers
+      renderStakeholderMarkers(map, stakeholdersWithLocation);
+      
+      // Ensure markers are properly positioned when the map is fully loaded
+      map.once('idle', () => {
+        console.log("Map idle - re-rendering stakeholders to ensure proper positioning");
+        renderStakeholderMarkers(map, stakeholdersWithLocation);
+      });
+      
+      // Set a timeout to re-render markers after a moment, as a fallback
+      setTimeout(() => {
+        if (map) {
+          console.log("Re-rendering stakeholders after timeout");
+          renderStakeholderMarkers(map, stakeholdersWithLocation);
+        }
+      }, 1500);
 
       return stakeholders;
     } catch (error) {
@@ -1418,6 +1838,24 @@ export default function Startupmap({
       .addTo(map);
   };
 
+  const saveToSearchHistory = (query, result) => {
+    const newHistory = [
+      {
+        query,
+        result: result.name || result.text,
+        coordinates: result.center,
+        timestamp: new Date().toISOString(),
+        type: result.type || "place",
+      },
+      ...searchHistory.filter(
+        (item) => item.query !== query && searchHistory.length < 5
+      ),
+    ].slice(0, 5);
+
+    setSearchHistory(newHistory);
+    localStorage.setItem("mapSearchHistory", JSON.stringify(newHistory));
+  };
+
   useEffect(() => {
     const savedHistory = localStorage.getItem("mapSearchHistory");
     if (savedHistory) {
@@ -1897,11 +2335,35 @@ export default function Startupmap({
   }, []);
 
   useEffect(() => {
+    console.log("Initializing map and stakeholder display...");
+    
+    // Add global CSS for stakeholder markers to ensure they're always visible
+    if (!document.getElementById('stakeholder-marker-global-styles')) {
+      const style = document.createElement('style');
+      style.id = 'stakeholder-marker-global-styles';
+      style.innerHTML = `
+        .stakeholder-marker {
+          z-index: 1000 !important;
+          visibility: visible !important;
+          opacity: 1 !important;
+          pointer-events: all !important;
+        }
+        .mapboxgl-popup.stakeholder-popup {
+          z-index: 1001 !important;
+        }
+        .mapboxgl-popup.stakeholder-popup .mapboxgl-popup-content {
+          box-shadow: 0 3px 14px rgba(0,0,0,0.4) !important;
+          border: 1px solid rgba(0,0,0,0.1) !important;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v12", // Changed to streets style for better landmark visibility
       center: [123.8854, 10.3157], // Cebu City coordinates
-      zoom: 18, // Adjusted zoom level
+      zoom: 16, // Lowered zoom level for better overview
       pitch: 55, // Adjusted pitch to match image
       bearing: 15, // Slight bearing to match image perspective
       antialias: true, // Smoother edges for 3D buildings
@@ -1930,6 +2392,37 @@ export default function Startupmap({
 
     // Add 3D terrain and buildings
     map.on("load", () => {
+      console.log("Map loaded, loading markers...");
+      
+      // Load stakeholders first to ensure they're displayed
+      loadStakeholders(map).then(() => {
+        console.log("Stakeholders loaded, ensuring visibility...");
+        
+        // Set up render event listener to ensure markers remain visible
+        map.on('render', () => {
+          if (window.stakeholderMarkersArray && 
+              window.stakeholderMarkersArray.length > 0 && 
+              !map._checkingStakeholderVisibility) {
+            
+            // Prevent multiple simultaneous checks
+            map._checkingStakeholderVisibility = true;
+            
+            // Check if any marker elements are not in DOM
+            const needsRedraw = window.stakeholderMarkersArray.some(marker => {
+              const el = marker.getElement();
+              return !document.body.contains(el);
+            });
+            
+            if (needsRedraw) {
+              console.log("Some stakeholder markers not visible, redrawing...");
+              renderStakeholderMarkers(map, stakeholderMarkers);
+            }
+            
+            map._checkingStakeholderVisibility = false;
+          }
+        });
+      });
+      
       // Add terrain source
       map.addSource("mapbox-dem", {
         type: "raster-dem",
@@ -1983,7 +2476,12 @@ export default function Startupmap({
       // Load markers after 3D is set up
       loadStartupMarkers(map);
       // loadInvestorMarkers(map); // removed
-      loadStakeholders(map);
+      
+      // Add a slight delay to ensure stakeholders load after map is fully ready
+      console.log("Map ready, loading stakeholders with delay...");
+      setTimeout(() => {
+        loadStakeholders(map);
+      }, 500);
 
       // Load stakeholder connections (associations)
       loadStakeholderConnections(map);
@@ -2239,18 +2737,18 @@ export default function Startupmap({
   };
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden map-container-relative">
       <div
         ref={mapContainerRef}
-        className="fixed top-0 left-0 w-full h-full z-0"
+        className="fixed top-0 left-0 w-full h-full z-0 marker-container"
         style={{ width: "100%", height: "100%" }}
       />
       <SearchComponent />
-      <IndustryFilterComponent />
 
       {/* 3D Toggle Button */}
       <button
         onClick={toggle3DView}
+
         className="absolute bottom-4 left-4 bg-white bg-opacity-90 backdrop-blur-sm px-3 py-2 rounded-md shadow-md z-10 flex items-center gap-1 text-sm font-medium text-gray-700 hover:bg-white transition duration-200"
       >
         {is3DActive ? (
