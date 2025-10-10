@@ -7,46 +7,70 @@ export default function DashboardVerification({ setVerificationModal, startupId,
   const [isSendingCode, setIsSendingCode] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
 
-  const handleVerify = async () => {
-    setIsVerifying(true);
-    if (!verificationCode) {
-      toast.error("Please enter the verification code.");
-      setError("Please enter the verification code.");
-      setIsVerifying(false);
-      return;
-    }
+const handleVerify = async () => {
+  setIsVerifying(true);
+  if (!verificationCode) {
+    toast.error("Please enter the verification code.");
+    setError("Please enter the verification code.");
+    setIsVerifying(false);
+    return;
+  }
+  if (!startupId || !contactEmail) {
+    toast.error("Startup ID or email is missing.");
+    setError("Startup ID or email is missing.");
+    setIsVerifying(false);
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
+    toast.error("Invalid email format.");
+    setError("Invalid email format.");
+    setIsVerifying(false);
+    return;
+  }
 
-    try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/verify-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          startupId,
-          email: contactEmail,
-          code: verificationCode,
-        }),
-        credentials: "include",
-      });
+  try {
+    console.log("Sending verification request:", {
+      startupId,
+      email: contactEmail,
+      code: verificationCode,
+    });
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/verify-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        startupId,
+        email: contactEmail,
+        code: verificationCode,
+      }),
+      credentials: "include",
+    });
 
-      if (response.ok) {
-        toast.success("Email verified successfully!");
-        setVerificationModal(false);
-        onVerifySuccess(startupId); // Call the callback to update the dashboard
-      } else {
+    if (response.ok) {
+      toast.success("Email verified successfully!");
+      setVerificationModal(false);
+      onVerifySuccess(startupId);
+    } else {
+      let errorMessage = "Invalid code";
+      try {
         const errorData = await response.json();
-        toast.error(`Verification failed: ${errorData.message || "Invalid code"}`);
-        setError(errorData.message || "Invalid code");
+        errorMessage = errorData.error || errorData.message || "Invalid code";
+      } catch (e) {
+        const text = await response.text();
+        errorMessage = text || "Verification failed: Server error";
       }
-    } catch (error) {
-      console.error("Error verifying email:", error);
-      toast.error("An error occurred while verifying the email.");
-      setError("An error occurred while verifying the email.");
-    } finally {
-      setIsVerifying(false);
+      toast.error(`Verification failed: ${errorMessage}`);
+      setError(errorMessage);
     }
-  };
+  } catch (error) {
+    console.error("Error verifying email:", error);
+    toast.error("An error occurred while verifying the email.");
+    setError("An error occurred while verifying the email.");
+  } finally {
+    setIsVerifying(false);
+  }
+};
 
   const handleSendCode = async () => {
     setIsSendingCode(true);

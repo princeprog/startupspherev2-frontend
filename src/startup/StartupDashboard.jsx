@@ -988,12 +988,19 @@ export default function StartupDashboard({ openAddMethodModal }) {
     },
   };
 
-  const handleVerifyNow = (id, email) => {
-    setSelectedStartupId(id);
-    setSelectedContactEmail(email);
-    setVerificationModal(true);
-    /*handleSendCode(id, email);*/
-  };
+const handleVerifyNow = (id, email) => {
+  if (!id || !email) {
+    toast.error("Cannot verify: Missing startup ID or email.");
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    toast.error("Cannot verify: Invalid email format.");
+    return;
+  }
+  setSelectedStartupId(id);
+  setSelectedContactEmail(email);
+  setVerificationModal(true);
+};
 
   const handleVerifySuccess = (verifiedStartupId) => {
   // Update the startups array to set emailVerified to true for the verified startup
@@ -1461,16 +1468,16 @@ export default function StartupDashboard({ openAddMethodModal }) {
                           Verified
                         </span>
                       ) : (
-                        <button
-                          className="btn btn-sm btn-outline border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white transition-colors duration-200"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleVerifyNow(st.id, st.contactEmail);
-                          }}
-                          disabled={submitting}
-                        >
-                          Verify Now
-                        </button>
+                    <button
+                      className="btn btn-sm btn-outline border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white transition-colors duration-200"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleVerifyNow(st.id, st.contactEmail);
+                      }}
+                      disabled={submitting || !st.contactEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(st.contactEmail)}
+                    >
+                      Verify Now
+                    </button>
                       )}
                     </td>
                     <td onClick={(e) => e.stopPropagation()}>
