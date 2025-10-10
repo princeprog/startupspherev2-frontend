@@ -19,6 +19,13 @@ import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
 import "../App.css";
 
+// Preload stakeholder icon image for better rendering
+const preloadStakeholderIcon = () => {
+  const img = new Image();
+  img.src = `${window.location.origin}/stakeholder-icon.png`;
+  return img;
+};
+
 mapboxgl.accessToken =
   "pk.eyJ1IjoiYWxwcmluY2VsbGF2YW4iLCJhIjoiY204djkydXNoMGZsdjJvc2RnN3B5NTdxZCJ9.wGaWS8KJXPBYUzpXh91Dww";
 
@@ -55,6 +62,17 @@ export default function Startupmap({
   const [connectionLines, setConnectionLines] = useState([]);
   const [stakeholderMarkers, setStakeholderMarkers] = useState([]);
   const [filteredStakeholders, setFilteredStakeholders] = useState([]);
+  const stakeholderPopupRef = useRef(null);
+  // Store the preloaded stakeholder icon image
+  const stakeholderIconRef = useRef(null);
+
+  // Preload the stakeholder icon as soon as component mounts
+  useEffect(() => {
+    console.log("Preloading stakeholder icon...");
+    stakeholderIconRef.current = preloadStakeholderIcon();
+    stakeholderIconRef.current.onload = () => console.log("Stakeholder icon preloaded successfully");
+    stakeholderIconRef.current.onerror = (e) => console.error("Failed to preload stakeholder icon:", e);
+  }, []);
 
   // Modify loadStartupMarkers to remove industry filtering
   const loadStartupMarkers = async (map) => {
@@ -69,730 +87,100 @@ export default function Startupmap({
       setStartupMarkers(startups);
       setFilteredStartups(startups);
 
-      // Render all startup markers (no filtering)
-      renderStartupMarkers(map, startups);
-
+      // Render startup points using a symbol layer if valid coords exist
+      const startupsWithLocation = (startups || []).filter((s) => {
+        if (s.locationLat == null || s.locationLng == null) return false;
+        const lat = typeof s.locationLat === "string" ? parseFloat(s.locationLat) : s.locationLat;
+        const lng = typeof s.locationLng === "string" ? parseFloat(s.locationLng) : s.locationLng;
+        return !isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+      });
+      const mapRef = mapInstanceRef.current || map;
+      if (mapRef && startupsWithLocation.length) {
+        renderStartupMarkers(mapRef, startupsWithLocation);
+      }
       return startups;
     } catch (error) {
       console.error("Failed to load startups:", error);
       return [];
     }
   };
+  /*
 
-  const renderStartupMarkers = (map, startups) => {
-    // Clear existing markers if needed
-    if (window.startupMarkersArray) {
-      window.startupMarkersArray.forEach((marker) => marker.remove());
-    }
-    window.startupMarkersArray = [];
+  */
+  const highlightStakeholder = useCallback(
+    (stakeholderId) => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
 
-    startups.forEach((startup) => {
-      if (
-        typeof startup.locationLng === "number" &&
-        typeof startup.locationLat === "number" &&
-        startup.locationLat >= -90 &&
-        startup.locationLat <= 90 &&
-        startup.locationLng >= -180 &&
-        startup.locationLng <= 180
-      ) {
-        // Create a DOM element for the marker
-        const el = document.createElement("div");
-        el.className = "marker-3d";
-        el.style.width = "40px"; // Increased width
-        el.style.height = "40px"; // Increased height
-        el.style.backgroundImage = `url(/location.png)`; // Use relative URL
-        el.style.backgroundSize = "cover";
-        el.style.borderRadius = "50%";
-        el.style.cursor = "pointer";
+      const prevId = activeStakeholderId;
+      setActiveStakeholderId(stakeholderId);
 
-        // Add 3D marker effect using CSS transform
-        el.style.transform = "translate(-50%, -50%)";
-        el.style.willChange = "transform";
-
-        // Create a popup
-        const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(
-          `<div style="color: black; font-family: Arial, sans-serif;">
-            <h3 style="margin: 0; color: black;">${startup.companyName}</h3>
-            <p style="margin: 0; color: black;">${startup.locationName}</p>
-          </div>`
-        );
-
-        // Add marker to the map
-        const marker = new mapboxgl.Marker({
-          element: el,
-          anchor: "bottom",
-        })
-          .setLngLat([startup.locationLng, startup.locationLat])
-          .setPopup(popup)
-          .addTo(map);
-
-        window.startupMarkersArray = window.startupMarkersArray || [];
-        window.startupMarkersArray.push(marker);
-      } else {
-        console.warn(
-          `Invalid location for startup: ${startup.companyName}`,
-          startup
-        );
-      }
-    });
-  };
-
-  // Add this function near the top of your component
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case "active":
-        return "#10B981"; // Green
-      case "pending":
-        return "#F59E0B"; // Amber
-      case "declined":
-        return "#EF4444"; // Red
-      default:
-        return "#6B7280"; // Gray for unknown status
-    }
-  };
-
-  // Enhanced renderStakeholderMarkers function with better visibility
-  const renderStakeholderMarkers = (map, items) => {
-    console.log("Rendering stakeholder markers, count:", items?.length);
-    
-    // Clear existing stakeholder markers if needed
-    if (window.stakeholderMarkersArray && Array.isArray(window.stakeholderMarkersArray)) {
-      console.log("Removing existing stakeholder markers:", window.stakeholderMarkersArray.length);
-      window.stakeholderMarkersArray.forEach((marker) => {
-        if (marker && typeof marker.remove === 'function') {
-          marker.remove();
-        }
-      });
-    }
-    window.stakeholderMarkersArray = [];
-
-    // Keep track of stakeholders we've already rendered to avoid duplicates
-    const renderedStakeholderIds = new Set();
-
-    // Process each item - could be a connection object or a stakeholder directly
-    items?.forEach((item) => {
-      // Determine if we're dealing with a connection or direct stakeholder
-      const stakeholder = item.stakeholder || item;
-      const connection = item.stakeholder ? item : null;
-
-      if (!stakeholder || !stakeholder.id) {  
-        console.warn("Invalid stakeholder data:", item);
-        return;
-      }
-
-      // Skip if already rendered or missing location data
-      if (
-        renderedStakeholderIds.has(stakeholder.id) ||
-        !stakeholder.locationLat ||
-        !stakeholder.locationLng
-      ) {
-        if (!stakeholder.locationLat || !stakeholder.locationLng) {
-          console.log(`Skipping stakeholder ${stakeholder.id} (${stakeholder.name}) - missing location data`);
-        }
-        return;
-      }
-
-      renderedStakeholderIds.add(stakeholder.id);
-      console.log(`Adding marker for stakeholder ${stakeholder.id} (${stakeholder.name})`);
-
-      // Create a DOM element for the stakeholder marker
-      const el = document.createElement("div");
-      el.className = "stakeholder-marker";
-      el.setAttribute("data-stakeholder-id", stakeholder.id); // Add data attribute for easy identification
-      
-      // Check if this stakeholder is active/selected
-      const isActive = stakeholder.id === activeStakeholderId;
-      console.log(`Stakeholder ${stakeholder.id} active status:`, isActive);
-      
-      // Enhanced size for professional look
-      el.style.width = isActive ? "56px" : "44px";
-      el.style.height = isActive ? "56px" : "44px";
-      
-      // Create a more elegant gradient background with subtle shine effect
-      const gradientColor = isActive 
-        ? "linear-gradient(135deg, #3B82F6, #1E40AF)" 
-        : "linear-gradient(135deg, #4F46E5 10%, #3730A3 100%)";
-      el.style.background = gradientColor;
-      
-      el.style.borderRadius = "50%";
-      el.style.border = isActive 
-        ? "3px solid rgba(251, 191, 36, 0.9)" 
-        : "2px solid rgba(255, 255, 255, 0.9)";
-      el.style.backdropFilter = "blur(5px)"; // Subtle glass effect
-      el.style.cursor = "pointer";
-      el.style.display = "flex";
-      el.style.alignItems = "center";
-      el.style.justifyContent = "center";
-      el.style.zIndex = isActive ? 99999 : 9999;
-      el.style.willChange = "transform"; // Optimize performance
-      el.style.pointerEvents = "all"; // Ensure marker captures pointer events
-      el.style.position = "relative"; // Ensure proper stacking context
-      
-      // Add more professional user icon with initials if available
-      const iconDiv = document.createElement("div");
-      iconDiv.style.display = "flex";
-      iconDiv.style.alignItems = "center";
-      iconDiv.style.justifyContent = "center";
-      iconDiv.style.width = "100%";
-      iconDiv.style.height = "100%";
-      iconDiv.style.position = "relative";
-      
-      // Inner circle for visual enhancement
-      const innerCircle = document.createElement("div");
-      innerCircle.style.position = "absolute";
-      innerCircle.style.width = isActive ? "70%" : "75%";
-      innerCircle.style.height = isActive ? "70%" : "75%";
-      innerCircle.style.borderRadius = "50%";
-      innerCircle.style.background = "rgba(255, 255, 255, 0.15)";
-      iconDiv.appendChild(innerCircle);
-      
-      // Get initials from stakeholder name if available
-      let initials = "";
-      if (stakeholder.name) {
-        const nameParts = stakeholder.name.split(" ");
-        if (nameParts.length >= 2) {
-          initials = `${nameParts[0].charAt(0)}${nameParts[nameParts.length-1].charAt(0)}`;
-        } else if (nameParts.length === 1) {
-          initials = nameParts[0].substring(0, 2);
-        }
-      }
-      
-      // If we have initials, show them, otherwise use icon
-      const textElement = document.createElement("div");
-      textElement.style.position = "relative";
-      textElement.style.zIndex = "2";
-      
-      if (initials) {
-        textElement.style.color = "white";
-        textElement.style.fontFamily = "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif";
-        textElement.style.fontSize = isActive ? "18px" : "15px";
-        textElement.style.fontWeight = "600";
-        textElement.style.letterSpacing = "0.5px";
-        textElement.style.textShadow = "0 1px 2px rgba(0, 0, 0, 0.1)";
-        textElement.textContent = initials.toUpperCase();
-      } else {
-        textElement.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${isActive ? '24' : '20'}" height="${isActive ? '24' : '20'}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>`;
-      }
-      iconDiv.appendChild(textElement);
-      el.appendChild(iconDiv);
-
-      // Refined subtle shadow for professional look
-      el.style.boxShadow = isActive 
-        ? "0 0 15px rgba(251, 191, 36, 0.6), 0 0 30px rgba(37, 99, 235, 0.5), 0 6px 12px rgba(0, 0, 0, 0.25)" 
-        : "0 0 10px rgba(79, 70, 229, 0.5), 0 4px 8px rgba(0, 0, 0, 0.2)";
-      
-      // Apply translate transform with hardware acceleration
-      el.style.transform = "translate(-50%, -50%) translateZ(0)";
-      
-      // Add refined animation keyframes for professional effects if they don't exist
-      if (!document.getElementById('stakeholder-marker-keyframes')) {
-        const style = document.createElement('style');
-        style.id = 'stakeholder-marker-keyframes';
-        style.innerHTML = `
-          @keyframes subtle-pulse {
-            0% { 
-              box-shadow: 0 0 10px rgba(79, 70, 229, 0.5), 0 4px 8px rgba(0, 0, 0, 0.2);
-              transform: translate(-50%, -50%) scale(1) translateZ(0);
-            }
-            50% { 
-              box-shadow: 0 0 15px rgba(79, 70, 229, 0.6), 0 5px 10px rgba(0, 0, 0, 0.25);
-              transform: translate(-50%, -50%) scale(1.03) translateZ(0);
-            }
-            100% { 
-              box-shadow: 0 0 10px rgba(79, 70, 229, 0.5), 0 4px 8px rgba(0, 0, 0, 0.2);
-              transform: translate(-50%, -50%) scale(1) translateZ(0);
-            }
-          }
-          @keyframes highlight-pulse {
-            0% { 
-              box-shadow: 0 0 15px rgba(251, 191, 36, 0.6), 0 0 30px rgba(37, 99, 235, 0.5), 0 6px 12px rgba(0, 0, 0, 0.25);
-              border-color: rgba(251, 191, 36, 0.85);
-            }
-            50% { 
-              box-shadow: 0 0 20px rgba(251, 191, 36, 0.8), 0 0 35px rgba(37, 99, 235, 0.6), 0 8px 16px rgba(0, 0, 0, 0.3);
-              border-color: rgba(251, 191, 36, 1);
-            }
-            100% { 
-              box-shadow: 0 0 15px rgba(251, 191, 36, 0.6), 0 0 30px rgba(37, 99, 235, 0.5), 0 6px 12px rgba(0, 0, 0, 0.25);
-              border-color: rgba(251, 191, 36, 0.85);
-            }
-          }
-          @keyframes float {
-            0% { transform: translate(-50%, -50%) translateY(0) translateZ(0); }
-            50% { transform: translate(-50%, -50%) translateY(-3px) translateZ(0); }
-            100% { transform: translate(-50%, -50%) translateY(0) translateZ(0); }
-          }
-          @keyframes popup-appear {
-            0% { opacity: 0; transform: translateY(10px) scale(0.95); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
-          }
-          /* Fixed marker positioning */
-          .mapboxgl-marker {
-            z-index: 9999 !important; 
-          }
-          
-          /* Apply fixed positioning to marker containers to prevent movement */
-          .marker-container {
-            position: relative !important;
-            z-index: 9999 !important;
-            transform: none !important;
-          }
-          
-          .marker-container.active {
-            z-index: 99999 !important;
-          }
-          
-          /* Professional popup styling */
-          .mapboxgl-popup.stakeholder-popup {
-            z-index: 100000 !important;
-          }
-          
-          .mapboxgl-popup.stakeholder-popup .mapboxgl-popup-content {
-            animation: popup-appear 0.25s ease-out forwards;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15), 0 5px 10px rgba(0, 0, 0, 0.08);
-            border-radius: 12px;
-            border: 1px solid rgba(226, 232, 240, 0.9);
-            overflow: hidden;
-            padding: 0;
-            max-width: 340px;
-          }
-          
-          /* Improved popup tip styling */
-          .mapboxgl-popup.stakeholder-popup .mapboxgl-popup-tip {
-            border-top-color: #fff;
-            border-bottom-color: #4338CA;
-            filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07));
-          }
-          
-          .mapboxgl-popup.stakeholder-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
-            border-bottom-color: #4338CA;
-          }
-          
-          .mapboxgl-popup.stakeholder-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
-            border-top-color: #fff;
-          }
-          
-          /* Professional close button */
-          .mapboxgl-popup.stakeholder-popup .mapboxgl-popup-close-button {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            font-size: 18px;
-            color: rgba(255, 255, 255, 0.8);
-            padding: 3px 8px;
-            background: rgba(0, 0, 0, 0.1);
-            border: none;
-            border-radius: 50%;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s ease;
-            z-index: 999;
-          }
-          
-          .mapboxgl-popup.stakeholder-popup .mapboxgl-popup-close-button:hover {
-            color: #fff;
-            background: rgba(0, 0, 0, 0.25);
-            transform: scale(1.1);
-          }
-        `;
-        document.head.appendChild(style);
-      }
-      
-      // Add refined animations for professional look
-      if (!isActive) {
-        el.style.animation = "subtle-pulse 3s infinite ease-in-out";
-      } else {
-        // Add a combination of highlight and float for the active marker
-        el.style.animation = "highlight-pulse 2s infinite ease-in-out, float 2s infinite alternate ease-in-out";
-      }
-      
-      // Apply CSS to ensure marker stays above other elements
-      el.style.position = "relative"; // Helps with stacking context
-
-      // Create a popup with stakeholder information - enhanced professional design
-      const popup = new mapboxgl.Popup({ 
-        offset: 25,
-        closeButton: true,
-        closeOnClick: false,
-        className: 'stakeholder-popup',
-        maxWidth: '340px',
-        anchor: 'bottom'
-      }).setHTML(`
-      <div style="color: #1F2937; font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif; width: 100%; padding: 0; overflow: hidden; border-radius: 12px;">
-        <!-- Header with enhanced professional gradient background -->
-        <div style="background: linear-gradient(135deg, #4F46E5, #3B82F6); padding: 20px; position: relative; border-bottom: 1px solid rgba(255,255,255,0.1); box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
-          <!-- Floating badge for organization if available -->
-          ${stakeholder.organization ? 
-            `<div style="position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.15); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.2); border-radius: 30px; padding: 4px 12px; font-size: 12px; color: white; font-weight: 500; letter-spacing: 0.3px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-              ${stakeholder.organization}
-            </div>` : ``
-          }
-          
-          <!-- Stakeholder avatar with initials - enhanced professional design -->
-          <div style="display: flex; align-items: center; margin-bottom: 8px;">
-            <div style="width: 48px; height: 48px; min-width: 48px; background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(255,255,255,0.1)); border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; color: white; font-size: 18px; margin-right: 16px; box-shadow: 0 3px 8px rgba(0,0,0,0.12), inset 0 1px 1px rgba(255,255,255,0.15);">
-              ${stakeholder.name ? stakeholder.name.split(' ').map(part => part.charAt(0)).slice(0, 2).join('').toUpperCase() : '?'}
-            </div>
-            
-            <!-- Name and title with enhanced typography -->
-            <div>
-              <h3 style="margin: 0; color: white; font-weight: 600; font-size: 18px; line-height: 1.3; letter-spacing: 0.2px; text-shadow: 0 1px 2px rgba(0,0,0,0.1);">${stakeholder.name || "Unknown Stakeholder"}</h3>
-              ${
-                connection
-                  ? `<p style="margin: 4px 0 0; color: rgba(255, 255, 255, 0.9); font-weight: 500; font-size: 14px; display: flex; align-items: center;">
-                      <span style="display: inline-block; width: 8px; height: 8px; background: rgba(255,255,255,0.6); border-radius: 50%; margin-right: 6px;"></span>
-                      ${connection.role || "Stakeholder"}
-                    </p>`
-                  : `<p style="margin: 4px 0 0; color: rgba(255, 255, 255, 0.9); font-weight: 500; font-size: 14px; display: flex; align-items: center;">
-                      <span style="display: inline-block; width: 8px; height: 8px; background: rgba(255,255,255,0.6); border-radius: 50%; margin-right: 6px;"></span>
-                      Stakeholder
-                    </p>`
-              }
-            </div>
-          </div>
-        </div>
-        
-        <!-- Content area with clean layout -->
-        <div style="padding: 16px 20px; background: white;">
-          <!-- Location with icon -->
-          ${stakeholder.locationName ? 
-            `<div style="display: flex; align-items: center; margin-bottom: 12px;">
-              <div style="min-width: 22px; width: 22px; height: 22px; background: rgba(59, 130, 246, 0.08); border-radius: 50%; color: #3B82F6; display: flex; align-items: center; justify-content: center; margin-right: 10px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-              </div>
-              <p style="margin: 0; color: #4B5563; font-size: 14px; flex: 1; font-weight: 400;">${stakeholder.locationName}</p>
-            </div>` : ""
-          }
-          
-          <!-- Email with icon -->
-          ${stakeholder.email ? 
-            `<div style="display: flex; align-items: center; margin-bottom: 12px;">
-              <div style="min-width: 22px; width: 22px; height: 22px; background: rgba(59, 130, 246, 0.08); border-radius: 50%; color: #3B82F6; display: flex; align-items: center; justify-content: center; margin-right: 10px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-              </div>
-              <p style="margin: 0; color: #4B5563; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis;">
-                <a href="mailto:${stakeholder.email}" style="color: #4F46E5; text-decoration: none; font-weight: 400;">${stakeholder.email}</a>
-              </p>
-            </div>` : ""
-          }
-          
-          <!-- Phone with icon -->
-          ${stakeholder.phoneNumber ? 
-            `<div style="display: flex; align-items: center; margin-bottom: ${connection ? '12px' : '0px'};">
-              <div style="min-width: 22px; width: 22px; height: 22px; background: rgba(59, 130, 246, 0.08); border-radius: 50%; color: #3B82F6; display: flex; align-items: center; justify-content: center; margin-right: 10px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                </svg>
-              </div>
-              <p style="margin: 0; color: #4B5563; font-size: 14px; flex: 1;">
-                <a href="tel:${stakeholder.phoneNumber}" style="color: #4F46E5; text-decoration: none; font-weight: 400;">${stakeholder.phoneNumber}</a>
-              </p>
-            </div>` : ""
-          }
-          
-          <!-- Connection details in a elegant card-like section -->
-          ${connection ? 
-            `<div style="margin-top: ${stakeholder.email || stakeholder.phoneNumber || stakeholder.locationName ? '16px' : '0'}; padding: 12px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 13px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${connection.dateJoined ? '8px' : '0px'};">
-                <span style="color: #64748B; font-weight: 500;">Status</span>
-                <span style="color: ${getStatusColor(connection.status)}; font-weight: 600; background: ${getStatusColor(connection.status)}15; padding: 3px 10px; border-radius: 20px; font-size: 12px; letter-spacing: 0.2px;">
-                  ${connection.status || "Unknown"}
-                </span>
-              </div>
-              ${connection.dateJoined ? 
-                `<div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="color: #64748B; font-weight: 500;">Joined</span>
-                  <span style="color: #334155; font-weight: 500; font-size: 12px;">${new Date(connection.dateJoined).toLocaleDateString(undefined, {year: 'numeric', month: 'short', day: 'numeric'})}</span>
-                </div>` : ""
-              }
-            </div>` : ""
-          }
-          
-          <!-- Enhanced footer with professional action buttons -->
-          <div style="margin-top: ${(connection || stakeholder.phoneNumber || stakeholder.email || stakeholder.locationName) ? '18px' : '12px'}; padding: 16px 0 12px; border-top: 1px solid #F1F5F9; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-              <button onclick="window.open('${stakeholder.website || '#'}')" 
-                style="background: #F1F5F9; color: #4B5563; border: none; border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05); transition: all 0.2s ease; margin-right: 8px; ${!stakeholder.website ? 'opacity: 0.5; pointer-events: none;' : ''}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 5px;">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="2" y1="12" x2="22" y2="12"></line>
-                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                </svg>
-                Website
-              </button>
-            </div>
-            <button onclick="map.flyTo({center: [${stakeholder.locationLng}, ${stakeholder.locationLat}], zoom: 16, essential: true})" 
-              style="background: #4F46E5; color: white; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2); transition: all 0.2s ease; background-image: linear-gradient(135deg, #4F46E5, #6366F1);">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
-              </svg>
-              Center on Map
-            </button>
-          </div>
-        </div>
-      </div>
-    `);
-
+      // Update feature-state colors
       try {
-        // Parse coordinates correctly - ensure we have numeric values
-        let lng = stakeholder.locationLng;
-        let lat = stakeholder.locationLat;
-        
-        // Convert to numbers if they're strings
-        if (typeof lng === "string") lng = parseFloat(lng);
-        if (typeof lat === "string") lat = parseFloat(lat);
-        
-        // Debug coordinates
-        console.log(`Processing stakeholder ${stakeholder.id} coordinates:`, {
-          originalLng: stakeholder.locationLng,
-          originalLat: stakeholder.locationLat,
-          parsedLng: lng,
-          parsedLat: lat
-        });
-
-        if (
-          isNaN(lng) ||
-          isNaN(lat) ||
-          lng < -180 ||
-          lng > 180 ||
-          lat < -90 ||
-          lat > 90
-        ) {
-          console.warn(
-            `Invalid coordinates for stakeholder ${stakeholder.id}:`,
-            lng,
-            lat
+        if (prevId != null) {
+          map.setFeatureState(
+            { source: "stakeholders-src", id: prevId },
+            { selected: false }
           );
-          return;
         }
-
-        console.log(`Adding marker at coordinates [${lng}, ${lat}] for stakeholder ${stakeholder.id}`);
-        
-        // Ensure the coordinates are in the correct order: [longitude, latitude]
-        // MapboxGL requires this specific order
-        const coordinates = [lng, lat];
-        
-        // Create a container for the marker to ensure proper z-index and positioning
-        const markerContainer = document.createElement("div");
-        markerContainer.className = "marker-container";
-        markerContainer.classList.add(isActive ? "active" : "");
-        markerContainer.style.zIndex = isActive ? "99999" : "9999";
-        // Don't set position absolute - this is what's causing the movement to top-left
-        markerContainer.style.pointerEvents = "all";
-        markerContainer.style.willChange = "transform";
-        markerContainer.style.cursor = "pointer";
-        markerContainer.style.transition = "transform 0.2s ease-out, z-index 0.1s";
-        markerContainer.appendChild(el);
-        
-        // Add hover effect to the container - fix the transform to not affect positioning
-        markerContainer.addEventListener('mouseenter', () => {
-          // Use scale on the inner element to avoid position shifts
-          el.style.transform = 'translate(-50%, -50%) scale(1.05) translateZ(0)';
-          markerContainer.style.zIndex = "99999";
-        });
-        
-        markerContainer.addEventListener('mouseleave', () => {
-          // Restore original transform
-          el.style.transform = 'translate(-50%, -50%) translateZ(0)';
-          markerContainer.style.zIndex = isActive ? "99999" : "9999";
-        });
-
-        // Add marker to the map with improved configuration
-        const marker = new mapboxgl.Marker({
-          element: markerContainer,
-          anchor: "center",
-          // Increase the priority of the marker and fix positioning
-          pitchAlignment: 'map', // Keep marker flat against the map
-          rotation: 0, // Keep marker oriented upright
-          rotationAlignment: 'viewport', // Align marker to viewport for better visibility
-          offset: [0, 0], // No offset to prevent position shifting
-          draggable: false, // Not draggable for stability
-        })
-          .setLngLat(coordinates)
-          .setPopup(popup)
-          .addTo(map);
-        
-        // Store original lngLat to restore position if needed
-        marker._originalLngLat = coordinates;
-        
-        // Fix position monitoring - restore if position is lost
-        const checkAndRestorePosition = () => {
-          const currentCoords = marker.getLngLat();
-          // If position is invalid or changed unexpectedly, restore it
-          if (!currentCoords || 
-              (Math.abs(currentCoords.lng - coordinates[0]) > 0.0001) || 
-              (Math.abs(currentCoords.lat - coordinates[1]) > 0.0001)) {
-            console.log("Restoring marker position for stakeholder", stakeholder.id);
-            marker.setLngLat(coordinates);
-          }
-        };
-        
-        // Monitor map events to ensure marker stays in position
-        map.on('move', checkAndRestorePosition);
-        map.on('zoom', checkAndRestorePosition);
-        
-        // If this is the active stakeholder, open the popup automatically for better visibility
-        if (isActive) {
-          marker.togglePopup(); // Show popup for active stakeholder
-          
-          // Ensure the popup is visible and properly positioned
-          setTimeout(() => {
-            const popupEl = document.querySelector('.stakeholder-popup');
-            if (popupEl) {
-              popupEl.style.zIndex = "100000";
-            }
-          }, 100);
-        }
-
-        // Add click event to the marker for highlighting
-        markerContainer.addEventListener('click', (e) => {
-          e.stopPropagation(); // Prevent event bubbling
-          e.preventDefault(); // Prevent default behavior
-          console.log(`Marker clicked for stakeholder ${stakeholder.id}`);
-          
-          // Ensure this marker appears on top of everything when clicked
-          markerContainer.style.zIndex = "99999";
-          markerContainer.classList.add("active");
-          
-          // Handle highlighting - first remove highlight from all markers
-          setActiveStakeholderId(stakeholder.id);
-          
-          // If using Sidebar, also notify it about the highlighted stakeholder
-          if (onHighlightStakeholder && typeof onHighlightStakeholder === 'function') {
-            try {
-              // This will call back to the Sidebar component if it's registered for notifications
-              highlightStakeholder(stakeholder.id);
-            } catch (error) {
-              console.error("Error notifying highlight stakeholder:", error);
-            }
-          }
-          
-          // Center the map on the marker to ensure visibility - smoother animation
-          map.flyTo({
-            center: coordinates,
-            zoom: Math.max(map.getZoom(), 14.5),
-            essential: true,
-            speed: 0.8, // Slightly slower for better UX
-            curve: 1.2, // Smoother curve
-            padding: {top: 100, bottom: 100, left: 100, right: 100} // Add padding to avoid popup being cut off
-          });
-          
-          // Show popup immediately for better UX
-          marker.togglePopup();
-          
-          // Apply enhanced styling to popup
-          const popupElement = document.querySelector('.stakeholder-popup');
-          if (popupElement) {
-            popupElement.style.zIndex = "100000";
-          }
-          
-          // Don't re-render all markers as this is causing the positioning issue
-          // Instead, apply active styles directly to this marker
-          el.style.width = "56px";
-          el.style.height = "56px";
-          el.style.border = "3px solid rgba(251, 191, 36, 0.9)";
-          el.style.boxShadow = "0 0 15px rgba(251, 191, 36, 0.6), 0 0 30px rgba(37, 99, 235, 0.5), 0 6px 12px rgba(0, 0, 0, 0.25)";
-          el.style.background = "linear-gradient(135deg, #3B82F6, #1E40AF)";
-          el.style.animation = "highlight-pulse 2s infinite ease-in-out, float 2s infinite alternate ease-in-out";
-          
-          // Update text size if using initials
-          const textElement = el.querySelector('div > div');
-          if (textElement && initials) {
-            textElement.style.fontSize = "18px";
-          }
-        });
-
-        window.stakeholderMarkersArray = window.stakeholderMarkersArray || [];
-        window.stakeholderMarkersArray.push(marker);
-      } catch (error) {
-        console.error(
-          `Error adding marker for stakeholder ${stakeholder.id}:`,
-          error
+        map.setFeatureState(
+          { source: "stakeholders-src", id: stakeholderId },
+          { selected: true }
         );
-      }
-    });
-    
-    console.log("Finished rendering stakeholder markers, count:", window.stakeholderMarkersArray?.length);
-  };
+      } catch {}
 
-  const highlightStakeholder = useCallback((stakeholderId) => {
-    console.log("Highlighting stakeholder:", stakeholderId);
-    
-    // Update the active stakeholder ID
-    setActiveStakeholderId(stakeholderId);
-    
-    // Re-render markers to reflect the highlighted state
-    if (mapInstanceRef.current) {
-      // First, find the stakeholder in the markers array to ensure it exists
-      const stakeholder = stakeholderMarkers.find(s => s.id === stakeholderId);
-      
-      if (stakeholder) {
-        console.log("Found stakeholder to highlight:", stakeholder.name);
-        
-        // Immediate render to make sure marker is visible before any map movement
-        renderStakeholderMarkers(mapInstanceRef.current, stakeholderMarkers);
-        
-        // Use multiple timeouts to ensure markers are consistently rendered during and after animations
-        const rerenderMarkers = () => {
-          console.log("Re-rendering stakeholder markers (timeout)");
-          if (mapInstanceRef.current) {
-            renderStakeholderMarkers(mapInstanceRef.current, stakeholderMarkers);
-          }
-        };
-        
-        // Add permanent map event listeners to ensure markers always reappear
-        if (!mapInstanceRef.current._stakeholderMarkersListener) {
-          // Add persistent event listeners for continuous visibility
-          mapInstanceRef.current.on('moveend', rerenderMarkers);
-          mapInstanceRef.current.on('zoomend', rerenderMarkers);
-          mapInstanceRef.current.on('render', () => {
-            // Check if markers are visible, if not re-render them
-            if (!window.stakeholderMarkersArray || window.stakeholderMarkersArray.length === 0) {
-              rerenderMarkers();
-            }
-          });
-          
-          // Flag to prevent adding multiple listeners
-          mapInstanceRef.current._stakeholderMarkersListener = true;
-        }
-        
-        // Schedule multiple redraws to ensure visibility during and after animations
-        setTimeout(rerenderMarkers, 100);
-        setTimeout(rerenderMarkers, 500);
-        setTimeout(rerenderMarkers, 1000);
-        setTimeout(rerenderMarkers, 2000); // Extended timeout for slower connections
-        
-        // Also add one-time event listeners for this specific movement
-        mapInstanceRef.current.once('moveend', () => {
-          console.log("Map movement ended, re-rendering stakeholder markers");
-          renderStakeholderMarkers(mapInstanceRef.current, stakeholderMarkers);
-          
-          // Additional render after a short delay to ensure markers appear after map settles
-          setTimeout(() => {
-            console.log("Final re-rendering after map movement");
-            renderStakeholderMarkers(mapInstanceRef.current, stakeholderMarkers);
-          }, 200);
-        });
-        
-        // Also listen for zoom changes
-        mapInstanceRef.current.once('zoomend', () => {
-          console.log("Map zoom ended, re-rendering stakeholder markers");
-          renderStakeholderMarkers(mapInstanceRef.current, stakeholderMarkers);
-        });
-      } else {
-        console.warn(`Stakeholder with ID ${stakeholderId} not found for highlighting`);
+      // Update highlight circle filter
+      if (map.getLayer("stakeholders-highlight")) {
+        map.setFilter("stakeholders-highlight", [
+          "==",
+          ["get", "id"],
+          stakeholderId,
+        ]);
       }
-    }
-  }, [stakeholderMarkers]);
+
+      // Find data for popup and fly
+      const st = stakeholderMarkers.find((s) => s.id === stakeholderId);
+      if (st && st.locationLng != null && st.locationLat != null) {
+        const lng = typeof st.locationLng === "string" ? parseFloat(st.locationLng) : st.locationLng;
+        const lat = typeof st.locationLat === "string" ? parseFloat(st.locationLat) : st.locationLat;
+
+        // Fly to the stakeholder
+        map.flyTo({
+          center: [lng, lat],
+          zoom: Math.max(map.getZoom(), 14.5),
+          speed: 0.8,
+          curve: 1.2,
+          essential: true,
+          padding: { top: 100, bottom: 100, left: 100, right: 100 },
+        });
+
+        // Close previous popup
+        if (stakeholderPopupRef.current) {
+          stakeholderPopupRef.current.remove();
+          stakeholderPopupRef.current = null;
+        }
+
+        // Build a clean, professional popup
+        const html = `
+          <div style="font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif; color: #1F2937;">
+            <div style="background: linear-gradient(135deg, #4F46E5, #3B82F6); color: #fff; padding: 14px 16px; border-radius: 8px 8px 0 0;">
+              <div style="font-weight: 600; font-size: 16px;">${st.name || "Stakeholder"}</div>
+              ${st.organization ? `<div style="opacity: .9; font-size: 12px; margin-top: 2px;">${st.organization}</div>` : ""}
+            </div>
+            <div style="padding: 12px 16px; background: #fff;">
+              ${st.locationName ? `<div style=\"font-size: 13px; color: #4B5563; margin-bottom: 6px;\">${st.locationName}</div>` : ""}
+              ${st.email ? `<div style=\"font-size: 13px;\"><a href=\"mailto:${st.email}\" style=\"color:#4F46E5; text-decoration: none;\">${st.email}</a></div>` : ""}
+            </div>
+          </div>`;
+
+        stakeholderPopupRef.current = new mapboxgl.Popup({ offset: 12, closeButton: true, className: "stakeholder-popup" })
+          .setLngLat([lng, lat])
+          .setHTML(html)
+          .addTo(map);
+      }
+    },
+    [activeStakeholderId, stakeholderMarkers]
+  );
   
   // Handle external highlight stakeholder requests
   useEffect(() => {
@@ -840,24 +228,9 @@ export default function Startupmap({
       setStakeholderMarkers(stakeholders);
       setFilteredStakeholders(stakeholders);
 
-      // Render only stakeholders with location data
-      console.log("Rendering stakeholders with location data...");
-      // Initial render of stakeholder markers
+      // Render stakeholders using built-in icon layer
+      console.log("Rendering stakeholders with built-in icons...");
       renderStakeholderMarkers(map, stakeholdersWithLocation);
-      
-      // Ensure markers are properly positioned when the map is fully loaded
-      map.once('idle', () => {
-        console.log("Map idle - re-rendering stakeholders to ensure proper positioning");
-        renderStakeholderMarkers(map, stakeholdersWithLocation);
-      });
-      
-      // Set a timeout to re-render markers after a moment, as a fallback
-      setTimeout(() => {
-        if (map) {
-          console.log("Re-rendering stakeholders after timeout");
-          renderStakeholderMarkers(map, stakeholdersWithLocation);
-        }
-      }, 1500);
 
       return stakeholders;
     } catch (error) {
@@ -927,31 +300,630 @@ export default function Startupmap({
     });
   };
 
+  // Render stakeholders using a Mapbox symbol layer (no DOM markers)
+  const renderStakeholderMarkers = (map, stakeholdersWithLocation) => {
+    if (!map) return;
+
+    const sourceId = "stakeholders-src";
+    const symbolLayerId = "stakeholders-layer";
+    const highlightLayerId = "stakeholders-highlight";
+
+    // Build GeoJSON from stakeholders
+    const features = stakeholdersWithLocation.map((s) => {
+      const lat = typeof s.locationLat === "string" ? parseFloat(s.locationLat) : s.locationLat;
+      const lng = typeof s.locationLng === "string" ? parseFloat(s.locationLng) : s.locationLng;
+      return {
+        type: "Feature",
+        id: s.id,
+        properties: {
+          id: s.id,
+          name: s.name || "Stakeholder",
+          organization: s.organization || "",
+          email: s.email || "",
+          locationName: s.locationName || "",
+        },
+        geometry: { type: "Point", coordinates: [lng, lat] },
+      };
+    });
+
+    const data = { type: "FeatureCollection", features };
+
+    // Add or update source
+    if (map.getSource(sourceId)) {
+      const src = map.getSource(sourceId);
+      try { src.setData(data); } catch {}
+    } else {
+      map.addSource(sourceId, { type: "geojson", data });
+    }
+
+    // Ensure icon image is registered
+    const ensureIconAndLayers = () => {
+      // Add symbol layer
+      if (!map.getLayer(symbolLayerId)) {
+        map.addLayer({
+          id: symbolLayerId,
+          type: "symbol",
+          source: sourceId,
+          layout: {
+            "icon-image": "stakeholder-icon",
+            "icon-size": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              3, 0.11,  // Slightly bigger at low zoom
+              8, 0.15,  // Medium size at medium zoom
+              12, 0.19, // Improved visibility at higher zoom
+              16, 0.24  // More noticeable at highest zoom
+            ],
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": false,
+            "icon-anchor": "center",
+            "icon-pitch-alignment": "viewport",
+            "icon-rotation-alignment": "viewport",
+            // Enhanced shadow for professional appearance
+            "icon-halo-width": 1.2,
+            "icon-halo-color": "rgba(0, 0, 0, 0.2)",
+            "icon-halo-blur": 1.0
+          },
+        });
+      }
+
+      // Add subtle highlight circle layer for active
+      if (!map.getLayer(highlightLayerId)) {
+        map.addLayer({
+          id: highlightLayerId,
+          type: "circle",
+          source: sourceId,
+          filter: ["==", ["get", "id"], -1], // start with no match
+          paint: {
+            "circle-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              5, 4,
+              10, 7,
+              14, 10,
+              18, 12
+            ],
+            "circle-color": "#3b82f6",
+            "circle-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              10, 0.1,
+              15, 0.15
+            ],
+            "circle-stroke-color": "#3b82f6",
+            "circle-stroke-width": 2,
+            "circle-stroke-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              10, 0.4,
+              15, 0.6
+            ],
+            "circle-blur": 0.2,
+          },
+        });
+      }
+
+      // Add hover interactions once
+      if (!map.__stakeholderEventsAdded) {
+        map.__stakeholderEventsAdded = true;
+
+        map.on("mouseenter", symbolLayerId, (e) => {
+          map.getCanvas().style.cursor = "pointer";
+          if (!e.features?.length) return;
+          const id = e.features[0].id;
+          if (id != null) {
+            map.setFeatureState({ source: sourceId, id }, { hover: true });
+          }
+        });
+
+        map.on("mouseleave", symbolLayerId, (e) => {
+          map.getCanvas().style.cursor = "";
+          if (!e.features?.length) return;
+          const id = e.features[0].id;
+          if (id != null) {
+            map.setFeatureState({ source: sourceId, id }, { hover: false });
+          }
+        });
+
+        map.on("click", symbolLayerId, (e) => {
+          if (!e.features?.length) return;
+          const f = e.features[0];
+          const id = f.id;
+          const [lng, lat] = f.geometry.coordinates;
+
+          setActiveStakeholderId(id);
+          try {
+            map.setFeatureState({ source: sourceId, id }, { selected: true });
+            if (map.getLayer(highlightLayerId)) {
+              map.setFilter(highlightLayerId, ["==", ["get", "id"], id]);
+            }
+          } catch {}
+
+          // Fly and popup
+          map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 14.5), speed: 0.8, curve: 1.2, essential: true });
+
+          if (stakeholderPopupRef.current) {
+            stakeholderPopupRef.current.remove();
+            stakeholderPopupRef.current = null;
+          }
+
+          const props = f.properties || {};
+          const html = `
+            <div style="font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif; color: #1F2937;">
+              <div style="background: linear-gradient(135deg, #4F46E5, #3B82F6); color: #fff; padding: 14px 16px; border-radius: 8px 8px 0 0;">
+                <div style="font-weight: 600; font-size: 15px;">${props.name || "Stakeholder"}</div>
+                ${props.organization ? `<div style="opacity:.95; font-size:12px; margin-top:3px;">${props.organization}</div>` : ""}
+              </div>
+              <div style="padding: 12px 16px; background: #fff; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
+                ${props.locationName ? `<div style=\"font-size: 13px; color: #4B5563; margin-bottom: 8px;\"><svg style=\"display: inline-block; width: 12px; height: 12px; margin-right: 5px; vertical-align: -1px;\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z\"></path><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M15 11a3 3 0 11-6 0 3 3 0 016 0z\"></path></svg>${props.locationName}</div>` : ""}
+                ${props.email ? `<div style=\"font-size: 13px;\"><svg style=\"display: inline-block; width: 12px; height: 12px; margin-right: 5px; vertical-align: -1px;\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\" xmlns=\"http://www.w3.org/2000/svg\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z\"></path></svg><a href=\"mailto:${props.email}\" style=\"color:#4F46E5; text-decoration: none;\">${props.email}</a></div>` : ""}
+              </div>
+            </div>`;
+
+          stakeholderPopupRef.current = new mapboxgl.Popup({ offset: 15, closeButton: true, className: "stakeholder-popup" })
+            .setLngLat([lng, lat])
+            .setHTML(html)
+            .addTo(map);
+        });
+      }
+    };
+
+    // If icon not present, load it then add layers
+    const iconName = "stakeholder-icon";
+    if (!map.hasImage(iconName)) {
+      // Use preloaded icon if available for better performance
+      if (stakeholderIconRef.current && stakeholderIconRef.current.complete) {
+        try {
+          map.addImage(iconName, stakeholderIconRef.current, { pixelRatio: 2 });
+          ensureIconAndLayers();
+        } catch (e) {
+          console.error("Failed to add preloaded stakeholder icon:", e);
+          loadIconFromURL();
+        }
+      } else {
+        loadIconFromURL();
+      }
+    } else {
+      ensureIconAndLayers();
+    }
+    
+    function loadIconFromURL() {
+      const iconUrl = `${window.location.origin}/stakeholder-icon.png`;
+      map.loadImage(iconUrl, (err, img) => {
+        if (err) {
+          console.error("Failed to load stakeholder icon:", err);
+          // Create a professional fallback icon using canvas
+          const canvas = document.createElement('canvas');
+          canvas.width = 64; canvas.height = 64;
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0,0,64,64);
+          
+          // Create circular background
+          ctx.fillStyle = '#8B5CF6';
+          ctx.beginPath();
+          ctx.arc(32, 32, 24, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Add white border for professional look
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.arc(32, 32, 22, 0, Math.PI * 2);
+          ctx.stroke();
+          
+          // Add person silhouette
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          // Head
+          ctx.beginPath();
+          ctx.arc(32, 24, 8, 0, Math.PI * 2);
+          ctx.fill();
+          // Body
+          ctx.beginPath();
+          ctx.moveTo(32, 32);
+          ctx.arc(32, 32, 12, Math.PI * 0.25, Math.PI * 0.75, false);
+          ctx.fill();
+          
+          try { 
+            map.addImage(iconName, { width: 64, height: 64, data: ctx.getImageData(0,0,64,64).data }, { pixelRatio: 2 }); 
+          } catch {}
+          return ensureIconAndLayers();
+        }
+        try {
+          map.addImage(iconName, img, { pixelRatio: 2 });
+        } catch {}
+        ensureIconAndLayers();
+      });
+    }
+  };
+
+  // Render startups using a Mapbox symbol layer (professional marker)
+  const renderStartupMarkers = (map, startupsWithLocation) => {
+    if (!map) return;
+
+    const sourceId = "startups-src";
+    const layerId = "startups-layer";
+    const highlightLayerId = "startups-highlight";
+    const iconName = "startup-marker";
+
+    const features = startupsWithLocation.map((s) => {
+      const lat = typeof s.locationLat === "string" ? parseFloat(s.locationLat) : s.locationLat;
+      const lng = typeof s.locationLng === "string" ? parseFloat(s.locationLng) : s.locationLng;
+      return {
+        type: "Feature",
+        id: s.id,
+        properties: {
+          id: s.id,
+          name: s.companyName || s.name || "Startup",
+          locationName: s.locationName || "",
+        },
+        geometry: { type: "Point", coordinates: [lng, lat] },
+      };
+    });
+
+    const data = { type: "FeatureCollection", features };
+
+    if (map.getSource(sourceId)) {
+      try { map.getSource(sourceId).setData(data); } catch {}
+    } else {
+      map.addSource(sourceId, { type: "geojson", data });
+    }
+
+    const ensureLayer = () => {
+      if (!map.getLayer(layerId)) {
+        map.addLayer({
+          id: layerId,
+          type: "symbol",
+          source: sourceId,
+          layout: {
+            "icon-image": iconName,
+            "icon-size": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              3, 0.24,  // Significantly improved visibility at low zoom
+              8, 0.32,  // Larger size for better visibility at medium zoom
+              12, 0.38, // More prominent size at higher zoom
+              16, 0.44  // Bold but professional size at highest zoom
+            ],
+            "icon-allow-overlap": true,
+            "icon-ignore-placement": false,
+            "icon-anchor": "bottom",
+            "icon-pitch-alignment": "viewport",
+            "icon-rotation-alignment": "viewport",
+            // Add a slight offset to improve map readability
+            "icon-offset": [0, 3],
+            // Enhanced shadow for professional appearance
+            "icon-halo-width": 1.5,
+            "icon-halo-color": "rgba(0, 0, 0, 0.28)",
+            "icon-halo-blur": 1.2
+          },
+        });
+      }
+
+      if (!map.getLayer(highlightLayerId)) {
+        map.addLayer({
+          id: highlightLayerId,
+          type: "circle",
+          source: sourceId,
+          filter: ["==", ["get", "id"], -1],
+          paint: {
+            "circle-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              5, 12,
+              10, 18,
+              14, 24,
+              18, 30
+            ],
+            "circle-color": "#0A66C2", // Professional blue color for highlight
+            "circle-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              10, 0.1,
+              15, 0.15
+            ],
+            "circle-stroke-color": "#0A66C2",
+            "circle-stroke-width": 3,
+            "circle-stroke-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              10, 0.5,
+              15, 0.7
+            ],
+            "circle-blur": 0.2
+          },
+        });
+      }
+
+      if (!map.__startupEventsAdded) {
+        map.__startupEventsAdded = true;
+        map.on("mouseenter", layerId, () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", layerId, () => {
+          map.getCanvas().style.cursor = "";
+        });
+        map.on("click", layerId, (e) => {
+          if (!e.features?.length) return;
+          const f = e.features[0];
+          const id = f.id;
+          const [lng, lat] = f.geometry.coordinates;
+
+          // Highlight
+          try {
+            if (map.getLayer(highlightLayerId)) {
+              map.setFilter(highlightLayerId, ["==", ["get", "id"], id]);
+            }
+          } catch {}
+
+          // Fly and popup
+          map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15), speed: 0.8, curve: 1.2, essential: true });
+
+          const props = f.properties || {};
+          const html = `
+            <div style="font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif; color: #111827; max-width: 280px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); border-radius: 10px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #0A66C2, #0077B5); color: #fff; padding: 16px 18px; border-radius: 10px 10px 0 0; position: relative;">
+                <div style="font-weight: 600; font-size: 17px; margin-bottom: 2px;">${props.name || "Startup"}</div>
+                <div style="font-size: 12px; opacity: 0.9;">Startup Company</div>
+                <div style="position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.2); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                  <svg style="width: 20px; height: 20px;" fill="none" stroke="#ffffff" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                  </svg>
+                </div>
+              </div>
+              <div style="padding: 14px 18px; background: #fff; border-radius: 0 0 10px 10px;">
+                ${props.locationName ? 
+                  `<div style="margin-bottom: 12px; font-size: 13px; color: #4B5563; display: flex; align-items: center;">
+                    <div style="min-width: 24px; height: 24px; background-color: rgba(10, 102, 194, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
+                      <svg style="width: 14px; height: 14px;" fill="none" stroke="#0A66C2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                      </svg>
+                    </div>
+                    <span>${props.locationName}</span>
+                  </div>` : ''
+                }
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0;">
+                  <div style="font-size: 12px; font-weight: 500; color: #0A66C2;">View Details</div>
+                  <div style="width: 24px; height: 24px; background-color: rgba(10, 102, 194, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <svg style="width: 14px; height: 14px;" fill="none" stroke="#0A66C2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          new mapboxgl.Popup({ offset: 25, closeButton: true, className: "startup-popup" })
+            .setLngLat([lng, lat])
+            .setHTML(html)
+            .addTo(map);
+        });
+      }
+    };
+
+    if (!map.hasImage(iconName)) {
+      const iconUrl = `${window.location.origin}/startup-marker.svg`;
+      
+      // Try SVG marker first (more professional), fallback to PNG
+      map.loadImage(iconUrl, (err, img) => {
+        if (err) {
+          // SVG failed, try PNG
+          const pngUrl = `${window.location.origin}/location.png`;
+          map.loadImage(pngUrl, (err2, img2) => {
+            if (err2) {
+              console.error("Failed to load startup icon. Creating enhanced canvas fallback:", err2);
+              // Fallback: draw a professional pin with enhanced design and gradients
+              const canvas = document.createElement('canvas');
+              canvas.width = 128; canvas.height = 128; // Larger canvas for better quality
+              const ctx = canvas.getContext('2d');
+              ctx.clearRect(0, 0, 128, 128);
+              
+              // Enhanced drop shadow
+              ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+              ctx.shadowBlur = 10;
+              ctx.shadowOffsetX = 0;
+              ctx.shadowOffsetY = 4;
+              
+              // Define professional color palette - using LinkedIn-inspired blues
+              const primaryColor = '#0A66C2'; // Professional LinkedIn blue
+              const secondaryColor = '#0077B5'; // Slightly deeper blue
+              const highlightColor = '#0e87db'; // Highlight blue for embellishments
+              const accentColor = '#FFFFFF';
+              
+              // Pin body with sophisticated gradient
+              const gradient = ctx.createLinearGradient(64, 16, 64, 64);
+              gradient.addColorStop(0, primaryColor);
+              gradient.addColorStop(1, secondaryColor);
+              ctx.fillStyle = gradient;
+              
+              // Main pin shape - larger and more professional
+              ctx.beginPath();
+              ctx.arc(64, 40, 28, Math.PI, Math.PI * 2);
+              // Create tapered point for a more elegant pin
+              ctx.lineTo(64, 104); // Bottom point (taller)
+              ctx.lineTo(36, 40);
+              ctx.closePath();
+              ctx.fill();
+              
+              // Reset shadow for inner details
+              ctx.shadowColor = 'transparent';
+              ctx.shadowBlur = 0;
+              ctx.shadowOffsetX = 0;
+              ctx.shadowOffsetY = 0;
+              
+              // Glossy highlight for professional look
+              const glossGradient = ctx.createLinearGradient(40, 20, 88, 60);
+              glossGradient.addColorStop(0, 'rgba(255, 255, 255, 0.25)');
+              glossGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+              glossGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+              ctx.fillStyle = glossGradient;
+              ctx.beginPath();
+              ctx.arc(64, 40, 27.5, Math.PI, Math.PI * 2);
+              ctx.lineTo(64, 102);
+              ctx.lineTo(37, 40);
+              ctx.closePath();
+              ctx.fill();
+              
+              // White border for professional contrast
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(64, 40, 27, Math.PI, Math.PI * 2);
+              ctx.lineTo(64, 102);
+              ctx.lineTo(37, 40);
+              ctx.stroke();
+              
+              // Inner circle with refined look
+              ctx.fillStyle = accentColor;
+              ctx.beginPath();
+              ctx.arc(64, 40, 18, 0, Math.PI * 2);
+              ctx.fill();
+              
+              // Subtle inner shadow for depth
+              const innerShadow = ctx.createRadialGradient(64, 38, 4, 64, 40, 18);
+              innerShadow.addColorStop(0, 'rgba(255, 255, 255, 1)');
+              innerShadow.addColorStop(1, 'rgba(240, 240, 240, 1)');
+              ctx.fillStyle = innerShadow;
+              ctx.beginPath();
+              ctx.arc(64, 40, 16, 0, Math.PI * 2);
+              ctx.fill();
+              
+              // Building icon for startup representation
+              ctx.fillStyle = primaryColor;
+              // Building body
+              ctx.fillRect(56, 32, 16, 16);
+              // Windows
+              ctx.fillStyle = highlightColor;
+              ctx.fillRect(58, 34, 4, 4);
+              ctx.fillRect(64, 34, 4, 4);
+              ctx.fillRect(58, 40, 4, 4);
+              ctx.fillRect(64, 40, 4, 4);
+              
+              try { map.addImage(iconName, { width: 128, height: 128, data: ctx.getImageData(0, 0, 128, 128).data }, { pixelRatio: 3.0 }); } catch {}
+              return ensureLayer();
+            }
+            try { map.addImage(iconName, img2, { pixelRatio: 2 }); } catch {}
+            ensureLayer();
+          });
+        } else {
+          try { map.addImage(iconName, img, { pixelRatio: 2 }); } catch {}
+          ensureLayer();
+        }
+      });
+    } else {
+      ensureLayer();
+    }
+  };
+
   // Add default startup marker for Cebu
   const addDefaultStartupMarker = (map) => {
     // Cebu City coordinates (approximate center)
     const cebuCoordinates = [123.8854, 10.3157];
 
-    // Create a DOM element for the startup marker
+    // Create a DOM element for the startup marker with enhanced professional appearance
     const el = document.createElement("div");
     el.className = "default-startup-marker";
-    el.style.width = "40px";
-    el.style.height = "40px";
-    el.style.backgroundImage = "url(/startup-icon.png)"; // Custom startup icon
+    el.style.width = "30px";  // Larger for better visibility
+    el.style.height = "30px"; // Maintain aspect ratio
+    
+    // Try to use professional SVG marker first, fallback to custom design
+    const markerIconSvg = `${window.location.origin}/startup-marker.svg`;
+    
+    // Create professional looking marker
+    const createCustomMarker = () => {
+      // Create canvas for custom marker
+      const canvas = document.createElement('canvas');
+      canvas.width = 60;
+      canvas.height = 60;
+      const ctx = canvas.getContext('2d');
+      
+      // Draw professional pin with blue color theme
+      ctx.clearRect(0, 0, 60, 60);
+      
+      // Pin body with gradient
+      const gradient = ctx.createLinearGradient(30, 10, 30, 35);
+      gradient.addColorStop(0, '#0A66C2');
+      gradient.addColorStop(1, '#0077B5');
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(30, 20, 12, Math.PI, Math.PI * 2);
+      ctx.lineTo(30, 48);
+      ctx.lineTo(18, 20);
+      ctx.closePath();
+      ctx.fill();
+      
+      // White center
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(30, 20, 6, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Blue dot in center
+      ctx.fillStyle = '#0A66C2';
+      ctx.beginPath();
+      ctx.arc(30, 20, 2, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Convert to image URL
+      const dataURL = canvas.toDataURL();
+      el.style.backgroundImage = `url(${dataURL})`;
+    };
+    
+    // Check if SVG exists, fallback to custom design
+    fetch(markerIconSvg)
+      .then(response => {
+        if (response.ok) {
+          el.style.backgroundImage = `url(${markerIconSvg})`;
+        } else {
+          createCustomMarker();
+        }
+      })
+      .catch(() => {
+        createCustomMarker();
+      });
+      
     el.style.backgroundSize = "contain";
     el.style.backgroundRepeat = "no-repeat";
+    el.style.backgroundPosition = "center";
     el.style.cursor = "pointer";
 
-    // Add 3D effect and glow
-    el.style.filter = "drop-shadow(0 0 10px rgba(255, 165, 0, 0.8))";
+    // Add enhanced professional shadow effect
+    el.style.filter = "drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3))";
     el.style.transform = "translate(-50%, -100%)";
-
-    // Create a popup for the default marker
-    const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(
-      `<div style="color: black; font-family: Arial, sans-serif;">
-          <h3 style="margin: 0; color: black;">Cebu Startup Hub</h3>
-          <p style="margin: 0; color: black;">Your Startup Location</p>
-        </div>`
+    
+    // Create a popup with enhanced professional styling for the default marker
+    const popup = new mapboxgl.Popup({ offset: 28, closeButton: true, className: "startup-popup" }).setHTML(
+      `<div style="font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif; overflow: hidden; border-radius: 8px;">
+        <div style="background: linear-gradient(135deg, #0A66C2, #0077B5); color: #fff; padding: 16px;">
+          <div style="font-weight: 600; font-size: 16px; letter-spacing: -0.01em;">Cebu Startup Hub</div>
+          <div style="opacity: 0.9; font-size: 12px; margin-top: 3px;">Business District</div>
+        </div>
+        <div style="padding: 14px 16px; background: #fff;">
+          <div style="display: flex; align-items: center; font-size: 13px; color: #4B5563; margin-bottom: 2px;">
+            <svg style="width: 14px; height: 14px; margin-right: 6px; flex-shrink: 0;" fill="none" stroke="#0A66C2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            <span>Cebu City, Philippines</span>
+          </div>
+          <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0;">
+            <div style="font-size: 12px; color: #4B5563; display: flex; align-items: center;">
+              <svg style="width: 14px; height: 14px; margin-right: 6px; flex-shrink: 0;" fill="none" stroke="#4B5563" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span>Click to set your startup location</span>
+            </div>
+          </div>
+        </div>
+      </div>`
     );
 
     // Add marker to map
@@ -2003,23 +1975,31 @@ export default function Startupmap({
                       onClick={() => handleSuggestionClick(suggestion)}
                     >
                       {suggestion.type === "startup" ? (
-                        <Building className="h-4 w-4 text-green-500" />
+                        <img 
+                          src="/startup-marker.svg" 
+                          onError={(e) => {e.target.src = "/location.png"}}
+                          alt="Startup" 
+                          style={{
+                            width: '12px',
+                            height: '12px',
+                            objectFit: 'contain',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                            filter: 'drop-shadow(0 1px 2px rgba(10, 102, 194, 0.2))'
+                          }}
+                        />
                       ) : suggestion.type === "stakeholder" ? (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="text-blue-500"
-                        >
-                          <circle cx="12" cy="8" r="5" />
-                          <path d="M20 21v-2a5 5 0 0 0-5-5H9a5 5 0 0 0-5 5v2" />
-                        </svg>
+                        <img 
+                          src="/stakeholder-icon.png" 
+                          alt="Stakeholder" 
+                          style={{
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: '1px solid white',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.15)'
+                          }}
+                        />
                       ) : (
                         <MapPin className="h-4 w-4 text-red-500" />
                       )}
@@ -2337,7 +2317,7 @@ export default function Startupmap({
   useEffect(() => {
     console.log("Initializing map and stakeholder display...");
     
-    // Add global CSS for stakeholder markers to ensure they're always visible
+    // Add global CSS for stakeholder markers to ensure they're always visible with professional styling
     if (!document.getElementById('stakeholder-marker-global-styles')) {
       const style = document.createElement('style');
       style.id = 'stakeholder-marker-global-styles';
@@ -2347,13 +2327,100 @@ export default function Startupmap({
           visibility: visible !important;
           opacity: 1 !important;
           pointer-events: all !important;
+          /* Let Mapbox manage transforms; no translate here */
+          transform-origin: center;
+          will-change: transform;
+          transition: all 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
         }
+        
+        .stakeholder-marker img {
+          filter: drop-shadow(0px 1px 1px rgba(0, 0, 0, 0.1));
+          transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+          backface-visibility: hidden;
+          border-radius: 50%;
+          width: 14px; /* Much smaller, more professional size */
+          height: 14px; /* Much smaller, more professional size */
+          object-fit: cover;
+        }
+        
+        /* Fallback for when image doesn't load */
+        .stakeholder-marker:empty {
+          background-color: #8B5CF6 !important; /* Violet fallback color */
+          position: relative !important;
+        }
+        
+        .stakeholder-marker:empty:after {
+          content: "";
+          position: absolute;
+          width: 60%;
+          height: 60%;
+          background-color: rgba(255,255,255,0.3);
+          border-radius: 50%;
+          top: 20%;
+          left: 20%;
+        }
+        
+        .stakeholder-marker:hover {
+          z-index: 1010 !important;
+          transform: scale(1.02); /* Minimal scale for professional look */
+        }
+        
+        .stakeholder-marker:hover img {
+          filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.15));
+          transition: all 0.2s ease-out;
+          border: 0.5px solid rgba(255, 255, 255, 0.6); /* Very subtle border highlight */
+        }
+        
+        .stakeholder-marker:active img {
+          transform: scale(0.98);
+          filter: drop-shadow(0px 1px 3px rgba(0, 0, 0, 0.2));
+        }
+        
         .mapboxgl-popup.stakeholder-popup {
           z-index: 1001 !important;
         }
+        
         .mapboxgl-popup.stakeholder-popup .mapboxgl-popup-content {
-          box-shadow: 0 3px 14px rgba(0,0,0,0.4) !important;
-          border: 1px solid rgba(0,0,0,0.1) !important;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.1) !important;
+          border: 1px solid rgba(0,0,0,0.05) !important;
+          border-radius: 12px !important;
+          padding: 16px !important;
+          max-width: 320px !important;
+          color: #1F2937;
+          font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .mapboxgl-popup-content h3 {
+          margin-top: 0;
+          margin-bottom: 8px;
+          font-weight: 600;
+          font-size: 16px;
+          line-height: 1.4;
+        }
+        
+        .mapboxgl-popup-close-button {
+          font-size: 18px;
+          padding: 6px 10px;
+          color: #6B7280;
+          right: 2px;
+          top: 2px;
+          transition: all 0.2s ease;
+        }
+        
+        .mapboxgl-popup-close-button:hover {
+          color: #1F2937;
+          background: rgba(243, 244, 246, 0.7);
+          border-radius: 50%;
+        }
+        
+        .mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+          border-top-color: white !important;
+          filter: drop-shadow(0 3px 2px rgba(0,0,0,0.1));
+        }
+        
+        .mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+          border-bottom-color: white !important;
+          filter: drop-shadow(0 -3px 2px rgba(0,0,0,0.1));
         }
       `;
       document.head.appendChild(style);
@@ -2389,39 +2456,38 @@ export default function Startupmap({
     map.touchZoomRotate.enableRotation();
     mapInstanceRef.current = map;
     map.resize();
+    
+    // Ensure stakeholder icon is preloaded before map load completes
+    if (!stakeholderIconRef.current || !stakeholderIconRef.current.complete) {
+      console.log("Preloading stakeholder icon during map initialization");
+      stakeholderIconRef.current = new Image();
+      const iconUrl = `${window.location.origin}/stakeholder-icon.png`;
+      stakeholderIconRef.current.src = iconUrl;
+      stakeholderIconRef.current.onload = () => console.log("Stakeholder icon loaded during map init");
+      stakeholderIconRef.current.onerror = () => {
+        console.error("Failed to load stakeholder icon during map init, checking icon availability...");
+        
+        // Check if the icon is actually accessible via fetch
+        fetch(iconUrl)
+          .then(response => {
+            if (!response.ok) {
+              console.error(`Stakeholder icon not accessible: ${response.status} ${response.statusText}`);
+            } else {
+              console.log("Stakeholder icon is accessible via fetch but failed to load as image");
+            }
+          })
+          .catch(err => {
+            console.error("Stakeholder icon fetch error:", err);
+          });
+      };
+    }
 
     // Add 3D terrain and buildings
     map.on("load", () => {
       console.log("Map loaded, loading markers...");
       
       // Load stakeholders first to ensure they're displayed
-      loadStakeholders(map).then(() => {
-        console.log("Stakeholders loaded, ensuring visibility...");
-        
-        // Set up render event listener to ensure markers remain visible
-        map.on('render', () => {
-          if (window.stakeholderMarkersArray && 
-              window.stakeholderMarkersArray.length > 0 && 
-              !map._checkingStakeholderVisibility) {
-            
-            // Prevent multiple simultaneous checks
-            map._checkingStakeholderVisibility = true;
-            
-            // Check if any marker elements are not in DOM
-            const needsRedraw = window.stakeholderMarkersArray.some(marker => {
-              const el = marker.getElement();
-              return !document.body.contains(el);
-            });
-            
-            if (needsRedraw) {
-              console.log("Some stakeholder markers not visible, redrawing...");
-              renderStakeholderMarkers(map, stakeholderMarkers);
-            }
-            
-            map._checkingStakeholderVisibility = false;
-          }
-        });
-      });
+      loadStakeholders(map);
       
       // Add terrain source
       map.addSource("mapbox-dem", {
@@ -2477,11 +2543,8 @@ export default function Startupmap({
       loadStartupMarkers(map);
       // loadInvestorMarkers(map); // removed
       
-      // Add a slight delay to ensure stakeholders load after map is fully ready
-      console.log("Map ready, loading stakeholders with delay...");
-      setTimeout(() => {
-        loadStakeholders(map);
-      }, 500);
+      // Ensure data refresh shortly after load
+      setTimeout(() => loadStakeholders(map), 500);
 
       // Load stakeholder connections (associations)
       loadStakeholderConnections(map);
@@ -2639,8 +2702,7 @@ export default function Startupmap({
             "line-color": "#000000",
             "line-width": 4,
             "line-opacity": 0.2,
-            "line-blur": 3,
-            "line-translate": [3, 3],
+            "line-blur": 3
           },
         });
 
@@ -2648,7 +2710,7 @@ export default function Startupmap({
           const layerId = `${sourceId}-layer-${layer}`;
           const opacity = 0.3 + (layer / numLayers) * 0.7;
           const lineWidth = 1.5 + (layer / numLayers) * 2.5;
-          const vertOffset = layer * 0.5;
+          const vertOffset = 0; // no viewport offset to keep endpoints aligned
 
           map.addSource(layerId, {
             type: "geojson",
@@ -2673,8 +2735,8 @@ export default function Startupmap({
               "line-color": lineColor,
               "line-width": lineWidth,
               "line-opacity": opacity,
-              "line-translate": [0, -vertOffset],
-              "line-translate-anchor": "viewport",
+              "line-translate": [0, 0],
+              "line-translate-anchor": "map",
             },
           });
 
@@ -2708,7 +2770,7 @@ export default function Startupmap({
             "line-width": 8,
             "line-opacity": 0.5,
             "line-blur": 4,
-            "line-translate-anchor": "viewport",
+            "line-translate-anchor": "map",
           },
         });
 
@@ -2726,7 +2788,7 @@ export default function Startupmap({
             "line-color": lineColor,
             "line-width": 3,
             "line-opacity": 1.0,
-            "line-translate-anchor": "viewport",
+            "line-translate-anchor": "map",
             "line-dasharray": [2, 1],
           },
         });

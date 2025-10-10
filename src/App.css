@@ -1,5 +1,4 @@
 /* Filter component styles */
-
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -40,84 +39,7 @@
   border-color: #3b82f6 !important;
 }
 
-/* Pulse animation for stakeholder markers */
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.7);
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(67, 97, 238, 0.2);
-    transform: translate(-50%, -50%) scale(1.05);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(67, 97, 238, 0);
-    transform: translate(-50%, -50%) scale(1);
-  }
-}
-
-/* Bounce animation for active stakeholder markers */
-@keyframes bounce {
-  0% {
-    transform: translate(-50%, -50%) scale(1);
-    box-shadow: 0 0 25px rgba(255, 221, 0, 0.7);
-  }
-  100% {
-    transform: translate(-50%, -50%) scale(1.08);
-    box-shadow: 0 0 35px rgba(255, 221, 0, 0.9);
-  }
-}
-
-/* Enhanced stakeholder popup styles */
-.stakeholder-popup .mapboxgl-popup-content {
-  padding: 0;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  min-width: 280px;
-  max-width: 340px;
-  animation: popup-fade-in 0.3s ease-out forwards;
-  z-index: 100000 !important;
-  overflow: hidden;
-  transform: translateZ(0); /* Hardware acceleration */
-}
-
-.stakeholder-popup .mapboxgl-popup-close-button {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.8);
-  padding: 3px 8px;
-  background: rgba(0, 0, 0, 0.1);
-  border: none;
-  border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s ease;
-  z-index: 999;
-}
-
-.stakeholder-popup .mapboxgl-popup-close-button:hover {
-  color: #fff;
-  background: rgba(0, 0, 0, 0.25);
-  transform: scale(1.1);
-}
-
-.stakeholder-popup .mapboxgl-popup-tip {
-  border-top-color: #fff;
-  border-bottom-color: #4338CA;
-  filter: drop-shadow(0 4px 3px rgba(0, 0, 0, 0.07));
-  z-index: 100000 !important;
-}
-
-.stakeholder-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
-  border-bottom-color: #4338CA; /* Match to the gradient top color */
-}
-
-.stakeholder-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
-  border-top-color: #fff;
-}
-
+/* Animation for popup elements */
 @keyframes popup-fade-in {
   from {
     opacity: 0;
@@ -129,28 +51,10 @@
   }
 }
 
-/* Ensure markers are displayed above all elements with improved z-index management */
-.mapboxgl-marker {
-  z-index: 9999 !important;
-  position: absolute;
-}
-
-.stakeholder-marker {
-  z-index: 9999 !important;
-  position: relative;
-  transform-origin: center center;
-  backface-visibility: hidden;
-}
-
+/* General map styling */
 /* Ensures the map container has proper stacking context */
 .mapboxgl-map {
   z-index: 1;
-}
-
-/* Fix for marker positioning */
-.mapboxgl-marker > div {
-  position: relative;
-  z-index: 9999 !important;
 }
 
 /* Ensure mapbox popups are above other elements */
@@ -169,65 +73,212 @@
   z-index: 2;
 }
 
-/* Enhanced marker container styling */
-.marker-container {
-  position: absolute;
-  z-index: 9999 !important;
-  pointer-events: auto !important;
-  transform-origin: center center;
-  will-change: transform, z-index;
-  transition: transform 0.2s ease-out, z-index 0.1s;
+/* Fix popup styling */
+.mapboxgl-popup-content {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+  padding: 0 !important;
 }
 
-/* Active marker state */
-.marker-container.active {
-  z-index: 99999 !important;
+/* Professional styling for startup popups */
+.startup-popup .mapboxgl-popup-content {
+  border-radius: 10px !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  overflow: hidden !important;
+  max-width: 280px !important;
 }
 
-/* Ensure stakeholder popup appears on top of everything */
-.stakeholder-popup {
-  z-index: 100000 !important;
+.startup-popup .mapboxgl-popup-close-button {
+  color: white !important;
+  font-size: 18px !important;
+  padding: 6px 8px !important;
+  right: 2px !important;
+  top: 2px !important;
+  z-index: 10 !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 50% !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 0 !important;
 }
 
-/* Enhanced professional stakeholder marker styling */
-.stakeholder-marker {
-  position: absolute;
-  transform: translate(-50%, -50%) translateZ(0);
-  transform-origin: center center;
-  backface-visibility: hidden;
-  will-change: transform;
-  pointer-events: auto;
-  cursor: pointer;
-  z-index: 9999 !important;
+.startup-popup .mapboxgl-popup-close-button:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
 }
 
-/* Fix marker positioning issues */
-.mapboxgl-marker {
-  pointer-events: auto !important;
-  z-index: 9999 !important;
+.startup-popup .mapboxgl-popup-tip {
+  border-top-color: #0A66C2 !important;
+  border-width: 10px !important;
+  filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.15)) !important;
 }
 
-/* Prevent marker movement by fixing their container positioning */
+/* Let Mapbox manage marker transforms/positioning to avoid conflicts */
+/* Intentionally avoid overriding transform/position on .mapboxgl-marker */
+
+/* Marker container styling */
 .marker-container {
   position: relative !important;
-  transform: none !important;
   z-index: 9999 !important;
+  pointer-events: auto !important;
 }
 
 .marker-container.active {
   z-index: 99999 !important;
 }
 
-/* Enhanced stakeholder popup styles */
-.stakeholder-popup .mapboxgl-popup-content {
-  padding: 0;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  min-width: 280px;
-  max-width: 340px;
-  animation: popup-fade-in 0.3s ease-out forwards;
-  z-index: 100000 !important;
-  overflow: hidden;
-  transform: translateZ(0);
+/* Startup marker styling - professional and modern appearance */
+.startup-marker {
+  z-index: 900 !important;
+  cursor: pointer !important;
+  transition: all 0.25s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.2)) !important;
+  transform-origin: bottom center !important;
+  backface-visibility: hidden !important; /* Prevent flickering during animations */
+}
+
+.startup-marker:hover {
+  filter: drop-shadow(0 6px 12px rgba(0, 119, 181, 0.35)) !important; /* LinkedIn blue shadow for professional look */
+  transform: scale(1.12) translateY(-3px) !important;
+  z-index: 950 !important;
+}
+
+.startup-marker.active {
+  filter: drop-shadow(0 8px 16px rgba(10, 102, 194, 0.45)) !important; /* Professional blue shadow */
+  transform: scale(1.18) translateY(-4px) !important;
+  z-index: 975 !important;
+  animation: startup-pulse 2.5s infinite !important;
+}
+
+@keyframes startup-pulse {
+  0% {
+    filter: drop-shadow(0 8px 16px rgba(10, 102, 194, 0.45)) !important;
+  }
+  50% {
+    filter: drop-shadow(0 10px 20px rgba(10, 102, 194, 0.65)) !important;
+    transform: scale(1.22) translateY(-5px) !important;
+  }
+  100% {
+    filter: drop-shadow(0 8px 16px rgba(10, 102, 194, 0.45)) !important;
+  }
+}
+
+/* Default startup marker for areas without specific startup */
+.default-startup-marker {
+  background-size: contain !important;
+  background-position: center !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25)) !important;
+  transition: all 0.25s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+  transform-origin: bottom center !important;
+}
+
+.default-startup-marker:hover {
+  filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.35)) !important;
+  transform: scale(1.08) translateY(-2px) !important;
+}
+
+/* Stakeholder marker styling - professional appearance */
+.stakeholder-marker {
+  border-radius: 50% !important;
+  border: 2px solid white !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+  overflow: hidden !important;
+  transition: all 0.2s cubic-bezier(0.25, 0.1, 0.25, 1) !important;
+  background-color: #f3f4f6 !important; /* Light gray background before image loads */
+  position: relative !important;
+}
+
+.stakeholder-marker img {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 50% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+/* Fallback styling for stakeholder markers when image fails to load */
+.stakeholder-marker:empty {
+  background-color: #8B5CF6 !important; /* Violet fallback color */
+  position: relative !important;
+}
+
+.stakeholder-marker:empty:after {
+  content: "";
+  position: absolute !important;
+  width: 60% !important;
+  height: 60% !important;
+  background-color: rgba(255,255,255,0.3) !important;
+  border-radius: 50% !important;
+  top: 20% !important;
+  left: 20% !important;
+}
+
+.stakeholder-marker:hover {
+  transform: scale(1.08) !important;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
+  z-index: 1000 !important;
+}
+
+/* Active stakeholder marker - highlighted state */
+.stakeholder-marker.active {
+  transform: scale(1.15) !important;
+  border: 3px solid #3b82f6 !important; /* Blue highlight border */
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3), 0 6px 20px rgba(0, 0, 0, 0.25) !important;
+  z-index: 1100 !important;
+}
+
+/* Marker label styling */
+.marker-label {
+  background-color: rgba(255, 255, 255, 0.98);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 8px));
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: opacity 0.2s ease;
+}
+
+/* Enhanced popup styling */
+.mapboxgl-popup.startup-popup .mapboxgl-popup-content,
+.mapboxgl-popup.stakeholder-popup .mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.mapboxgl-popup-close-button {
+  font-size: 16px !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  right: 8px !important;
+  top: 8px !important;
+  padding: 0 6px !important;
+  border-radius: 50% !important;
+  background: rgba(0, 0, 0, 0.15) !important;
+  transition: all 0.2s ease !important;
+}
+
+.mapboxgl-popup-close-button:hover {
+  background: rgba(0, 0, 0, 0.25) !important;
+  color: white !important;
+}
+
+/* Pulse animation for active markers */
+@keyframes pulse-animation {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
 }
