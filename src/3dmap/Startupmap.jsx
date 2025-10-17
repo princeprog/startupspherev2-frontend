@@ -709,7 +709,7 @@ export default function Startupmap({
     };
 
     if (!map.hasImage(iconName)) {
-      const iconUrl = `${window.location.origin}/startup-marker.svg`;
+      const iconUrl = `${window.location.origin}/startup-marker.png`;
       
       // Try SVG marker first (more professional), fallback to PNG
       map.loadImage(iconUrl, (err, img) => {
@@ -830,11 +830,11 @@ export default function Startupmap({
     // Create a DOM element for the startup marker with enhanced professional appearance
     const el = document.createElement("div");
     el.className = "default-startup-marker";
-    el.style.width = "30px";  // Larger for better visibility
-    el.style.height = "30px"; // Maintain aspect ratio
+    el.style.width = "15px";  // Larger for better visibility
+    el.style.height = "15px"; // Maintain aspect ratio
     
     // Try to use professional SVG marker first, fallback to custom design
-    const markerIconSvg = `${window.location.origin}/startup-marker.svg`;
+    const markerIconSvg = `${window.location.origin}/startup-marker.png`;
     
     // Create professional looking marker
     const createCustomMarker = () => {
@@ -1842,9 +1842,10 @@ export default function Startupmap({
 
   const SearchComponent = () => (
     <div
-      className={`absolute top-4 left-4 z-0 transition-all duration-300 ease-in-out ${
+      className={`absolute top-4 left-4 transition-all duration-300 ease-in-out ${
         isSearchExpanded ? "w-96" : "w-12"
       }`}
+      style={{ zIndex: 9999 }}
     >
       <div className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200 transition-shadow duration-300 hover:shadow-xl">
         {isSearchExpanded ? (
@@ -1976,12 +1977,12 @@ export default function Startupmap({
                     >
                       {suggestion.type === "startup" ? (
                         <img 
-                          src="/startup-marker.svg" 
+                          src="/startup-marker.png" 
                           onError={(e) => {e.target.src = "/location.png"}}
                           alt="Startup" 
                           style={{
-                            width: '12px',
-                            height: '12px',
+                            width: '15px',
+                            height: '15px',
                             objectFit: 'contain',
                             boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
                             filter: 'drop-shadow(0 1px 2px rgba(10, 102, 194, 0.2))'

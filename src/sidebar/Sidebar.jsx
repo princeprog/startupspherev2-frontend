@@ -3,7 +3,7 @@ import { Outlet, useNavigate } from "react-router-dom";
 import Login from "../modals/Login";
 import Signup from "../modals/Signup";
 import { CiLocationOn } from "react-icons/ci";
-import { CiGlobe } from "react-icons/ci";
+import { FaGlobe } from "react-icons/fa";
 import { FaBookmark } from "react-icons/fa6";
 import { MdKeyboardReturn } from "react-icons/md";
 import Bookmarks from "./Bookmarks"; // Import the Bookmarks component
@@ -153,6 +153,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
   const [adminSubmissions, setAdminSubmissions] = useState([]);
   const [adminSubmissionsCount, setAdminSubmissionsCount] = useState(0);
   const [notificationAdminTab, setNotificationAdminTab] = useState(false);
+  const [searchInputLoading, setSearchInputLoading] = useState(false);
 
   const markAsViewed = async (id) => {
     try {
@@ -470,8 +471,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
   };
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return; // Do nothing if the search query is empty
+    const currentQuery = viewingType === "startups" 
+      ? filters.startups.query 
+      : filters.stakeholders.query;
+      
+    if (!currentQuery.trim()) return; // Do nothing if the search query is empty
 
+    setSearchInputLoading(true); // Show the loading animation in input
     setLoading(true);
     try {
       const endpoint =
@@ -479,7 +485,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
           ? `${import.meta.env.VITE_BACKEND_URL}/startups/search`
           : `${import.meta.env.VITE_BACKEND_URL}/stakeholders/search`;
 
-      const response = await fetch(`${endpoint}?query=${searchQuery}`, {
+      const response = await fetch(`${endpoint}?query=${encodeURIComponent(currentQuery)}`, {
         credentials: "include",
       });
       const data = await response.json();
@@ -494,8 +500,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
       }
     } catch (error) {
       console.error("Search error:", error);
+      toast.error("Failed to search. Please try again.");
     } finally {
       setLoading(false);
+      setSearchInputLoading(false); // Hide the loading animation
     }
   };
 
@@ -1212,7 +1220,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
           <div className="border-b border-gray-200">
             <div className="px-2">
               <ul className="space-y-1 pt-4">
-                {/* Filters Icon (repurposed from Search) */}
+                {/* Browse Icon (replaces Filter) */}
                 <li className="flex justify-center">
                   <button
                     className="group relative flex flex-col items-center justify-center rounded-lg p-3 text-gray-600 hover:bg-blue-50 hover:text-blue-600 transition-all duration-200 cursor-pointer"
@@ -1229,22 +1237,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                       setViewingStakeholder(null);
                     }}
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
+                    <FaGlobe 
                       className="h-6 w-6 opacity-80 group-hover:opacity-100"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-                      />
-                    </svg>
+                    />
                     <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
-                      Filters
+                      Browse
                     </span>
                   </button>
                 </li>
@@ -2028,10 +2025,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                   d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
                 />
               </svg>
-              Browse &amp; Filter
+              Browse
             </h2>
 
-            {/* Sidebar Filter Input - enhanced */}
             <form
               className="flex items-center mx-auto mb-4"
               onSubmit={(e) => {
@@ -2056,6 +2052,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                     />
                   </svg>
                 </div>
+                
                 <input
                   type="text"
                   value={
@@ -2065,18 +2062,60 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                   }
                   onChange={(e) => {
                     const value = e.target.value;
+                    setSearchInputLoading(true);
                     setFilters((prev) => ({
                       ...prev,
                       [viewingType]: { ...prev[viewingType], query: value },
                     }));
+                    
+                    // Simulate a loading effect for a brief moment
+                    setTimeout(() => {
+                      setSearchInputLoading(false);
+                    }, 800); // Show loading for 800ms
                   }}
-                  className="bg-white/95 border border-transparent text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent block w-full pl-10 pr-12 py-2.5 shadow-sm"
+                  className="bg-white/95 border border-transparent text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent block w-full pl-10 pr-24 py-2.5 shadow-sm"
                   placeholder={
                     viewingType === "startups"
                       ? "Search startups by name or location"
                       : "Search stakeholders by name or location"
                   }
                 />
+                
+                {/* Loading animation that shows when typing */}
+                {searchInputLoading && !loading && (
+                  <div className="absolute right-24 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  </div>
+                )}
+                
+                {/* Submit button with loading state */}
+                <button
+                  type="submit"
+                  className="absolute inset-y-0 right-12 flex items-center px-2.5 text-blue-600 hover:text-blue-800 transition-colors"
+                  disabled={searchInputLoading || loading}
+                  aria-label="Search"
+                  title="Search"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  ) : (
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="w-4 h-4" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth="2" 
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
+                      />
+                    </svg>
+                  )}
+                </button>
+                
                 <button
                   type="button"
                   onClick={() => setShowFilters(!showFilters)}
