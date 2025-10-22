@@ -1208,7 +1208,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               className="group relative flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
             >
               <img
-                src="/src/assets/StartUpSphere_logo.png"
+                src="/StartUpSphere_logo.png"
                 alt="StartUpSphere Logo"
                 className="h-6 w-6 object-contain"
               />

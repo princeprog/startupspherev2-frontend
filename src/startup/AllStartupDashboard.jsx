@@ -38,7 +38,7 @@ import "react-toastify/dist/ReactToastify.css";
 import { useNavigate, useLocation } from "react-router-dom";
 import StartupReviewSection from "./StartupReviewSelection";
 import { useSidebar } from "../context/SidebarContext";
-import loginLogo from "../assets/StartUpSphere_loginLogo.png";
+import loginLogo from "/StartUpSphere_loginLogo.png";
 
 export default function AllStartupDashboard() {
   const navigate = useNavigate();
