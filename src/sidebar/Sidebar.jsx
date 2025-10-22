@@ -1204,7 +1204,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
           {/* Logo */}
           <div className="flex justify-center items-center py-6 border-b border-gray-200">
             <button
-              onClick={() => (window.location.href = "https://localhost:5173/")}
+              onClick={() => (window.location.href = "https://startupsphere-azure.vercel.app/")}
               className="group relative flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
             >
               <img
