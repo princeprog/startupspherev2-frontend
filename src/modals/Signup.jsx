@@ -93,7 +93,7 @@ export default function Signup({ closeModal, openLogin }) {
           <div className="flex justify-center mb-4 sm:mb-5">
             <div className="relative">
               <img
-                src="/src/assets/StartUpSphere_loginLogo.png"
+                src="/StartUpSphere_loginLogo.png"
                 alt="StartUpSphere Logo"
                 className="h-14 sm:h-16 w-auto object-contain drop-shadow-sm"
               />
