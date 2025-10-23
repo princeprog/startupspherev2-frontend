@@ -105,7 +105,6 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [showSearchContainer, setShowSearchContainer] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
   const [showRecents, setShowRecents] = useState(false);
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [notificationActiveIndex, setNotificationActiveIndex] = useState("All");
@@ -153,7 +152,6 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
   const [adminSubmissions, setAdminSubmissions] = useState([]);
   const [adminSubmissionsCount, setAdminSubmissionsCount] = useState(0);
   const [notificationAdminTab, setNotificationAdminTab] = useState(false);
-  const [searchInputLoading, setSearchInputLoading] = useState(false);
 
   const markAsViewed = async (id) => {
     try {
@@ -274,7 +272,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
     }
   };
 
-  useEffect(() => {}, []);
+  useEffect(() => { }, []);
 
   const fetchNotifications = async () => {
     try {
@@ -471,10 +469,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
   };
 
   const handleSearch = async () => {
-    const currentQuery = viewingType === "startups" 
-      ? filters.startups.query 
+    const currentQuery = viewingType === "startups"
+      ? filters.startups.query
       : filters.stakeholders.query;
-      
+
     if (!currentQuery.trim()) return; // Do nothing if the search query is empty
 
     setSearchInputLoading(true); // Show the loading animation in input
@@ -617,8 +615,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
 
     // Increment views and other logic
     fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/startups/${
-        startup.id
+      `${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id
       }/increment-views`,
       {
         method: "PUT",
@@ -668,8 +665,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
 
     // Increment views on the backend by sending a PUT request
     fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/stakeholders/${
-        stakeholder.id
+      `${import.meta.env.VITE_BACKEND_URL}/stakeholders/${stakeholder.id
       }/increment-views`,
       {
         method: "PUT",
@@ -689,7 +685,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
 
     // Check for location data and handle map centering
     const hasLocationData = stakeholder.locationLat && stakeholder.locationLng;
-    
+
     // Zoom into the stakeholder's location on the map if valid location data exists
     if (hasLocationData) {
       // First highlight the stakeholder before moving the map
@@ -698,7 +694,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
         console.log("Highlighting stakeholder before map movement:", stakeholder.id);
         highlightStakeholderRef.current(stakeholder.id);
       }
-      
+
       // Then fly to the stakeholder's location
       mapInstanceRef.current.flyTo({
         center: [
@@ -708,7 +704,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
         zoom: 14,
         essential: true,
       });
-      
+
       // After map movement completes, highlight again to ensure visibility
       mapInstanceRef.current.once('moveend', () => {
         if (highlightStakeholderRef && highlightStakeholderRef.current) {
@@ -716,7 +712,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
           highlightStakeholderRef.current(stakeholder.id);
         }
       });
-      
+
       toast.success(`Centered map on ${stakeholder.name}'s location`);
     } else {
       // Notify the user that location data is missing
@@ -905,8 +901,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
 
           if (existingBookmark) {
             const deleteResponse = await fetch(
-              `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/${
-                existingBookmark.id
+              `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/${existingBookmark.id
               }`,
               {
                 method: "DELETE",
@@ -1001,144 +996,109 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
     fetchStartups();
   }, []);
 
+  // Dynamic search effect - triggers search while typing
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      const currentQuery = viewingType === "startups"
+        ? filters.startups.query
+        : filters.stakeholders.query;
+
+      if (currentQuery && currentQuery.trim()) {
+        handleSearch();
+      } else if (currentQuery === "") {
+        // If query is empty, reload all items
+        if (viewingType === "startups") {
+          fetchStartups();
+        } else {
+          fetchStakeholders();
+        }
+      }
+    }, 500); // 500ms debounce delay
+
+    return () => clearTimeout(timeoutId);
+  }, [filters.startups.query, filters.stakeholders.query, viewingType]);
+
   const applyFilters = (items) => {
     if (!items || items.length === 0) return items;
 
     const currentFilters =
       viewingType === "startups" ? filters.startups : filters.stakeholders;
 
+    // If no query, return all items
+    if (!currentFilters.query) return items;
+
+    // Helper function to safely check if a field contains the query
+    const safeFieldCheck = (fieldValue, query) => {
+      try {
+        if (!fieldValue || typeof fieldValue !== 'string') return false;
+        return fieldValue.toLowerCase().includes(query.toLowerCase());
+      } catch (error) {
+        console.warn('Error checking field:', error);
+        return false;
+      }
+    };
+
     return items.filter((item) => {
       try {
+        if (!item || typeof item !== 'object') {
+          console.warn('Invalid item in search:', item);
+          return false;
+        }
+
+        const query = currentFilters.query.trim();
+        if (!query) return true;
+
         if (viewingType === "startups") {
-          const textMatch =
-            !currentFilters.query ||
-            (item.companyName &&
-              item.companyName
-                .toLowerCase()
-                .includes(currentFilters.query.toLowerCase())) ||
-            (item.locationName &&
-              item.locationName
-                .toLowerCase()
-                .includes(currentFilters.query.toLowerCase()));
-          // Industry filter (with custom industry)
-          const selectedIndustry =
-            currentFilters.industry === "other"
-              ? (currentFilters.customIndustry || "").toLowerCase()
-              : currentFilters.industry;
+          // Search only in the specified fields
+          const searchableFields = [
+            'companyName',
+            'industry',
+            'companyDescription',
+            'city',
+            'status',
+            'businessActivity',
+            'foundedDate'
+          ];
 
-          const industryMatch =
-            !selectedIndustry ||
-            (item.industry &&
-              item.industry.localeCompare(selectedIndustry, undefined, {
-                sensitivity: "base",
-              }) === 0);
-
-          // Founded date filter
-          const foundedDateMatch =
-            !currentFilters.foundedDate ||
-            (item.foundedDate &&
-              item.foundedDate
-                .toString()
-                .localeCompare(currentFilters.foundedDate, undefined, {
-                  sensitivity: "base",
-                }) !== -1);
-
-          // Team size filter
-          const teamSizeMatch =
-            !currentFilters.teamSize ||
-            (() => {
-              const employeeCount = parseInt(item.numberOfEmployees);
-              if (isNaN(employeeCount)) return false;
-
-              switch (currentFilters.teamSize) {
-                case "1-10":
-                  return employeeCount >= 1 && employeeCount <= 10;
-                case "11-50":
-                  return employeeCount >= 11 && employeeCount <= 50;
-                case "51-200":
-                  return employeeCount >= 51 && employeeCount <= 200;
-                case "201+":
-                  return employeeCount >= 201;
-                default:
-                  return true;
-              }
-            })();
-
-          // Funding stage filter
-          const fundingStageMatch =
-            !currentFilters.fundingStage ||
-            (item.fundingStage &&
-              item.fundingStage.localeCompare(
-                currentFilters.fundingStage,
-                undefined,
-                { sensitivity: "base" }
-              ) === 0);
-
-          return (
-            textMatch &&
-            industryMatch &&
-            foundedDateMatch &&
-            teamSizeMatch &&
-            fundingStageMatch
-          );
+          // Check if any field matches the query
+          return searchableFields.some(fieldName => {
+            try {
+              const fieldValue = item[fieldName];
+              return safeFieldCheck(fieldValue, query);
+            } catch (error) {
+              console.warn(`Error checking field ${fieldName}:`, error);
+              return false;
+            }
+          });
         } else {
-          // Stakeholder filters
-          const textMatch =
-            !currentFilters.query ||
-            (item.name &&
-              item.name
-                .toLowerCase()
-                .includes(currentFilters.query.toLowerCase())) ||
-            (item.email &&
-              item.email
-                .toLowerCase()
-                .includes(currentFilters.query.toLowerCase())) ||
-            (item.region &&
-              item.region
-                .toLowerCase()
-                .includes(currentFilters.query.toLowerCase()));
+          // Stakeholder search - keep existing fields
+          const searchableFields = [
+            'name',
+            'email',
+            'region',
+            'organization',
+            'city',
+            'province',
+            'sector',
+            'biography',
+            'phoneNumber',
+            'linkedIn',
+            'facebook'
+          ];
 
-          const regionMatch =
-            !currentFilters.region ||
-            (item.region &&
-              item.region.localeCompare(currentFilters.region, undefined, {
-                sensitivity: "base",
-              }) === 0);
-
-          const sectorMatch =
-            !currentFilters.sector ||
-            (item.sector &&
-              item.sector.localeCompare(currentFilters.sector, undefined, {
-                sensitivity: "base",
-              }) === 0);
-
-          const organizationMatch =
-            !currentFilters.organization ||
-            (item.organization &&
-              item.organization.localeCompare(
-                currentFilters.organization,
-                undefined,
-                { sensitivity: "base" }
-              ) === 0);
-
-          const locationMatch =
-            !currentFilters.location ||
-            ((item.city || item.province || item.region) &&
-              `${item.city || ""} ${item.province || ""} ${item.region || ""}`
-                .toLowerCase()
-                .includes(currentFilters.location.toLowerCase()));
-
-          return (
-            textMatch &&
-            regionMatch &&
-            sectorMatch &&
-            organizationMatch &&
-            locationMatch
-          );
+          return searchableFields.some(fieldName => {
+            try {
+              const fieldValue = item[fieldName];
+              return safeFieldCheck(fieldValue, query);
+            } catch (error) {
+              console.warn(`Error checking stakeholder field ${fieldName}:`, error);
+              return false;
+            }
+          });
         }
       } catch (error) {
-        console.error("Error applying filters:", error);
-        return true; // Return true to show the item if there's an error in filtering
+        console.error('Error in applyFilters:', error);
+        return false;
       }
     });
   };
@@ -1237,7 +1197,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                       setViewingStakeholder(null);
                     }}
                   >
-                    <FaGlobe 
+                    <FaGlobe
                       className="h-6 w-6 opacity-80 group-hover:opacity-100"
                     />
                     <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
@@ -1448,10 +1408,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                   {isAuthenticated === null
                     ? "?"
                     : isAuthenticated && currentUser
-                    ? `${currentUser.firstname?.[0] ?? ""}${
-                        currentUser.lastname?.[0] ?? ""
-                      }`.toUpperCase()
-                    : "G"}
+                      ? `${currentUser.firstname?.[0] ?? ""}${currentUser.lastname?.[0] ?? ""
+                        }`.toUpperCase()
+                      : "G"}
                 </span>
               </div>
             </div>
@@ -1460,11 +1419,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               <div className="absolute top-14 right-0 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
                 {/* Header - Different for admin vs regular users */}
                 <div
-                  className={`px-4 py-3 border-b border-gray-100 ${
-                    currentUser?.role === "ROLE_ADMIN"
-                      ? "bg-gradient-to-r from-amber-50 to-white"
-                      : "bg-gradient-to-r from-blue-50 to-white"
-                  } flex justify-between items-center`}
+                  className={`px-4 py-3 border-b border-gray-100 ${currentUser?.role === "ROLE_ADMIN"
+                    ? "bg-gradient-to-r from-amber-50 to-white"
+                    : "bg-gradient-to-r from-blue-50 to-white"
+                    } flex justify-between items-center`}
                 >
                   <h3 className="text-sm font-semibold text-gray-900">
                     {currentUser?.role === "ROLE_ADMIN"
@@ -1475,15 +1433,14 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                     onClick={() =>
                       currentUser?.role === "ROLE_ADMIN"
                         ? navigate("/all-startup-dashboard", {
-                            state: { activeTab: "review" },
-                          })
+                          state: { activeTab: "review" },
+                        })
                         : navigate("/notifications")
                     }
-                    className={`text-xs ${
-                      currentUser?.role === "ROLE_ADMIN"
-                        ? "text-amber-600 hover:text-amber-800"
-                        : "text-blue-600 hover:text-blue-800"
-                    } hover:underline`}
+                    className={`text-xs ${currentUser?.role === "ROLE_ADMIN"
+                      ? "text-amber-600 hover:text-amber-800"
+                      : "text-blue-600 hover:text-blue-800"
+                      } hover:underline`}
                   >
                     {currentUser?.role === "ROLE_ADMIN"
                       ? "View all submissions"
@@ -1520,9 +1477,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                               <div className="relative">
                                 {startup.photo ? (
                                   <img
-                                    src={`${
-                                      import.meta.env.VITE_BACKEND_URL
-                                    }/startups/${startup.id}/photo`}
+                                    src={`${import.meta.env.VITE_BACKEND_URL
+                                      }/startups/${startup.id}/photo`}
                                     alt={startup.companyName}
                                     className="h-12 w-12 rounded-lg object-cover border border-gray-200"
                                     onError={(e) => {
@@ -1642,9 +1598,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-gray-500">
                           {adminSubmissionsCount > 0
-                            ? `${adminSubmissionsCount} submission${
-                                adminSubmissionsCount !== 1 ? "s" : ""
-                              } awaiting review`
+                            ? `${adminSubmissionsCount} submission${adminSubmissionsCount !== 1 ? "s" : ""
+                            } awaiting review`
                             : "No pending submissions"}
                         </span>
                         <button
@@ -1675,12 +1630,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                               fetchNewNotifications();
                             }
                           }}
-                          className={`flex-1 py-2 text-sm font-medium text-center ${
-                            notificationActiveIndex === tab &&
+                          className={`flex-1 py-2 text-sm font-medium text-center ${notificationActiveIndex === tab &&
                             !notificationAdminTab
-                              ? "text-blue-600 border-b-2 border-blue-600"
-                              : "text-gray-500 hover:text-gray-700"
-                          }`}
+                            ? "text-blue-600 border-b-2 border-blue-600"
+                            : "text-gray-500 hover:text-gray-700"
+                            }`}
                         >
                           {tab}
                           {tab === "New" && notificationsCount > 0 && (
@@ -1706,7 +1660,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                         notificationActiveIndex === "All" && (
                           <>
                             {Array.isArray(notifications) &&
-                            notifications.length > 0 ? (
+                              notifications.length > 0 ? (
                               <div className="divide-y divide-gray-100">
                                 {/* Existing notification mapping code */}
                                 {notifications.map((noti, index) => (
@@ -1717,20 +1671,17 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                                       if (!noti.viewed) markAsViewed(noti.id);
                                     }}
                                     key={index}
-                                    className={`p-3 flex items-start hover:bg-gray-50 transition-colors cursor-pointer ${
-                                      !noti.viewed ? "bg-blue-50" : ""
-                                    }`}
+                                    className={`p-3 flex items-start hover:bg-gray-50 transition-colors cursor-pointer ${!noti.viewed ? "bg-blue-50" : ""
+                                      }`}
                                   >
                                     {/* Avatar/Icon */}
                                     <div className="flex-shrink-0 mr-3">
                                       {noti.startup?.photo ? (
                                         <div className="relative">
                                           <img
-                                            src={`${
-                                              import.meta.env.VITE_BACKEND_URL
-                                            }/startups/${
-                                              noti.startup.id
-                                            }/photo`}
+                                            src={`${import.meta.env.VITE_BACKEND_URL
+                                              }/startups/${noti.startup.id
+                                              }/photo`}
                                             alt={noti.startup.companyName}
                                             className="h-10 w-10 rounded-full object-cover border border-gray-200"
                                             onError={(e) => {
@@ -1817,11 +1768,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                                       {noti.startup?.photo ? (
                                         <div className="relative">
                                           <img
-                                            src={`${
-                                              import.meta.env.VITE_BACKEND_URL
-                                            }/startups/${
-                                              noti.startup.id
-                                            }/photo`}
+                                            src={`${import.meta.env.VITE_BACKEND_URL
+                                              }/startups/${noti.startup.id
+                                              }/photo`}
                                             alt={noti.startup.companyName}
                                             className="h-10 w-10 rounded-full object-cover border border-gray-200"
                                             onError={(e) => {
@@ -2028,13 +1977,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               Browse
             </h2>
 
-            <form
-              className="flex items-center mx-auto mb-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSearch();
-              }}
-            >
+            <div className="flex items-center mx-auto mb-4">
               <div className="relative w-full">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                   <svg
@@ -2052,7 +1995,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                     />
                   </svg>
                 </div>
-                
+
                 <input
                   type="text"
                   value={
@@ -2062,128 +2005,57 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                   }
                   onChange={(e) => {
                     const value = e.target.value;
-                    setSearchInputLoading(true);
                     setFilters((prev) => ({
                       ...prev,
                       [viewingType]: { ...prev[viewingType], query: value },
                     }));
-                    
-                    // Simulate a loading effect for a brief moment
-                    setTimeout(() => {
-                      setSearchInputLoading(false);
-                    }, 800); // Show loading for 800ms
                   }}
-                  className="bg-white/95 border border-transparent text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent block w-full pl-10 pr-24 py-2.5 shadow-sm"
+                  className="bg-white/95 border border-transparent text-gray-900 text-sm rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-transparent block w-full pl-10 pr-4 py-2.5 shadow-sm"
                   placeholder={
                     viewingType === "startups"
-                      ? "Search startups by name or location"
-                      : "Search stakeholders by name or location"
+                      ? "Search by company name, industry, description, city, status, business activity, founded year..."
+                      : "Search stakeholders by name, organization, location..."
                   }
                 />
-                
-                {/* Loading animation that shows when typing */}
-                {searchInputLoading && !loading && (
-                  <div className="absolute right-24 top-1/2 transform -translate-y-1/2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  </div>
-                )}
-                
-                {/* Submit button with loading state */}
-                <button
-                  type="submit"
-                  className="absolute inset-y-0 right-12 flex items-center px-2.5 text-blue-600 hover:text-blue-800 transition-colors"
-                  disabled={searchInputLoading || loading}
-                  aria-label="Search"
-                  title="Search"
-                >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  ) : (
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      className="w-4 h-4" 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
-                      stroke="currentColor"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth="2" 
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" 
-                      />
-                    </svg>
-                  )}
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`absolute inset-y-0 right-0 flex items-center px-2.5 rounded-r-lg ${
-                    showFilters
-                      ? "bg-blue-800 text-white"
-                      : "text-gray-600 hover:text-blue-700"
-                  } transition-colors`}
-                  aria-label="Toggle filters panel"
-                  title="Toggle filters"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className={`w-4 h-4 transition-transform ${
-                      showFilters ? "transform rotate-180" : ""
-                    }`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </button>
+
+
+
               </div>
-            </form>
+            </div>
 
             {/* Type Selector - redesigned with only Startups and Stakeholders */}
             <div className="flex gap-2 p-1 bg-blue-800/40 rounded-lg">
               <button
                 onClick={() => setViewingType("startups")}
-                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
-                  viewingType === "startups"
-                    ? "bg-white text-blue-700 shadow-sm"
-                    : "text-white/90 hover:text-white hover:bg-white/10"
-                }`}
+                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${viewingType === "startups"
+                  ? "bg-white text-blue-700 shadow-sm"
+                  : "text-white/90 hover:text-white hover:bg-white/10"
+                  }`}
               >
                 <div className="flex items-center justify-center">
                   <BsBriefcase
-                    className={`mr-2 h-4 w-4 ${
-                      viewingType === "startups"
-                        ? "text-blue-600"
-                        : "text-white/80"
-                    }`}
+                    className={`mr-2 h-4 w-4 ${viewingType === "startups"
+                      ? "text-blue-600"
+                      : "text-white/80"
+                      }`}
                   />
                   Startups
                 </div>
               </button>
               <button
                 onClick={() => setViewingType("stakeholders")}
-                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
-                  viewingType === "stakeholders"
-                    ? "bg-white text-blue-700 shadow-sm"
-                    : "text-white/90 hover:text-white hover:bg-white/10"
-                }`}
+                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${viewingType === "stakeholders"
+                  ? "bg-white text-blue-700 shadow-sm"
+                  : "text-white/90 hover:text-white hover:bg-white/10"
+                  }`}
               >
                 <div className="flex items-center justify-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className={`mr-2 h-4 w-4 ${
-                      viewingType === "stakeholders"
-                        ? "text-blue-600"
-                        : "text-white/80"
-                    }`}
+                    className={`mr-2 h-4 w-4 ${viewingType === "stakeholders"
+                      ? "text-blue-600"
+                      : "text-white/80"
+                      }`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -2201,306 +2073,6 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
             </div>
           </div>
 
-          {/* Filters Panel */}
-          {showFilters && (
-            <div className="px-4 py-3 bg-white border-b border-gray-200">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-900">Filters</h3>
-                <button
-                  onClick={() => {
-                    const currentFilters =
-                      viewingType === "startups"
-                        ? {
-                            query: filters.startups.query, // Preserve the search query
-                            industry: "",
-                            customIndustry: "",
-                            foundedDate: "",
-                            teamSize: "",
-                            fundingStage: "",
-                          }
-                        : {
-                            query: filters.stakeholders.query, // Preserve the search query
-                            investmentStage: "",
-                            investmentRange: "",
-                            preferredIndustry: "",
-                            customPreferredIndustry: "",
-                            location: "",
-                          };
-
-                    setFilters((prev) => ({
-                      ...prev,
-                      [viewingType]: currentFilters,
-                    }));
-                  }}
-                  className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
-                >
-                  Reset filters
-                </button>
-              </div>
-
-              {viewingType === "startups" ? (
-                <div className="space-y-3">
-                  {/* Industry filter - enhanced */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Industry
-                      </label>
-                      <select
-                        value={filters.startups.industry}
-                        onChange={(e) =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            startups: {
-                              ...prev.startups,
-                              industry: e.target.value,
-                              customIndustry: "",
-                            },
-                          }))
-                        }
-                        className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-700"
-                      >
-                        <option value="">All Industries</option>
-                        <option value="technology">Technology</option>
-                        <option value="healthcare">Healthcare</option>
-                        <option value="finance">Finance</option>
-                        <option value="education">Education</option>
-                        <option value="retail">Retail</option>
-                        <option value="transportation">Transportation</option>
-                        <option value="entertainment">Entertainment</option>
-                        <option value="manufacturing">Manufacturing</option>
-                        <option value="other">Other (specify)</option>
-                      </select>
-                      {filters.startups.industry === "other" && (
-                        <div className="mt-2">
-                          <input
-                            type="text"
-                            value={filters.startups.customIndustry}
-                            onChange={(e) =>
-                              setFilters((prev) => ({
-                                ...prev,
-                                startups: {
-                                  ...prev.startups,
-                                  customIndustry: e.target.value.toLowerCase(),
-                                },
-                              }))
-                            }
-                            placeholder="Type industry"
-                            className="w-full text-sm rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 px-3 py-1.5 text-gray-700"
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Team Size filter - enhanced */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        Team Size
-                      </label>
-                      <select
-                        value={filters.startups.teamSize}
-                        onChange={(e) =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            startups: {
-                              ...prev.startups,
-                              teamSize: e.target.value,
-                            },
-                          }))
-                        }
-                        className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-700"
-                      >
-                        <option value="">Any Size</option>
-                        <option value="1-10">1-10 employees</option>
-                        <option value="11-50">11-50 employees</option>
-                        <option value="51-200">51-200 employees</option>
-                        <option value="201+">201+ employees</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Funding Stage filter - enhanced */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Funding Stage
-                    </label>
-                    <select
-                      value={filters.startups.fundingStage}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          startups: {
-                            ...prev.startups,
-                            fundingStage: e.target.value,
-                          },
-                        }))
-                      }
-                      className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-gray-700"
-                    >
-                      <option value="">Any Stage</option>
-                      <option value="bootstrapped">Bootstrapped</option>
-                      <option value="seed">Seed</option>
-                      <option value="series_a">Series A</option>
-                      <option value="series_b">Series B</option>
-                      <option value="series_c">Series C</option>
-                    </select>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Change 'investors' to 'stakeholders' in the filter section */}
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Investment Stage
-                    </label>
-                    <select
-                      value={filters.stakeholders.investmentStage}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          stakeholders: {
-                            ...prev.stakeholders,
-                            investmentStage: e.target.value,
-                          },
-                        }))
-                      }
-                      className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    >
-                      <option value="">Any Stage</option>
-                      <option value="seed">Seed</option>
-                      <option value="series_a">Series A</option>
-                      <option value="series_b">Series B</option>
-                      <option value="series_c">Series C</option>
-                      <option value="growth">Growth</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Industry Focus
-                    </label>
-                    <select
-                      value={filters.stakeholders.preferredIndustry}
-                      onChange={(e) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          stakeholders: {
-                            ...prev.stakeholders,
-                            preferredIndustry: e.target.value,
-                            customPreferredIndustry: "",
-                          },
-                        }))
-                      }
-                      className="w-full text-sm rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                    >
-                      <option value="">All Industries</option>
-                      <option value="technology">Technology</option>
-                      <option value="healthcare">Healthcare</option>
-                      <option value="finance">Finance</option>
-                      <option value="education">Education</option>
-                      <option value="retail">Retail</option>
-                      <option value="other">Other (specify)</option>
-                    </select>
-                    {filters.stakeholders.preferredIndustry === "other" && (
-                      <div className="mt-2">
-                        <input
-                          type="text"
-                          value={filters.stakeholders.customPreferredIndustry}
-                          onChange={(e) =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              stakeholders: {
-                                ...prev.stakeholders,
-                                customPreferredIndustry:
-                                  e.target.value.toLowerCase(),
-                              },
-                            }))
-                          }
-                          placeholder="Type industry focus"
-                          className="w-full text-sm text-gray-900 rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500 px-3 py-2"
-                        />
-                        <p className="mt-1 text-[11px] text-gray-500">
-                          We'll match stakeholders whose preferred industry
-                          equals your entry.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Applied Filters Tags */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                {(viewingType === "startups"
-                  ? [
-                      ...Object.entries(filters.startups).filter(
-                        ([key, value]) =>
-                          value && key !== "customIndustry" && key !== "query"
-                      ),
-                      ...(filters.startups.industry === "other" &&
-                      filters.startups.customIndustry
-                        ? [["industry", filters.startups.customIndustry]]
-                        : []),
-                    ]
-                  : [
-                      ...Object.entries(filters.stakeholders).filter(
-                        ([key, value]) =>
-                          value &&
-                          key !== "customPreferredIndustry" &&
-                          key !== "query"
-                      ),
-                      ...(filters.stakeholders.preferredIndustry === "other" &&
-                      filters.stakeholders.customPreferredIndustry
-                        ? [
-                            [
-                              "preferredIndustry",
-                              filters.stakeholders.customPreferredIndustry,
-                            ],
-                          ]
-                        : []),
-                    ]
-                ).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100"
-                  >
-                    <span className="capitalize mr-1">
-                      {key === "teamSize"
-                        ? "Team:"
-                        : key === "industry" || key === "preferredIndustry"
-                        ? "Industry:"
-                        : key === "fundingStage" || key === "investmentStage"
-                        ? "Stage:"
-                        : key.replace(/([A-Z])/g, " $1").trim() + ":"}
-                    </span>
-                    <span className="font-medium">{value}</span>
-                    <button
-                      className="ml-1.5 text-blue-500 hover:text-blue-700 focus:outline-none"
-                      onClick={() => {
-                        setFilters((prev) => ({
-                          ...prev,
-                          [viewingType]: { ...prev[viewingType], [key]: "" },
-                        }));
-                      }}
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-3.5 w-3.5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="h-[calc(100vh-200px)] overflow-y-auto p-4 space-y-4">
             {loading ? (
@@ -2509,7 +2081,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               </div>
             ) : viewingType === "startups" ? (
               startups && startups.length > 0 ? (
-                applyFilters(startups).map((startup) => (
+                applyFilters(startups).length > 0 ? (
+                  applyFilters(startups).map((startup) => (
                   <div
                     key={startup.id}
                     onClick={() => handleStartupClick(startup)}
@@ -2519,9 +2092,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                       {/* Startup Logo */}
                       <div className="flex-shrink-0">
                         <img
-                          src={`${import.meta.env.VITE_BACKEND_URL}/startups/${
-                            startup.id
-                          }/photo`}
+                          src={`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id
+                            }/photo`}
                           alt={startup.companyName}
                           className="h-12 w-12 rounded-md object-cover border border-gray-100 shadow-sm group-hover:shadow transition-shadow"
                           onError={(e) => {
@@ -2569,7 +2141,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                     </div>
                   </div>
                 ))
-              ) : searchQuery ? (
+              ) : searchQuery ? ((filters.startups.query && filters.startups.query.trim() !== "") && (
                 <div className="py-12 px-4 text-center">
                   <div className="mx-auto h-16 w-16 text-gray-300 mb-5">
                     <svg
@@ -2591,8 +2163,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                     No results found
                   </h3>
                   <p className="text-gray-500 text-sm max-w-xs mx-auto">
-                    Try adjusting your search terms or filters to find what
-                    you're looking for.
+                    Try adjusting your search terms or filters to find what you’re looking for.
                   </p>
                   <button
                     onClick={() =>
@@ -2618,66 +2189,123 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                     Clear all filters
                   </button>
                 </div>
+              )
+                ) : (
+                  <div className="text-center py-12 px-4">
+                    <div className="mx-auto h-16 w-16 text-gray-300 mb-4">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        className="w-full h-full"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                    <h3 className="text-gray-700 font-medium text-lg mb-2">
+                      No startups found
+                    </h3>
+                    <p className="text-gray-500 text-sm max-w-xs mx-auto">
+                      Try adjusting your search terms or check the spelling.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setFilters((prev) => ({
+                          ...prev,
+                          startups: { ...prev.startups, query: "" },
+                        }));
+                        fetchStartups();
+                      }}
+                      className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      Clear search
+                    </button>
+                  </div>
+                )
               ) : (
                 <div className="text-center py-10">
-                  <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+                  <p className="text-gray-700 font-medium">No startups available.</p>
+                </div>
+              )
+            ) : stakeholders && stakeholders.length > 0 ? (
+              applyFilters(stakeholders).length > 0 ? (
+                applyFilters(stakeholders).map((stakeholder) => (
+                  <StakeholderCard
+                    key={stakeholder.id}
+                    stakeholder={stakeholder}
+                    onClick={handleStakeholderClick}
+                  />
+                ))
+              ) : (
+                <div className="text-center py-12 px-4">
+                  <div className="mx-auto h-16 w-16 text-gray-300 mb-4">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
-                      className="h-full w-full"
                       fill="none"
                       viewBox="0 0 24 24"
                       stroke="currentColor"
-                      strokeWidth="2"
+                      className="w-full h-full"
                     >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M21 21l-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"
+                        strokeWidth={1}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                       />
                     </svg>
                   </div>
-                  <p className="text-gray-700 font-medium">
-                    Search for startups
+                  <h3 className="text-gray-700 font-medium text-lg mb-2">
+                    No stakeholders found
+                  </h3>
+                  <p className="text-gray-500 text-sm max-w-xs mx-auto">
+                    Try adjusting your search terms or check the spelling.
                   </p>
-                  <p className="text-gray-500 text-sm mt-1">
-                    Enter a search term to find startups
-                  </p>
+                  <button
+                    onClick={() => {
+                      setFilters((prev) => ({
+                        ...prev,
+                        stakeholders: { ...prev.stakeholders, query: "" },
+                      }));
+                      fetchStakeholders();
+                    }}
+                    className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    Clear search
+                  </button>
                 </div>
               )
-            ) : stakeholders && stakeholders.length > 0 ? (
-              applyFilters(stakeholders).map((stakeholder) => (
-                <StakeholderCard
-                  key={stakeholder.id}
-                  stakeholder={stakeholder}
-                  onClick={handleStakeholderClick}
-                />
-              ))
             ) : (
-              <div className="text-center py-12 px-4">
-                <div className="mx-auto h-16 w-16 text-gray-300 mb-5">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-full w-full"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="1.5"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-gray-700 font-medium text-lg mb-1">
-                  No stakeholders found
-                </h3>
-                <p className="text-gray-500 text-sm max-w-xs mx-auto">
-                  Try adjusting your search terms or filters to find what you're
-                  looking for.
-                </p>
+            <div className="text-center py-12 px-4">
+              <div className="mx-auto h-16 w-16 text-gray-300 mb-5">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-full w-full"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.5"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
               </div>
+              <h3 className="text-gray-700 font-medium text-lg mb-1">
+                No stakeholders found
+              </h3>
+              <p className="text-gray-500 text-sm max-w-xs mx-auto">
+                Try adjusting your search terms or filters to find what you're
+                looking for.
+              </p>
+            </div>
             )}
           </div>
         </div>
@@ -2724,21 +2352,19 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
             <div className="flex gap-2">
               <button
                 onClick={() => setViewingType("startups")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  viewingType === "startups"
-                    ? "bg-white text-blue-600"
-                    : "bg-white/20 text-white hover:bg-white/30"
-                }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "startups"
+                  ? "bg-white text-blue-600"
+                  : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
               >
                 Startups
               </button>
               <button
                 onClick={() => setViewingType("stakeholders")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  viewingType === "stakeholders"
-                    ? "bg-white text-blue-600"
-                    : "bg-white/20 text-white hover:bg-white/30"
-                }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "stakeholders"
+                  ? "bg-white text-blue-600"
+                  : "bg-white/20 text-white hover:bg-white/30"
+                  }`}
               >
                 Stakeholders
               </button>
@@ -2757,9 +2383,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                     <div className="flex items-center mb-2">
                       {/* Add startup image */}
                       <img
-                        src={`${import.meta.env.VITE_BACKEND_URL}/startups/${
-                          startup.id
-                        }/photo`}
+                        src={`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id
+                          }/photo`}
                         alt={startup.companyName}
                         className="h-10 w-10 rounded-lg object-cover border border-gray-200 mr-3"
                         onError={(e) => {
@@ -2864,9 +2489,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
             <div className="flex items-center gap-1">
               <button
                 onClick={toggleBookmark}
-                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${
-                  isCurrentItemBookmarked ? "text-blue-600" : "text-gray-500"
-                }`}
+                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${isCurrentItemBookmarked ? "text-blue-600" : "text-gray-500"
+                  }`}
                 title={
                   isCurrentItemBookmarked ? "Remove Bookmark" : "Add Bookmark"
                 }
@@ -2879,11 +2503,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               </button>
               <button
                 onClick={() => toggleLike(user?.id, null, stakeholder.id)}
-                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${
-                  likedStakeholders?.includes(stakeholder.id)
-                    ? "text-red-500"
-                    : "text-gray-500"
-                }`}
+                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${likedStakeholders?.includes(stakeholder.id)
+                  ? "text-red-500"
+                  : "text-gray-500"
+                  }`}
                 title={
                   likedStakeholders?.includes(stakeholder.id)
                     ? "Unlike"
@@ -2927,13 +2550,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               <div className="h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-3xl font-medium mr-4 border-2 border-white/50 shadow-lg">
                 {stakeholder.name
                   ? (() => {
-                      const names = stakeholder.name.split(" ");
-                      if (names.length === 1)
-                        return names[0].charAt(0).toUpperCase();
-                      return `${names[0].charAt(0)}${names[
-                        names.length - 1
-                      ].charAt(0)}`.toUpperCase();
-                    })()
+                    const names = stakeholder.name.split(" ");
+                    if (names.length === 1)
+                      return names[0].charAt(0).toUpperCase();
+                    return `${names[0].charAt(0)}${names[
+                      names.length - 1
+                    ].charAt(0)}`.toUpperCase();
+                  })()
                   : "S"}
               </div>
 
@@ -3163,7 +2786,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                           stakeholder.province,
                           stakeholder.region,
                           stakeholder.postalCode &&
-                            `Postal Code: ${stakeholder.postalCode}`,
+                          `Postal Code: ${stakeholder.postalCode}`,
                         ]
                           .filter(Boolean)
                           .join(", ")}
@@ -3399,9 +3022,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
             <div className="flex items-center gap-1">
               <button
                 onClick={toggleBookmark}
-                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${
-                  isCurrentItemBookmarked ? "text-blue-600" : "text-gray-500"
-                }`}
+                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${isCurrentItemBookmarked ? "text-blue-600" : "text-gray-500"
+                  }`}
                 title={
                   isCurrentItemBookmarked ? "Remove Bookmark" : "Add Bookmark"
                 }
@@ -3414,11 +3036,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               </button>
               <button
                 onClick={() => toggleLike(user?.id, startup.id, null)}
-                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${
-                  likedStartups?.includes(startup.id)
-                    ? "text-red-500"
-                    : "text-gray-500"
-                }`}
+                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${likedStartups?.includes(startup.id)
+                  ? "text-red-500"
+                  : "text-gray-500"
+                  }`}
                 title={likedStartups?.includes(startup.id) ? "Unlike" : "Like"}
               >
                 {likedStartups?.includes(startup.id) ? (
@@ -3468,9 +3089,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                 </div>
               ) : (
                 <img
-                  src={`${import.meta.env.VITE_BACKEND_URL}/startups/${
-                    startup.id
-                  }/photo`}
+                  src={`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id
+                    }/photo`}
                   alt={startup.companyName}
                   className="w-full h-full object-contain rounded"
                   onError={(e) => {
