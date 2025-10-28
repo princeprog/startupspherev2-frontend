@@ -1017,11 +1017,12 @@ export default function Startupmap({
     });
   };
 
-  // Add 3D buildings to the map - Fixed filter expressions
+  // Add 3D buildings to the map - Professional enhanced version
   const add3DBuildings = (map) => {
     // First add ambient occlusion shadow layer for depth
     createBuildingPattern(map);
 
+    // Enhanced shadow layer with better depth perception
     map.addLayer({
       id: "building-ambient-shadows",
       source: "composite",
@@ -1034,15 +1035,22 @@ export default function Startupmap({
       },
       paint: {
         "fill-extrusion-color": "#000000",
-        "fill-extrusion-height": ["*", ["to-number", ["get", "height"]], 1.02],
+        "fill-extrusion-height": ["*", ["to-number", ["get", "height"]], 1.03],
         "fill-extrusion-base": ["to-number", ["get", "min_height"]],
-        "fill-extrusion-opacity": 0.12,
-        "fill-extrusion-translate": [3, 3],
+        "fill-extrusion-opacity": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          12, 0.08,
+          16, 0.15,
+          18, 0.20
+        ],
+        "fill-extrusion-translate": [4, 4],
         "fill-extrusion-vertical-gradient": false,
       },
     });
 
-    // Main building layer with enhanced detail
+    // Main building layer with professional lighting and materials
     map.addLayer(
       {
         id: "3d-buildings",
@@ -1052,53 +1060,51 @@ export default function Startupmap({
         type: "fill-extrusion",
         minzoom: 11,
         paint: {
-          // Enhanced color gradient based on building height and zoom level
+          // Sophisticated color scheme with realistic building materials
           "fill-extrusion-color": [
             "interpolate",
             ["linear"],
             ["to-number", ["get", "height"]],
             0,
-            "#e6f2ff", // Light blue-white for smallest buildings
-            25,
-            "#d9edff", // Very light blue
+            "#f0f4f8", // Light concrete/stone for low buildings
+            15,
+            "#e3ebf2", // Slightly darker
+            30,
+            "#d5dfe8", // Modern office buildings
             50,
-            "#cce7ff", // Light blue
-            100,
-            "#b3d9ff", // Moderate blue
+            "#c8d6e3", // Mid-rise glass/concrete
+            80,
+            "#b5c9dd", // Glass towers
+            120,
+            "#a3bfd7", // Premium glass facades
             200,
-            "#99ccff", // Medium blue
+            "#8fb1cf", // Iconic skyscrapers
             300,
-            "#80bfff", // Stronger blue
-            400,
-            "#66b3ff", // Deep blue for tall skyscrapers
-            500,
-            "#4da6ff", // Vivid blue for very tall buildings
+            "#7aa3c7", // Landmark towers
           ],
-          // Dynamic height based on zoom level for better visualization
+          // Realistic height with smooth transitions
           "fill-extrusion-height": [
             "interpolate",
             ["linear"],
             ["zoom"],
             11,
-            ["*", ["to-number", ["get", "height"]], 0.7], // Shorter from far away
-            14,
-            ["*", ["to-number", ["get", "height"]], 0.9],
-            16,
-            ["*", ["to-number", ["get", "height"]], 1.0],
-            18,
-            ["to-number", ["get", "height"]], // Actual height when zoomed in
+            ["*", ["to-number", ["get", "height"]], 0.6],
+            13,
+            ["*", ["to-number", ["get", "height"]], 0.8],
+            15,
+            ["*", ["to-number", ["get", "height"]], 0.95],
+            17,
+            ["to-number", ["get", "height"]],
           ],
           "fill-extrusion-base": ["to-number", ["get", "min_height"]],
           "fill-extrusion-opacity": [
             "interpolate",
             ["linear"],
             ["zoom"],
-            11,
-            0.75,
-            14,
-            0.85,
-            16,
-            0.9,
+            11, 0.70,
+            14, 0.85,
+            16, 0.92,
+            18, 0.95,
           ],
           "fill-extrusion-vertical-gradient": true,
         },
@@ -1418,29 +1424,36 @@ export default function Startupmap({
     }
   };
 
-  // Add water features with enhanced blue color
+  // Add water features with enhanced professional blue color
   const enhanceWaterFeatures = (map) => {
-    // Enhance water color to match the bright blue in the image
-    map.setPaintProperty("water", "fill-color", "#4dabf7");
+    // Modern professional water color
+    try {
+      if (map.getLayer("water")) {
+        map.setPaintProperty("water", "fill-color", "#73b9ed");
+        map.setPaintProperty("water", "fill-opacity", 0.95);
+      }
 
-    // Add a slight reflection effect to water
-    map.addLayer(
-      {
-        id: "water-reflection",
-        type: "fill",
-        source: "composite",
-        "source-layer": "water",
-        layout: {},
-        paint: {
-          "fill-color": "#72c3fc",
-          "fill-opacity": 0.1,
+      // Add a subtle reflection effect to water
+      map.addLayer(
+        {
+          id: "water-reflection",
+          type: "fill",
+          source: "composite",
+          "source-layer": "water",
+          layout: {},
+          paint: {
+            "fill-color": "#9dd1f7",
+            "fill-opacity": 0.15,
+          },
         },
-      },
-      "waterway-label"
-    );
+        "waterway-label"
+      );
+    } catch (e) {
+      console.log("Water styling not fully supported with Standard style");
+    }
   };
 
-  // Enhance roads and road labels
+  // Enhance roads and road labels with professional styling
   const enhanceRoadLabels = (map) => {
     // Check if the layer exists before modifying it
     if (map.getLayer("road-label")) {
@@ -1449,78 +1462,328 @@ export default function Startupmap({
         "interpolate",
         ["linear"],
         ["zoom"],
-        12,
-        10,
-        16,
-        16,
-        20,
-        24,
+        12, 9,
+        16, 13,
+        20, 20,
       ]);
     }
 
     if (map.getLayer("road-major-label")) {
-      map.setPaintProperty("road-major-label", "text-color", "#2b6cb0");
+      map.setPaintProperty("road-major-label", "text-color", "#2c3e50");
       map.setPaintProperty(
         "road-major-label",
         "text-halo-color",
-        "rgba(255, 255, 255, 0.9)"
+        "rgba(255, 255, 255, 1.0)"
       );
-      map.setPaintProperty("road-major-label", "text-halo-width", 2);
+      map.setPaintProperty("road-major-label", "text-halo-width", 3);
+      map.setPaintProperty("road-major-label", "text-halo-blur", 1);
     }
 
-    // Change road colors to dark gray
+    // Modern professional road colors matching Google Maps/Apple Maps style
     if (map.getLayer("road")) {
-      map.setPaintProperty("road", "line-color", "#333333");
-    }
-    if (map.getLayer("road-secondary-tertiary")) {
-      map.setPaintProperty("road-secondary-tertiary", "line-color", "#444444");
-    }
-    if (map.getLayer("road-primary")) {
-      map.setPaintProperty("road-primary", "line-color", "#333333");
-    }
-    if (map.getLayer("road-motorway-trunk")) {
-      map.setPaintProperty("road-motorway-trunk", "line-color", "#222222");
-    }
-
-    // Increase road visibility
-    if (map.getLayer("road")) {
-      map.setPaintProperty("road", "line-width", [
+      map.setPaintProperty("road", "line-color", [
         "interpolate",
         ["linear"],
         ["zoom"],
-        12,
-        1,
-        16,
-        3,
-        20,
-        6,
+        12, "#ffffff",
+        16, "#ffffff",
+        20, "#fafafa"
+      ]);
+    }
+    if (map.getLayer("road-secondary-tertiary")) {
+      map.setPaintProperty("road-secondary-tertiary", "line-color", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12, "#fefefe",
+        16, "#fcfcfc",
+        20, "#f8f8f8"
+      ]);
+    }
+    if (map.getLayer("road-primary")) {
+      map.setPaintProperty("road-primary", "line-color", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12, "#ffe89e",
+        16, "#ffd76f",
+        20, "#ffc940"
+      ]);
+    }
+    if (map.getLayer("road-motorway-trunk")) {
+      map.setPaintProperty("road-motorway-trunk", "line-color", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12, "#ff8c42",
+        16, "#ff7f2e",
+        20, "#ff6f1a"
+      ]);
+    }
+
+    // Enhanced road visibility with smooth scaling and borders
+    if (map.getLayer("road")) {
+      map.setPaintProperty("road", "line-width", [
+        "interpolate",
+        ["exponential", 1.6],
+        ["zoom"],
+        12, 1.2,
+        16, 3,
+        20, 6,
+      ]);
+      // Add subtle road border for depth
+      map.setPaintProperty("road", "line-opacity", [
+        "interpolate",
+        ["linear"],
+        ["zoom"],
+        12, 0.9,
+        16, 0.95,
+        20, 1.0,
       ]);
     }
     if (map.getLayer("road-primary")) {
       map.setPaintProperty("road-primary", "line-width", [
         "interpolate",
-        ["linear"],
+        ["exponential", 1.6],
         ["zoom"],
-        12,
-        2,
-        16,
-        4,
-        20,
-        8,
+        12, 2,
+        16, 4.5,
+        20, 9,
       ]);
     }
     if (map.getLayer("road-motorway-trunk")) {
       map.setPaintProperty("road-motorway-trunk", "line-width", [
         "interpolate",
+        ["exponential", 1.6],
+        ["zoom"],
+        12, 3,
+        16, 6,
+        20, 12,
+      ]);
+    }
+  };
+
+  // Add trees and vegetation for realism
+  const addTreesAndVegetation = (map) => {
+    // Add parks and green spaces with 3D trees
+    if (map.getLayer("landuse")) {
+      map.setPaintProperty("landuse", "fill-color", [
+        "match",
+        ["get", "class"],
+        "park", "#8fbc8f",
+        "wood", "#6b8e23",
+        "grass", "#9acd32",
+        "garden", "#90ee90",
+        "#e5e5e5"
+      ]);
+      map.setPaintProperty("landuse", "fill-opacity", 0.7);
+    }
+
+    // Add 3D tree representations for parks
+    map.addLayer({
+      id: "park-trees-3d",
+      type: "fill-extrusion",
+      source: "composite",
+      "source-layer": "landuse",
+      filter: ["in", "class", "park", "wood", "nature_reserve"],
+      minzoom: 14,
+      paint: {
+        "fill-extrusion-color": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          14, "#5a7a3c",
+          18, "#4a6a2c"
+        ],
+        "fill-extrusion-height": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          14, 3,
+          16, 8,
+          18, 12
+        ],
+        "fill-extrusion-base": 0,
+        "fill-extrusion-opacity": 0.6,
+        "fill-extrusion-vertical-gradient": true,
+      },
+    });
+  };
+
+  // Add elevated structures like bridges and overpasses
+  const addElevatedStructures = (map) => {
+    // Enhanced bridge rendering
+    if (map.getLayer("bridge")) {
+      map.setPaintProperty("bridge", "line-color", "#556b7d");
+      map.setPaintProperty("bridge", "line-width", [
+        "interpolate",
         ["linear"],
         ["zoom"],
-        12,
-        3,
-        16,
-        6,
-        20,
-        10,
+        12, 2,
+        16, 5,
+        20, 10
       ]);
+    }
+
+    // Add 3D bridge structures
+    map.addLayer({
+      id: "bridge-3d-structure",
+      type: "fill-extrusion",
+      source: "composite",
+      "source-layer": "road",
+      filter: ["==", ["get", "structure"], "bridge"],
+      minzoom: 14,
+      paint: {
+        "fill-extrusion-color": "#6b7d8f",
+        "fill-extrusion-height": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          14, 8,
+          16, 12,
+          18, 15
+        ],
+        "fill-extrusion-base": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          14, 5,
+          16, 8,
+          18, 10
+        ],
+        "fill-extrusion-opacity": 0.8,
+        "fill-extrusion-vertical-gradient": true,
+      },
+    });
+
+    // Add bridge support pillars
+    map.addLayer({
+      id: "bridge-pillars",
+      type: "fill-extrusion",
+      source: "composite",
+      "source-layer": "road",
+      filter: ["==", ["get", "structure"], "bridge"],
+      minzoom: 16,
+      paint: {
+        "fill-extrusion-color": "#4a5a6a",
+        "fill-extrusion-height": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          16, 8,
+          18, 12
+        ],
+        "fill-extrusion-base": 0,
+        "fill-extrusion-opacity": 0.9,
+      },
+    });
+  };
+
+  // Add dynamic lighting effects based on time simulation
+  const addDynamicLighting = (map) => {
+    // Simulate different times of day (you can make this dynamic)
+    const timeOfDay = "day"; // Options: "dawn", "day", "dusk", "night"
+    
+    // Set the light preset and adjust colors for Standard style
+    switch(timeOfDay) {
+      case "dawn":
+        map.setConfigProperty("lightPreset", "dawn");
+        // Warmer colors for dawn
+        map.setConfigProperty("basemap", "colorWater", "#a8c7e0");
+        map.setConfigProperty("basemap", "colorGreenspace", "#8fac7e");
+        map.setConfigProperty("basemap", "colorRoads", "#f5f5f5");
+        map.setConfigProperty("basemap", "colorMotorways", "#ffb074");
+        break;
+      case "day":
+        map.setConfigProperty("lightPreset", "day");
+        // Bright vibrant colors for day (professional modern style)
+        map.setConfigProperty("basemap", "colorWater", "#73b9ed");
+        map.setConfigProperty("basemap", "colorGreenspace", "#9dc183");
+        map.setConfigProperty("basemap", "colorRoads", "#ffffff");
+        map.setConfigProperty("basemap", "colorMotorways", "#ff8c42");
+        break;
+      case "dusk":
+        map.setConfigProperty("lightPreset", "dusk");
+        // Warm orange tones for dusk
+        map.setConfigProperty("basemap", "colorWater", "#6a9fc4");
+        map.setConfigProperty("basemap", "colorGreenspace", "#7a9470");
+        map.setConfigProperty("basemap", "colorRoads", "#e8e8e8");
+        map.setConfigProperty("basemap", "colorMotorways", "#ff9959");
+        break;
+      case "night":
+        map.setConfigProperty("lightPreset", "night");
+        // Dark muted colors for night
+        map.setConfigProperty("basemap", "colorWater", "#3d5a73");
+        map.setConfigProperty("basemap", "colorGreenspace", "#3a4f3a");
+        map.setConfigProperty("basemap", "colorRoads", "#4a4a4a");
+        map.setConfigProperty("basemap", "colorMotorways", "#cc6633");
+        break;
+      default:
+        map.setConfigProperty("lightPreset", "day");
+    }
+
+    // Add custom lighting effects for night/dusk
+    if (timeOfDay === "night" || timeOfDay === "dusk") {
+      // Adjust label colors for better visibility at night
+      map.setConfigProperty("basemap", "colorPlaceLabels", "#f0f0f0");
+      map.setConfigProperty("basemap", "colorRoadLabels", "#e0e0e0");
+      map.setConfigProperty("basemap", "colorPointOfInterestLabels", "#d0d0d0");
+      
+      // Enhance fog for night atmosphere
+      map.setFog({
+        range: [0.5, 8],
+        color: "rgba(30, 40, 60, 0.6)",
+        "horizon-blend": 0.15,
+        "high-color": "rgba(40, 50, 70, 0.8)",
+        "space-color": "rgba(20, 30, 50, 0.4)",
+        "star-intensity": 0.5,
+      });
+      
+      // Try to add building lights if custom layers are supported
+      try {
+        map.addLayer({
+          id: "building-windows-lit",
+          type: "fill-extrusion",
+          source: "composite",
+          "source-layer": "building",
+          filter: ["all", ["==", "extrude", "true"], [">", ["to-number", ["get", "height"]], 20]],
+          minzoom: 14,
+          paint: {
+            "fill-extrusion-color": "#ffe8b3",
+            "fill-extrusion-height": ["*", ["to-number", ["get", "height"]], 0.995],
+            "fill-extrusion-base": ["to-number", ["get", "min_height"]],
+            "fill-extrusion-opacity": 0.8,
+            "fill-extrusion-vertical-gradient": true,
+          },
+        });
+      } catch (e) {
+        console.log("Custom building lights not supported with Standard style");
+      }
+
+      // Add street lights with warm glow
+      try {
+        map.addLayer({
+          id: "street-lights",
+          type: "circle",
+          source: "composite",
+          "source-layer": "road",
+          minzoom: 16,
+          paint: {
+            "circle-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              16, 2.5,
+              20, 7
+            ],
+            "circle-color": "#ffe8cc",
+            "circle-opacity": 0.9,
+            "circle-blur": 0.8,
+          },
+        });
+      } catch (e) {
+        console.log("Street lights not supported with Standard style");
+      }
     }
   };
 
@@ -1530,18 +1793,14 @@ export default function Startupmap({
     setIs3DActive(!is3DActive);
 
     if (!is3DActive) {
-      // Enable 3D
-      map.setTerrain({ source: "mapbox-dem", exaggeration: 1.2 });
-      map.setLayoutProperty("3d-buildings", "visibility", "visible");
+      // Enable 3D with dramatic perspective
       map.easeTo({
-        pitch: 55, // Adjusted pitch to match the image
-        bearing: 15, // Slight rotation to match perspective in image
+        pitch: 67.95, // High pitch for dramatic 3D view
+        bearing: 56.76, // Angled bearing for better perspective
         duration: 1000,
       });
     } else {
-      // Disable 3D
-      map.setTerrain(null);
-      map.setLayoutProperty("3d-buildings", "visibility", "none");
+      // Disable 3D - flatten view
       map.easeTo({
         pitch: 0,
         bearing: 0,
@@ -2429,17 +2688,45 @@ export default function Startupmap({
     
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: "mapbox://styles/mapbox/streets-v12", // Changed to streets style for better landmark visibility
-      center: [123.8854, 10.3157], // Cebu City coordinates
-      zoom: 16, // Lowered zoom level for better overview
-      pitch: 55, // Adjusted pitch to match image
-      bearing: 15, // Slight bearing to match image perspective
-      antialias: true, // Smoother edges for 3D buildings
-      maxPitch: 70, // Limit maximum pitch
-      fog: {
-        color: "rgb(220, 230, 240)", // Light fog color
-        "horizon-blend": 0.1, // How much the fog blends with the sky
+      style: "mapbox://styles/mapbox/standard",
+      config: {
+        basemap: {
+          colorModePointOfInterestLabels: "single",
+          
+          // Feature Visibility - Professional settings
+          showPedestrianRoads: true,
+          showPlaceLabels: true,
+          showPointOfInterestLabels: true,
+          showRoadLabels: true,
+          showTransitLabels: false, // Hide transit for cleaner look
+          show3dObjects: true, // Enable 3D objects like trees, signs
+          showLandmarkIcons: true, // Show landmark building icons
+          showLandmarkIconLabels: true, // Show landmark labels
+          
+          // Typography - Professional font stack
+          font: "Montserrat, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          
+          // Color Customization - Professional color scheme
+          colorAdminBoundaries: "#c0c4cc", // Subtle admin boundaries
+          colorGreenspace: "#9dc183", // Fresh, vibrant green for parks
+          colorWater: "#73b9ed", // Professional blue water (matches modern map styles)
+          colorPlaceLabels: "#1a1a1a", // Deep black for maximum readability
+          colorRoadLabels: "#3d3d3d", // Dark gray for professional look
+          colorPointOfInterestLabels: "#5a5a5a", // Medium gray for POI labels
+          colorMotorways: "#ff8c42", // Orange for highways (professional standard)
+          colorTrunks: "#ffa75d", // Lighter orange for trunk roads
+          colorRoads: "#ffffff", // Pure white for regular roads (modern style)
+        },
+        lightPreset: "day", // Options: dawn, day, dusk, night
+        theme: "default",
       },
+      center: [123.8907, 10.3166], // Cebu City coordinates
+      zoom: 18, // Professional zoom level matching the reference
+      pitch: 67.95, // High pitch for dramatic 3D view
+      bearing: 56.76, // Angled bearing for better perspective
+      antialias: true, // Smoother edges for 3D buildings
+      maxPitch: 85, // Allow steeper pitch
+      projection: "globe", // Globe projection for better 3D effect
     });
 
     // Navigation controls with rotation
@@ -2490,40 +2777,73 @@ export default function Startupmap({
       // Load stakeholders first to ensure they're displayed
       loadStakeholders(map);
       
-      // Add terrain source
-      map.addSource("mapbox-dem", {
-        type: "raster-dem",
-        url: "mapbox://mapbox.mapbox-terrain-dem-v1",
-        tileSize: 512,
-        maxzoom: 14,
-      });
-
-      // Set terrain with more subtle exaggeration
-      map.setTerrain({ source: "mapbox-dem", exaggeration: 1.2 });
-
-      // Add atmospheric sky layer with lighter blue
-      map.addLayer({
-        id: "sky",
-        type: "sky",
-        paint: {
-          "sky-type": "atmosphere",
-          "sky-atmosphere-sun": [0.0, 90.0],
-          "sky-atmosphere-sun-intensity": 15,
-          "sky-atmosphere-halo-color": "rgba(255, 255, 255, 0.8)",
-          "sky-atmosphere-color": "rgba(186, 225, 250, 1.0)", // Lighter blue
-          "sky-opacity": 0.8,
-        },
-      });
-
-      // Add light haze effect
+      // The Standard style has built-in 3D buildings and terrain
+      // We'll customize the appearance with configuration
+      
+      // Advanced Feature Visibility Configuration
+      map.setConfigProperty("basemap", "showPedestrianRoads", true);
+      map.setConfigProperty("basemap", "showPlaceLabels", true);
+      map.setConfigProperty("basemap", "showRoadLabels", true);
+      map.setConfigProperty("basemap", "showPointOfInterestLabels", true);
+      map.setConfigProperty("basemap", "showTransitLabels", false);
+      map.setConfigProperty("basemap", "show3dObjects", true);
+      map.setConfigProperty("basemap", "showLandmarkIcons", true);
+      map.setConfigProperty("basemap", "showLandmarkIconLabels", true);
+      
+      // Professional Typography
+      map.setConfigProperty("basemap", "font", "Montserrat, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif");
+      
+      // Professional Color Scheme
+      map.setConfigProperty("basemap", "colorAdminBoundaries", "#c0c4cc");
+      map.setConfigProperty("basemap", "colorGreenspace", "#9dc183");
+      map.setConfigProperty("basemap", "colorWater", "#73b9ed");
+      map.setConfigProperty("basemap", "colorPlaceLabels", "#1a1a1a");
+      map.setConfigProperty("basemap", "colorRoadLabels", "#3d3d3d");
+      map.setConfigProperty("basemap", "colorPointOfInterestLabels", "#5a5a5a");
+      map.setConfigProperty("basemap", "colorMotorways", "#ff8c42");
+      map.setConfigProperty("basemap", "colorTrunks", "#ffa75d");
+      map.setConfigProperty("basemap", "colorRoads", "#ffffff");
+      
+      // Set lighting preset for professional look
+      map.setConfigProperty("lightPreset", "day");
+      
+      // Enable enhanced fog for depth perception (Standard style supports fog natively)
       map.setFog({
-        range: [0.5, 10],
-        color: "#f8f9fa",
-        "horizon-blend": 0.2,
+        range: [0.5, 12],
+        color: [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          10, "rgba(220, 230, 245, 0.4)",
+          15, "rgba(235, 240, 248, 0.5)",
+        ],
+        "horizon-blend": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          10, 0.08,
+          15, 0.12,
+        ],
+        "high-color": "rgba(245, 248, 252, 0.9)",
+        "space-color": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          10, "rgba(200, 220, 240, 0.2)",
+          15, "rgba(210, 228, 245, 0.3)",
+        ],
+        "star-intensity": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          10, 0.1,
+          15, 0.2,
+        ],
       });
 
-      // Add enhanced 3D buildings with detailed features
-      add3DBuildings(map);
+      // Add custom layers on top of Standard style
+      // Add trees and vegetation
+      addTreesAndVegetation(map);
 
       // Add extra building details when zoomed in
       addBuildingDetails(map);
@@ -2534,8 +2854,14 @@ export default function Startupmap({
       // Enhance water features
       enhanceWaterFeatures(map);
 
-      // Enhance road labels and make roads dark gray
+      // Enhance road labels
       enhanceRoadLabels(map);
+      
+      // Add elevated structures (bridges, overpasses)
+      addElevatedStructures(map);
+      
+      // Add dynamic lighting effects
+      addDynamicLighting(map);
 
       // Add default startup marker for Cebu
       addDefaultStartupMarker(map);
