@@ -126,7 +126,7 @@ export default function CsvUploadPage() {
 
             setLoadingStatus("Uploading CSV data...");
             const response = await fetch(
-                `${import.meta.env.VITE_BACKEND_URL}/startups/csv-submit`, 
+                `${import.meta.env.VITE_BACKEND_URL}/startups/upload-startups`, 
                 {
                     method: "POST", 
                     body: formData,
@@ -157,15 +157,29 @@ export default function CsvUploadPage() {
         }
     };
 
-    const downloadCsvTemplate = () => {
-        const csvContent =
-            "revenue,annualRevenue,paidUpCapital,numberOfActiveStartups,numberOfNewStartupsThisYear,averageStartupGrowthRate,startupSurvivalRate,totalStartupFundingReceived,averageFundingPerStartup,numberOfFundingRounds,numberOfStartupsWithForeignInvestment,amountOfGovernmentGrantsOrSubsidiesReceived,numberOfStartupIncubatorsOrAccelerators,numberOfStartupsInIncubationPrograms,numberOfMentorsOrAdvisorsInvolved,publicPrivatePartnershipsInvolvingStartups\n";
-        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-        const link = document.createElement("a");
-        link.href = URL.createObjectURL(blob);
-        link.download = "startup_data_template.csv";
-        link.click();
-        URL.revokeObjectURL(link.href);
+    const downloadCsvTemplate = async () => {
+        try {
+            // Fetch the template from the public folder
+            const response = await fetch('/startupsphere-csv-input2.csv');
+            
+            if (!response.ok) {
+                throw new Error('Failed to fetch template');
+            }
+            
+            const blob = await response.blob();
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "startupsphere-startup-template.csv";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            
+            toast.success("Template downloaded successfully!");
+        } catch (error) {
+            console.error("Error downloading template:", error);
+            toast.error("Failed to download template. Please try again.");
+        }
     };
 
     const handleSkip = () => {
