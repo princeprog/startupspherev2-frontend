@@ -131,6 +131,7 @@ export default function Startupadd() {
   const [selectedProvince, setSelectedProvince] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
   const [selectedBarangay, setSelectedBarangay] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     companyName: "",
     companyDescription: "",
@@ -155,14 +156,14 @@ export default function Startupadd() {
     fundingStage: "",
     operatingHours: "",
     businessActivity: "",
-    isGovernmentRegistered: "",      // yes/no
-    registrationAgency: "",          // DTI, SEC, CDA, BIR, other
-    registrationNumber: "",          // registration/certificate number
-    registrationDate: null,          // date
-    otherRegistrationAgency: "",     // if "other"
-    businessLicenseNumber: "",       // business license number
-    tin: "",                         // TIN
-    registrationCertificate: null,   // file (certificate upload)
+    isGovernmentRegistered: "",
+    registrationAgency: "",
+    registrationNumber: "",
+    registrationDate: null,
+    otherRegistrationAgency: "",
+    businessLicenseNumber: "",
+    tin: "",
+    registrationCertificate: null,
   });
 
   const [verificationModal, setVerificationModal] = useState(false);
@@ -393,6 +394,117 @@ export default function Startupadd() {
     return map;
   };
 
+  // Auto-save draft to backend
+  useEffect(() => {
+    // Only save if user started typing
+    if (!formData.companyName) return;
+
+    setIsSaving(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/draft`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            formData: JSON.stringify(formData),
+            selectedTab,
+          }),
+        });
+      } catch (err) {
+        console.warn("Failed to save draft:", err);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 800); // 0.8s after last change
+
+    return () => clearTimeout(timer);
+  }, [formData, selectedTab]);
+
+  useEffect(() => {
+  console.log("Cookies:", document.cookie);
+  }, []);
+
+  // Load draft when component mounts
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/draft`, {
+          method: "GET",
+          credentials: "include",
+        });
+
+        console.log("GET /draft status:", res.status);
+
+        if (!res.ok || res.status === 204 || res.status === 404) {
+          console.log("No draft found — starting fresh");
+          return;
+        }
+
+        const data = await res.json();
+        console.log("Raw draft response:", data);
+
+        // Parse formData (double JSON string)
+        let parsedFormData;
+        try {
+          parsedFormData = JSON.parse(data.formData);
+          if (typeof parsedFormData === "string") {
+            parsedFormData = JSON.parse(parsedFormData);
+          }
+        } catch (e) {
+          console.error("Failed to parse formData JSON:", e);
+          return;
+        }
+
+        console.log("Parsed formData:", parsedFormData);
+
+        // SAFE MERGE: Keep all fields defined, avoid undefined
+        const safeFormData = {
+          companyName: "",
+          companyDescription: "",
+          foundedDate: null,
+          typeOfCompany: "",
+          numberOfEmployees: "",
+          industry: "",
+          phoneNumber: "",
+          contactEmail: "",
+          website: "",
+          streetAddress: "",
+          city: "",
+          province: "",
+          postalCode: "",
+          facebook: "",
+          twitter: "",
+          instagram: "",
+          linkedIn: "",
+          locationLat: null,
+          locationLng: null,
+          locationName: "",
+          fundingStage: "",
+          operatingHours: "",
+          businessActivity: "",
+          isGovernmentRegistered: "",
+          registrationAgency: "",
+          registrationNumber: "",
+          registrationDate: null,
+          otherRegistrationAgency: "",
+          businessLicenseNumber: "",
+          tin: "",
+          registrationCertificate: null,
+          // Add any other fields here with default ""
+          ...parsedFormData, // Override with saved values
+        };
+
+        setFormData(safeFormData);
+        setSelectedTab(data.selectedTab || "Company Information");
+        toast.success("Draft restored from previous session!");
+      } catch (err) {
+        console.error("Failed to load draft:", err);
+      }
+    })();
+  }, []);
+
   useEffect(() => {
     if (selectedTab === "Location Info" && mapContainerRef.current) {
       initializeMap();
@@ -526,181 +638,194 @@ export default function Startupadd() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    let errorMessage = validateCompanyInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
-    errorMessage = validateContactInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
-    errorMessage = validateAddressInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
-    errorMessage = validateSocialMediaLinks();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
-    errorMessage = validateAdditionalInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
-    errorMessage = validateLocationInfo();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
+const handleSubmit = async () => {
+  setIsSubmitting(true);
+  let errorMessage = validateCompanyInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
+  errorMessage = validateContactInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
+  errorMessage = validateAddressInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
+  errorMessage = validateSocialMediaLinks();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
+  errorMessage = validateAdditionalInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
+  errorMessage = validateLocationInfo();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
 
-    try {
-      // Prepare a copy of formData without the registrationCertificate file for JSON POST
-      const { registrationCertificate, ...startupData } = formData;
+  try {
+    // Prepare a copy of formData without the registrationCertificate file for JSON POST
+    const { registrationCertificate, ...startupData } = formData;
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(startupData),
-        credentials: "include",
-      });
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(startupData),
+      credentials: "include",
+    });
 
-      const data = await response.json();
-      if (response.ok) {
-        console.log("Startup added successfully: ", data);
-        const startupId = data.id;
-        setStartupId(startupId);
-        setUploadedFile(null);
+    const data = await response.json();
+    if (response.ok) {
+      console.log("Startup added successfully: ", data);
+      const startupId = data.id;
+      setStartupId(startupId);
+      setUploadedFile(null);
 
-        // Upload registration certificate if present
-        if (formData.registrationCertificate) {
-          const certFormData = new FormData();
-          certFormData.append("file", formData.registrationCertificate);
-          try {
-            const certResponse = await fetch(
-              `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-registration-certificate`,
-              {
-                method: "PUT",
-                body: certFormData,
-                credentials: "include",
-              }
-            );
-            if (!certResponse.ok) {
-              const certError = await certResponse.json();
-              toast.error(
-                certError.message ||
-                  "Failed to upload registration certificate."
-              );
-            } else {
-              toast.success("Registration certificate uploaded successfully!");
-            }
-          } catch (err) {
-            toast.error("Error uploading registration certificate.");
-          }
-        }
-
-        // Upload company logo if present
-        if (uploadedImage) {
-          const imageFormData = new FormData();
-          imageFormData.append("photo", uploadedImage);
-          try {
-            const imageResponse = await fetch(
-              `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-photo`,
-              {
-                method: "PUT",
-                body: imageFormData,
-                credentials: "include",
-              }
-            );
-
-            let imageErrorMessage = "Failed to upload image.";
-            if (!imageResponse.ok) {
-              try {
-                const imageErrorData = await imageResponse.json();
-                imageErrorMessage = imageErrorData.error || imageErrorMessage;
-              } catch (jsonError) {
-                const text = await imageResponse.text();
-                imageErrorMessage =
-                  text || "Failed to upload image: Invalid server response.";
-              }
-              toast.error(imageErrorMessage);
-            } else {
-              const imageSuccessData = await imageResponse.json();
-              toast.success(
-                imageSuccessData.message || "Image uploaded successfully!"
-              );
-            }
-          } catch (imageError) {
-            console.error("Error uploading image:", imageError);
-            toast.error("An error occurred while uploading the image.");
-          }
-        }
-
-        // Send verification email
-        const emailResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/startups/send-verification-email`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              startupId,
-              email: formData.contactEmail,
-            }),
-            credentials: "include",
-          }
-        );
-
-        let emailResponseData;
+      // Upload registration certificate if present
+      if (formData.registrationCertificate) {
+        const certFormData = new FormData();
+        certFormData.append("file", formData.registrationCertificate);
         try {
-          emailResponseData = await emailResponse.json();
-        } catch (jsonError) {
-          console.error("Failed to parse email response:", jsonError);
-          toast.error(
-            "Failed to send verification email: Invalid server response."
+          const certResponse = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-registration-certificate`,
+            {
+              method: "PUT",
+              body: certFormData,
+              credentials: "include",
+            }
           );
-          return;
+          if (!certResponse.ok) {
+            const certError = await certResponse.json();
+            toast.error(
+              certError.message ||
+                "Failed to upload registration certificate."
+            );
+          } else {
+            toast.success("Registration certificate uploaded successfully!");
+          }
+        } catch (err) {
+          toast.error("Error uploading registration certificate.");
+        }
+      }
+
+      // Upload company logo if present
+      if (uploadedImage) {
+        const imageFormData = new FormData();
+        imageFormData.append("photo", uploadedImage);
+        try {
+          const imageResponse = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-photo`,
+            {
+              method: "PUT",
+              body: imageFormData,
+              credentials: "include",
+            }
+          );
+
+          let imageErrorMessage = "Failed to upload image.";
+          if (!imageResponse.ok) {
+            try {
+              const imageErrorData = await imageResponse.json();
+              imageErrorMessage = imageErrorData.error || imageErrorMessage;
+            } catch (jsonError) {
+              const text = await imageResponse.text();
+              imageErrorMessage =
+                text || "Failed to upload image: Invalid server response.";
+            }
+            toast.error(imageErrorMessage);
+          } else {
+            const imageSuccessData = await imageResponse.json();
+            toast.success(
+              imageSuccessData.message || "Image uploaded successfully!"
+            );
+          }
+        } catch (imageError) {
+          console.error("Error uploading image:", imageError);
+          toast.error("An error occurred while uploading the image.");
+        }
+      }
+
+      // Send verification email
+      const emailResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/send-verification-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startupId,
+            email: formData.contactEmail,
+          }),
+          credentials: "include",
+        }
+      );
+
+      let emailResponseData;
+      try {
+        emailResponseData = await emailResponse.json();
+      } catch (jsonError) {
+        console.error("Failed to parse email response:", jsonError);
+        toast.error(
+          "Failed to send verification email: Invalid server response."
+        );
+        return;
+      }
+
+      if (emailResponse.ok) {
+        toast.success("Startup added successfully! Verification email sent.");
+
+        // CLEAR DRAFT ONLY ON FULL SUCCESS (email sent)
+        try {
+          await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/draft`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          console.log("Draft cleared from backend.");
+        } catch (err) {
+          console.warn("Failed to clear draft:", err);
         }
 
-        if (emailResponse.ok) {
-          toast.success("Startup added successfully! Verification email sent.");
-          setVerificationModal(true);
-        } else {
-          toast.error(
-            `Failed to send verification email: ${
-              emailResponseData.error || "Unknown error"
-            }`
-          );
-        }
+        setVerificationModal(true);
       } else {
-        console.error("Error adding a startup: ", data);
         toast.error(
-          `Failed to add startup: ${
-            data.message || data.error || "Unknown error"
+          `Failed to send verification email: ${
+            emailResponseData.error || "Unknown error"
           }`
         );
       }
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("An error occurred while adding the startup.");
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      console.error("Error adding a startup: ", data);
+      toast.error(
+        `Failed to add startup: ${
+          data.message || data.error || "Unknown error"
+        }`
+      );
     }
-  };
+
+  } catch (error) {
+    console.error("Error:", error);
+    toast.error("An error occurred while adding the startup.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const downloadCsvTemplate = () => {
     const csvContent =
@@ -824,11 +949,12 @@ export default function Startupadd() {
           {tabs.map((tab) => (
             <div
               key={tab}
-              className={`w-1/5 text-center py-2 cursor-pointer text-sm font-medium ${
-                selectedTab === tab
+              onClick={() => setSelectedTab(tab)}
+              className={`w-1/5 text-center py-2 cursor-pointer text-sm font-medium transition-colors
+                ${selectedTab === tab
                   ? "text-[#1D3557] border-b-2 border-[#1D3557]"
-                  : "text-gray-500"
-              }`}
+                  : "text-gray-500 hover:text-gray-700"
+                }`}
             >
               {tab}
             </div>
