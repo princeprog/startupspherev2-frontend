@@ -426,40 +426,43 @@ export default function Startupadd() {
   console.log("Cookies:", document.cookie);
   }, []);
 
+    useEffect(() => {
+    fetch("https://psgc.gitlab.io/api/regions/")
+      .then((response) => response.json())
+      .then((data) => setRegions(data))
+      .catch((error) => console.error("Error fetching regions:", error));
+  }, []);
+
   // Load draft when component mounts
   useEffect(() => {
+    
+    if (regions.length === 0) return;
+
     (async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/draft`, {
-          method: "GET",
-          credentials: "include",
-        });
-
-        console.log("GET /draft status:", res.status);
+        const res = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/startups/draft`,
+          { method: "GET", credentials: "include" }
+        );
 
         if (!res.ok || res.status === 204 || res.status === 404) {
-          console.log("No draft found — starting fresh");
+          console.log("No draft – starting fresh");
           return;
         }
 
         const data = await res.json();
-        console.log("Raw draft response:", data);
 
-        // Parse formData (double JSON string)
-        let parsedFormData;
+        
+        let parsed;
         try {
-          parsedFormData = JSON.parse(data.formData);
-          if (typeof parsedFormData === "string") {
-            parsedFormData = JSON.parse(parsedFormData);
-          }
+          parsed = JSON.parse(data.formData);
+          if (typeof parsed === "string") parsed = JSON.parse(parsed);
         } catch (e) {
-          console.error("Failed to parse formData JSON:", e);
+          console.error("Failed to parse draft formData", e);
           return;
         }
 
-        console.log("Parsed formData:", parsedFormData);
-
-        // SAFE MERGE: Keep all fields defined, avoid undefined
+        
         const safeFormData = {
           companyName: "",
           companyDescription: "",
@@ -492,18 +495,74 @@ export default function Startupadd() {
           businessLicenseNumber: "",
           tin: "",
           registrationCertificate: null,
-          // Add any other fields here with default ""
-          ...parsedFormData, // Override with saved values
+          region: "",
+          barangay: "",
+          ...parsed,
         };
 
         setFormData(safeFormData);
         setSelectedTab(data.selectedTab || "Company Information");
+
+        const restoreAddress = async () => {
+
+          if (safeFormData.region) {
+            const regionObj = regions.find((r) => r.name === safeFormData.region);
+            if (regionObj) {
+              setSelectedRegion(regionObj);
+
+              
+              const provRes = await fetch(
+                `https://psgc.gitlab.io/api/regions/${regionObj.code}/provinces/`
+              );
+              const provs = await provRes.json();
+              setProvinces(provs);
+
+              if (safeFormData.province) {
+                const provObj = provs.find((p) => p.name === safeFormData.province);
+                if (provObj) {
+                  setSelectedProvince(provObj);
+
+                  
+                  const cityRes = await fetch(
+                    `https://psgc.gitlab.io/api/provinces/${provObj.code}/cities-municipalities/`
+                  );
+                  const cities = await cityRes.json();
+                  setCities(cities);
+
+                  if (safeFormData.city) {
+                    const cityObj = cities.find((c) => c.name === safeFormData.city);
+                    if (cityObj) {
+                      setSelectedCity(cityObj);
+
+                      
+                      const brgyRes = await fetch(
+                        `https://psgc.gitlab.io/api/cities-municipalities/${cityObj.code}/barangays/`
+                      );
+                      const brgys = await brgyRes.json();
+                      setBarangays(brgys);
+
+                      if (safeFormData.barangay) {
+                        const brgyObj = brgys.find(
+                          (b) => b.name === safeFormData.barangay
+                        );
+                        if (brgyObj) setSelectedBarangay(brgyObj);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        };
+
+        await restoreAddress();
+
         toast.success("Draft restored from previous session!");
       } catch (err) {
         console.error("Failed to load draft:", err);
       }
     })();
-  }, []);
+  }, [regions]);
 
   useEffect(() => {
     if (selectedTab === "Location Info" && mapContainerRef.current) {
@@ -838,12 +897,6 @@ const handleSubmit = async () => {
     URL.revokeObjectURL(link.href);
   };
 
-  useEffect(() => {
-    fetch("https://psgc.gitlab.io/api/regions/")
-      .then((response) => response.json())
-      .then((data) => setRegions(data))
-      .catch((error) => console.error("Error fetching regions:", error));
-  }, []);
 
   useEffect(() => {
     if (selectedRegion?.code) {
