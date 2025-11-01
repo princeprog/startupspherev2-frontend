@@ -394,6 +394,26 @@ export default function Startupadd() {
     return map;
   };
 
+  useEffect(() => {
+    // Only run when the map is ready AND we have saved coordinates
+    if (!mapInstanceRef.current || !formData.locationLat || !formData.locationLng) return;
+
+    const map = mapInstanceRef.current;
+    const lat = formData.locationLat;
+    const lng = formData.locationLng;
+
+    // Remove any existing marker
+    if (markerRef.current) markerRef.current.remove();
+
+    // Add new marker
+    markerRef.current = new mapboxgl.Marker({ color: "red" })
+      .setLngLat([lng, lat])
+      .addTo(map);
+
+    // Fly to the saved location (smooth animation)
+    map.flyTo({ center: [lng, lat], zoom: 14 });
+  }, [formData.locationLat, formData.locationLng, mapInstanceRef.current]);
+
   // Auto-save draft to backend
   useEffect(() => {
     // Only save if user started typing
@@ -1713,17 +1733,32 @@ const handleSubmit = async () => {
           </form>
         )}
         {selectedTab === "Location Info" && (
-          <div>
-            <div ref={geocoderContainerRef} className="mb-4" />
-            <div ref={mapContainerRef} className="w-full h-96 rounded-md" />
-            <div className="mt-4">
-              <p>Selected Location: {formData.locationName || "None"}</p>
-              <p>
-                Latitude: {formData.locationLat || "N/A"}, Longitude:{" "}
-                {formData.locationLng || "N/A"}
+          <div className="relative">
+            {/* 1. Geocoder container — positioned ON TOP of the map */}
+            <div
+              ref={geocoderContainerRef}
+              className="absolute top-4 left-4 z-10 w-full max-w-md"
+            />
+
+            {/* 2. Map container — allow overflow so dropdown isn't clipped */}
+            <div
+              ref={mapContainerRef}
+              className="w-full h-96 rounded-md overflow-visible"
+            />
+
+            {/* 3. Display selected location (unchanged) */}
+            <div className="mt-4 p-4 bg-gray-50 rounded-md">
+              <p className="font-medium">
+                Selected Location: <span className="font-normal">{formData.locationName || "None"}</span>
+              </p>
+              <p className="text-sm text-gray-600">
+                Latitude: {formData.locationLat?.toFixed(6) || "N/A"}, 
+                Longitude: {formData.locationLng?.toFixed(6) || "N/A"}
               </p>
             </div>
-            <div className="flex justify-between mt-4">
+
+            {/* Back & Submit buttons */}
+            <div className="flex justify-between mt-6">
               <button
                 type="button"
                 className="bg-gray-300 px-6 py-2 rounded-md"
@@ -1737,10 +1772,7 @@ const handleSubmit = async () => {
                 onClick={handleSubmit}
                 disabled={isSubmitting}
               >
-                Submit
-                {isSubmitting && (
-                  <span className="loading loading-spinner text-primary"></span>
-                )}
+                {isSubmitting ? "Submitting..." : "Submit"}
               </button>
             </div>
           </div>

@@ -119,6 +119,13 @@
 /* Let Mapbox manage marker transforms/positioning to avoid conflicts */
 /* Intentionally avoid overriding transform/position on .mapboxgl-marker */
 
+/* Fix Mapbox Geocoder search bar suggestions visibility */
+.mapboxgl-ctrl-geocoder,
+.mapboxgl-control-container,
+.mapboxgl-popup {
+  z-index: 10 !important;
+}
+
 /* Marker container styling */
 .marker-container {
   position: relative !important;
