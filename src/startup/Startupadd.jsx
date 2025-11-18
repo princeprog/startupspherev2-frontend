@@ -131,6 +131,7 @@ export default function Startupadd() {
   const [selectedProvince, setSelectedProvince] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
   const [selectedBarangay, setSelectedBarangay] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     companyName: "",
     companyDescription: "",
@@ -155,14 +156,14 @@ export default function Startupadd() {
     fundingStage: "",
     operatingHours: "",
     businessActivity: "",
-    isGovernmentRegistered: "",      // yes/no
-    registrationAgency: "",          // DTI, SEC, CDA, BIR, other
-    registrationNumber: "",          // registration/certificate number
-    registrationDate: null,          // date
-    otherRegistrationAgency: "",     // if "other"
-    businessLicenseNumber: "",       // business license number
-    tin: "",                         // TIN
-    registrationCertificate: null,   // file (certificate upload)
+    isGovernmentRegistered: "",
+    registrationAgency: "",
+    registrationNumber: "",
+    registrationDate: null,
+    otherRegistrationAgency: "",
+    businessLicenseNumber: "",
+    tin: "",
+    registrationCertificate: null,
   });
 
   const [verificationModal, setVerificationModal] = useState(false);
@@ -394,6 +395,196 @@ export default function Startupadd() {
   };
 
   useEffect(() => {
+    // Only run when the map is ready AND we have saved coordinates
+    if (!mapInstanceRef.current || !formData.locationLat || !formData.locationLng) return;
+
+    const map = mapInstanceRef.current;
+    const lat = formData.locationLat;
+    const lng = formData.locationLng;
+
+    // Remove any existing marker
+    if (markerRef.current) markerRef.current.remove();
+
+    // Add new marker
+    markerRef.current = new mapboxgl.Marker({ color: "red" })
+      .setLngLat([lng, lat])
+      .addTo(map);
+
+    // Fly to the saved location (smooth animation)
+    map.flyTo({ center: [lng, lat], zoom: 14 });
+  }, [formData.locationLat, formData.locationLng, mapInstanceRef.current]);
+
+  // Auto-save draft to backend
+  useEffect(() => {
+    // Only save if user started typing
+    if (!formData.companyName) return;
+
+    setIsSaving(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/draft`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            formData: JSON.stringify(formData),
+            selectedTab,
+          }),
+        });
+      } catch (err) {
+        console.warn("Failed to save draft:", err);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 800); // 0.8s after last change
+
+    return () => clearTimeout(timer);
+  }, [formData, selectedTab]);
+
+  useEffect(() => {
+  console.log("Cookies:", document.cookie);
+  }, []);
+
+    useEffect(() => {
+    fetch("https://psgc.gitlab.io/api/regions/")
+      .then((response) => response.json())
+      .then((data) => setRegions(data))
+      .catch((error) => console.error("Error fetching regions:", error));
+  }, []);
+
+  // Load draft when component mounts
+  useEffect(() => {
+    
+    if (regions.length === 0) return;
+
+    (async () => {
+      try {
+        const res = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/startups/draft`,
+          { method: "GET", credentials: "include" }
+        );
+
+        if (!res.ok || res.status === 204 || res.status === 404) {
+          console.log("No draft – starting fresh");
+          return;
+        }
+
+        const data = await res.json();
+
+        
+        let parsed;
+        try {
+          parsed = JSON.parse(data.formData);
+          if (typeof parsed === "string") parsed = JSON.parse(parsed);
+        } catch (e) {
+          console.error("Failed to parse draft formData", e);
+          return;
+        }
+
+        
+        const safeFormData = {
+          companyName: "",
+          companyDescription: "",
+          foundedDate: null,
+          typeOfCompany: "",
+          numberOfEmployees: "",
+          industry: "",
+          phoneNumber: "",
+          contactEmail: "",
+          website: "",
+          streetAddress: "",
+          city: "",
+          province: "",
+          postalCode: "",
+          facebook: "",
+          twitter: "",
+          instagram: "",
+          linkedIn: "",
+          locationLat: null,
+          locationLng: null,
+          locationName: "",
+          fundingStage: "",
+          operatingHours: "",
+          businessActivity: "",
+          isGovernmentRegistered: "",
+          registrationAgency: "",
+          registrationNumber: "",
+          registrationDate: null,
+          otherRegistrationAgency: "",
+          businessLicenseNumber: "",
+          tin: "",
+          registrationCertificate: null,
+          region: "",
+          barangay: "",
+          ...parsed,
+        };
+
+        setFormData(safeFormData);
+        setSelectedTab(data.selectedTab || "Company Information");
+
+        const restoreAddress = async () => {
+
+          if (safeFormData.region) {
+            const regionObj = regions.find((r) => r.name === safeFormData.region);
+            if (regionObj) {
+              setSelectedRegion(regionObj);
+
+              
+              const provRes = await fetch(
+                `https://psgc.gitlab.io/api/regions/${regionObj.code}/provinces/`
+              );
+              const provs = await provRes.json();
+              setProvinces(provs);
+
+              if (safeFormData.province) {
+                const provObj = provs.find((p) => p.name === safeFormData.province);
+                if (provObj) {
+                  setSelectedProvince(provObj);
+
+                  
+                  const cityRes = await fetch(
+                    `https://psgc.gitlab.io/api/provinces/${provObj.code}/cities-municipalities/`
+                  );
+                  const cities = await cityRes.json();
+                  setCities(cities);
+
+                  if (safeFormData.city) {
+                    const cityObj = cities.find((c) => c.name === safeFormData.city);
+                    if (cityObj) {
+                      setSelectedCity(cityObj);
+
+                      
+                      const brgyRes = await fetch(
+                        `https://psgc.gitlab.io/api/cities-municipalities/${cityObj.code}/barangays/`
+                      );
+                      const brgys = await brgyRes.json();
+                      setBarangays(brgys);
+
+                      if (safeFormData.barangay) {
+                        const brgyObj = brgys.find(
+                          (b) => b.name === safeFormData.barangay
+                        );
+                        if (brgyObj) setSelectedBarangay(brgyObj);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        };
+
+        await restoreAddress();
+
+        toast.success("Draft restored from previous session!");
+      } catch (err) {
+        console.error("Failed to load draft:", err);
+      }
+    })();
+  }, [regions]);
+
+  useEffect(() => {
     if (selectedTab === "Location Info" && mapContainerRef.current) {
       initializeMap();
     }
@@ -526,181 +717,194 @@ export default function Startupadd() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    let errorMessage = validateCompanyInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
-    errorMessage = validateContactInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
-    errorMessage = validateAddressInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
-    errorMessage = validateSocialMediaLinks();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
-    errorMessage = validateAdditionalInformation();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
-    errorMessage = validateLocationInfo();
-    if (errorMessage) {
-      setError(errorMessage);
-      setIsSubmitting(false);
-      return;
-    }
+const handleSubmit = async () => {
+  setIsSubmitting(true);
+  let errorMessage = validateCompanyInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
+  errorMessage = validateContactInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
+  errorMessage = validateAddressInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
+  errorMessage = validateSocialMediaLinks();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
+  errorMessage = validateAdditionalInformation();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
+  errorMessage = validateLocationInfo();
+  if (errorMessage) {
+    setError(errorMessage);
+    setIsSubmitting(false);
+    return;
+  }
 
-    try {
-      // Prepare a copy of formData without the registrationCertificate file for JSON POST
-      const { registrationCertificate, ...startupData } = formData;
+  try {
+    // Prepare a copy of formData without the registrationCertificate file for JSON POST
+    const { registrationCertificate, ...startupData } = formData;
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(startupData),
-        credentials: "include",
-      });
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(startupData),
+      credentials: "include",
+    });
 
-      const data = await response.json();
-      if (response.ok) {
-        console.log("Startup added successfully: ", data);
-        const startupId = data.id;
-        setStartupId(startupId);
-        setUploadedFile(null);
+    const data = await response.json();
+    if (response.ok) {
+      console.log("Startup added successfully: ", data);
+      const startupId = data.id;
+      setStartupId(startupId);
+      setUploadedFile(null);
 
-        // Upload registration certificate if present
-        if (formData.registrationCertificate) {
-          const certFormData = new FormData();
-          certFormData.append("file", formData.registrationCertificate);
-          try {
-            const certResponse = await fetch(
-              `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-registration-certificate`,
-              {
-                method: "PUT",
-                body: certFormData,
-                credentials: "include",
-              }
-            );
-            if (!certResponse.ok) {
-              const certError = await certResponse.json();
-              toast.error(
-                certError.message ||
-                  "Failed to upload registration certificate."
-              );
-            } else {
-              toast.success("Registration certificate uploaded successfully!");
-            }
-          } catch (err) {
-            toast.error("Error uploading registration certificate.");
-          }
-        }
-
-        // Upload company logo if present
-        if (uploadedImage) {
-          const imageFormData = new FormData();
-          imageFormData.append("photo", uploadedImage);
-          try {
-            const imageResponse = await fetch(
-              `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-photo`,
-              {
-                method: "PUT",
-                body: imageFormData,
-                credentials: "include",
-              }
-            );
-
-            let imageErrorMessage = "Failed to upload image.";
-            if (!imageResponse.ok) {
-              try {
-                const imageErrorData = await imageResponse.json();
-                imageErrorMessage = imageErrorData.error || imageErrorMessage;
-              } catch (jsonError) {
-                const text = await imageResponse.text();
-                imageErrorMessage =
-                  text || "Failed to upload image: Invalid server response.";
-              }
-              toast.error(imageErrorMessage);
-            } else {
-              const imageSuccessData = await imageResponse.json();
-              toast.success(
-                imageSuccessData.message || "Image uploaded successfully!"
-              );
-            }
-          } catch (imageError) {
-            console.error("Error uploading image:", imageError);
-            toast.error("An error occurred while uploading the image.");
-          }
-        }
-
-        // Send verification email
-        const emailResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/startups/send-verification-email`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              startupId,
-              email: formData.contactEmail,
-            }),
-            credentials: "include",
-          }
-        );
-
-        let emailResponseData;
+      // Upload registration certificate if present
+      if (formData.registrationCertificate) {
+        const certFormData = new FormData();
+        certFormData.append("file", formData.registrationCertificate);
         try {
-          emailResponseData = await emailResponse.json();
-        } catch (jsonError) {
-          console.error("Failed to parse email response:", jsonError);
-          toast.error(
-            "Failed to send verification email: Invalid server response."
+          const certResponse = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-registration-certificate`,
+            {
+              method: "PUT",
+              body: certFormData,
+              credentials: "include",
+            }
           );
-          return;
+          if (!certResponse.ok) {
+            const certError = await certResponse.json();
+            toast.error(
+              certError.message ||
+                "Failed to upload registration certificate."
+            );
+          } else {
+            toast.success("Registration certificate uploaded successfully!");
+          }
+        } catch (err) {
+          toast.error("Error uploading registration certificate.");
+        }
+      }
+
+      // Upload company logo if present
+      if (uploadedImage) {
+        const imageFormData = new FormData();
+        imageFormData.append("photo", uploadedImage);
+        try {
+          const imageResponse = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-photo`,
+            {
+              method: "PUT",
+              body: imageFormData,
+              credentials: "include",
+            }
+          );
+
+          let imageErrorMessage = "Failed to upload image.";
+          if (!imageResponse.ok) {
+            try {
+              const imageErrorData = await imageResponse.json();
+              imageErrorMessage = imageErrorData.error || imageErrorMessage;
+            } catch (jsonError) {
+              const text = await imageResponse.text();
+              imageErrorMessage =
+                text || "Failed to upload image: Invalid server response.";
+            }
+            toast.error(imageErrorMessage);
+          } else {
+            const imageSuccessData = await imageResponse.json();
+            toast.success(
+              imageSuccessData.message || "Image uploaded successfully!"
+            );
+          }
+        } catch (imageError) {
+          console.error("Error uploading image:", imageError);
+          toast.error("An error occurred while uploading the image.");
+        }
+      }
+
+      // Send verification email
+      const emailResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/send-verification-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            startupId,
+            email: formData.contactEmail,
+          }),
+          credentials: "include",
+        }
+      );
+
+      let emailResponseData;
+      try {
+        emailResponseData = await emailResponse.json();
+      } catch (jsonError) {
+        console.error("Failed to parse email response:", jsonError);
+        toast.error(
+          "Failed to send verification email: Invalid server response."
+        );
+        return;
+      }
+
+      if (emailResponse.ok) {
+        toast.success("Startup added successfully! Verification email sent.");
+
+        // CLEAR DRAFT ONLY ON FULL SUCCESS (email sent)
+        try {
+          await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/draft`, {
+            method: "DELETE",
+            credentials: "include",
+          });
+          console.log("Draft cleared from backend.");
+        } catch (err) {
+          console.warn("Failed to clear draft:", err);
         }
 
-        if (emailResponse.ok) {
-          toast.success("Startup added successfully! Verification email sent.");
-          setVerificationModal(true);
-        } else {
-          toast.error(
-            `Failed to send verification email: ${
-              emailResponseData.error || "Unknown error"
-            }`
-          );
-        }
+        setVerificationModal(true);
       } else {
-        console.error("Error adding a startup: ", data);
         toast.error(
-          `Failed to add startup: ${
-            data.message || data.error || "Unknown error"
+          `Failed to send verification email: ${
+            emailResponseData.error || "Unknown error"
           }`
         );
       }
-    } catch (error) {
-      console.error("Error:", error);
-      toast.error("An error occurred while adding the startup.");
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      console.error("Error adding a startup: ", data);
+      toast.error(
+        `Failed to add startup: ${
+          data.message || data.error || "Unknown error"
+        }`
+      );
     }
-  };
+
+  } catch (error) {
+    console.error("Error:", error);
+    toast.error("An error occurred while adding the startup.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const downloadCsvTemplate = () => {
     const csvContent =
@@ -713,12 +917,6 @@ export default function Startupadd() {
     URL.revokeObjectURL(link.href);
   };
 
-  useEffect(() => {
-    fetch("https://psgc.gitlab.io/api/regions/")
-      .then((response) => response.json())
-      .then((data) => setRegions(data))
-      .catch((error) => console.error("Error fetching regions:", error));
-  }, []);
 
   useEffect(() => {
     if (selectedRegion?.code) {
@@ -824,11 +1022,12 @@ export default function Startupadd() {
           {tabs.map((tab) => (
             <div
               key={tab}
-              className={`w-1/5 text-center py-2 cursor-pointer text-sm font-medium ${
-                selectedTab === tab
+              onClick={() => setSelectedTab(tab)}
+              className={`w-1/5 text-center py-2 cursor-pointer text-sm font-medium transition-colors
+                ${selectedTab === tab
                   ? "text-[#1D3557] border-b-2 border-[#1D3557]"
-                  : "text-gray-500"
-              }`}
+                  : "text-gray-500 hover:text-gray-700"
+                }`}
             >
               {tab}
             </div>
@@ -1534,17 +1733,32 @@ export default function Startupadd() {
           </form>
         )}
         {selectedTab === "Location Info" && (
-          <div>
-            <div ref={geocoderContainerRef} className="mb-4" />
-            <div ref={mapContainerRef} className="w-full h-96 rounded-md" />
-            <div className="mt-4">
-              <p>Selected Location: {formData.locationName || "None"}</p>
-              <p>
-                Latitude: {formData.locationLat || "N/A"}, Longitude:{" "}
-                {formData.locationLng || "N/A"}
+          <div className="relative">
+            {/* 1. Geocoder container — positioned ON TOP of the map */}
+            <div
+              ref={geocoderContainerRef}
+              className="absolute top-4 left-4 z-10 w-full max-w-md"
+            />
+
+            {/* 2. Map container — allow overflow so dropdown isn't clipped */}
+            <div
+              ref={mapContainerRef}
+              className="w-full h-96 rounded-md overflow-visible"
+            />
+
+            {/* 3. Display selected location (unchanged) */}
+            <div className="mt-4 p-4 bg-gray-50 rounded-md">
+              <p className="font-medium">
+                Selected Location: <span className="font-normal">{formData.locationName || "None"}</span>
+              </p>
+              <p className="text-sm text-gray-600">
+                Latitude: {formData.locationLat?.toFixed(6) || "N/A"}, 
+                Longitude: {formData.locationLng?.toFixed(6) || "N/A"}
               </p>
             </div>
-            <div className="flex justify-between mt-4">
+
+            {/* Back & Submit buttons */}
+            <div className="flex justify-between mt-6">
               <button
                 type="button"
                 className="bg-gray-300 px-6 py-2 rounded-md"
@@ -1558,10 +1772,7 @@ export default function Startupadd() {
                 onClick={handleSubmit}
                 disabled={isSubmitting}
               >
-                Submit
-                {isSubmitting && (
-                  <span className="loading loading-spinner text-primary"></span>
-                )}
+                {isSubmitting ? "Submitting..." : "Submit"}
               </button>
             </div>
           </div>
