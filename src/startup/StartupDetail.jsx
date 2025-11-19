@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import StakeholderLocationPicker from "../components/StakeholderLocationPicker";
+import StakeholderBrowser from "../components/StakeholderBrowser";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Building,
@@ -45,35 +46,37 @@ export default function StartupDetail() {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
   };
-  
+
   // Validate Philippine phone numbers (format: +639XXXXXXXXX or 09XXXXXXXXX)
   const validatePhilippinePhone = (phone) => {
     // Allow empty phone numbers (optional field)
-    if (!phone || phone.trim() === '') return true;
-    
+    if (!phone || phone.trim() === "") return true;
+
     // Clean the input - remove spaces, dashes, etc.
-    const cleanPhone = phone.replace(/\s+|-|\(|\)/g, '');
-    
+    const cleanPhone = phone.replace(/\s+|-|\(|\)/g, "");
+
     // Check for valid Philippine phone number formats
     const phoneRegex = /^(\+?63|0)9\d{9}$/;
     return phoneRegex.test(cleanPhone);
   };
-  
+
   // Format name to ensure proper capitalization
   const formatName = (name) => {
-    if (!name) return '';
-    
+    if (!name) return "";
+
     // Split the name into parts (by spaces)
-    return name.split(' ')
-      .map(part => {
-        if (part.length === 0) return '';
+    return name
+      .split(" ")
+      .map((part) => {
+        if (part.length === 0) return "";
         // Capitalize first letter of each part
         return part.charAt(0).toUpperCase() + part.slice(1);
       })
-      .join(' ');
+      .join(" ");
   };
 
   // For stakeholder management
+  const [showStakeholderBrowser, setShowStakeholderBrowser] = useState(false);
   const [showStakeholderForm, setShowStakeholderForm] = useState(false);
   const [editingStakeholder, setEditingStakeholder] = useState(null);
   const [stakeholderFormData, setStakeholderFormData] = useState({
@@ -214,9 +217,6 @@ export default function StartupDetail() {
     setShowLocationModal(false);
   };
 
-  // Update the handleAddStakeholder function to include location data
-  // Update the handleAddStakeholder function to include loading state and better error handling
-  // Modified handleAddStakeholder to include location codes
   const handleAddStakeholder = async (e) => {
     e.preventDefault();
 
@@ -233,11 +233,11 @@ export default function StartupDetail() {
         ...stakeholderFormData,
         name: formatName(stakeholderFormData.name),
         email: stakeholderFormData.email.trim(),
-        phoneNumber: stakeholderFormData.phoneNumber ? 
-          stakeholderFormData.phoneNumber.replace(/\s+|-|\(|\)/g, '') : 
-          stakeholderFormData.phoneNumber
+        phoneNumber: stakeholderFormData.phoneNumber
+          ? stakeholderFormData.phoneNumber.replace(/\s+|-|\(|\)/g, "")
+          : stakeholderFormData.phoneNumber,
       };
-      
+
       const { role, status, hasPhysicalLocation, ...stakeholderData } =
         formattedStakeholderData;
 
@@ -284,7 +284,6 @@ export default function StartupDetail() {
         return;
       }
 
-      // Continue with association as before
       const stakeholderId = responseData.id;
       const associationResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/startup-stakeholders`,
@@ -585,9 +584,9 @@ export default function StartupDetail() {
   const handleUpdateStakeholder = async (e) => {
     e.preventDefault();
     setFormError(null);
-    
+
     if (!validateForm()) return;
-    
+
     setIsSubmitting(true);
 
     try {
@@ -596,11 +595,11 @@ export default function StartupDetail() {
         ...stakeholderFormData,
         name: formatName(stakeholderFormData.name),
         email: stakeholderFormData.email.trim().toLowerCase(),
-        phoneNumber: stakeholderFormData.phoneNumber ? 
-          stakeholderFormData.phoneNumber.replace(/\s+|-|\(|\)/g, '') : 
-          stakeholderFormData.phoneNumber
+        phoneNumber: stakeholderFormData.phoneNumber
+          ? stakeholderFormData.phoneNumber.replace(/\s+|-|\(|\)/g, "")
+          : stakeholderFormData.phoneNumber,
       };
-      
+
       // Continue with existing stakeholderFormData but using formatted data
       const { role, status, hasPhysicalLocation, ...stakeholderData } =
         formattedStakeholderData;
@@ -712,6 +711,26 @@ export default function StartupDetail() {
     setEditingStakeholder(null);
     setEditDataReady(false);
     setFormError(null);
+  };
+
+  // Handler for when user selects existing stakeholder from browser
+  const handleSelectExistingStakeholder = async (stakeholder) => {
+    // Refresh stakeholder list to show the newly associated stakeholder
+    await fetchStakeholders();
+    showNotification(
+      `${stakeholder.name} has been successfully associated with this startup.`,
+      "success"
+    );
+    setShowStakeholderBrowser(false);
+  };
+
+  // Handler for when user wants to create new stakeholder
+  const handleCreateNewStakeholder = () => {
+    setShowStakeholderBrowser(false);
+    resetStakeholderForm();
+    setEditingStakeholder(null);
+    setFormError(null);
+    setShowStakeholderForm(true);
   };
 
   const findClosestMatch = (name, options) => {
@@ -888,11 +907,14 @@ export default function StartupDetail() {
     }
 
     // Check for gibberish names (too short parts or unusual characters)
-    const hasGibberishName = nameParts.some(part => 
-      part.length < 2 || /[^a-zA-Z\-']/.test(part)
+    const hasGibberishName = nameParts.some(
+      (part) => part.length < 2 || /[^a-zA-Z\-']/.test(part)
     );
     if (hasGibberishName) {
-      showNotification("Please enter a valid name without special characters or numbers.", "error");
+      showNotification(
+        "Please enter a valid name without special characters or numbers.",
+        "error"
+      );
       return false;
     }
 
@@ -905,10 +927,16 @@ export default function StartupDetail() {
       showNotification("Please enter a valid email address.", "error");
       return false;
     }
-    
+
     // Validate phone number if provided
-    if (stakeholderFormData.phoneNumber && !validatePhilippinePhone(stakeholderFormData.phoneNumber)) {
-      showNotification("Please enter a valid Philippine phone number (format: +63917XXXXXXX or 0917XXXXXXX).", "error");
+    if (
+      stakeholderFormData.phoneNumber &&
+      !validatePhilippinePhone(stakeholderFormData.phoneNumber)
+    ) {
+      showNotification(
+        "Please enter a valid Philippine phone number (format: +63917XXXXXXX or 0917XXXXXXX).",
+        "error"
+      );
       return false;
     }
 
@@ -1688,9 +1716,7 @@ export default function StartupDetail() {
                     </h3>
                     <button
                       onClick={() => {
-                        resetStakeholderForm();
-                        setEditingStakeholder(null);
-                        setShowStakeholderForm(true);
+                        setShowStakeholderBrowser(true);
                       }}
                       className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${
                         isStartupVerified
@@ -1791,836 +1817,910 @@ export default function StartupDetail() {
 
                           {/* Show loading animation while address data is being loaded */}
                           {addressDataLoading ? (
-                          <div className="flex flex-col items-center justify-center p-12">
-                            <div className="w-16 h-16 border-4 border-t-blue-600 border-blue-200 rounded-full animate-spin mb-4"></div>
-                            <h4 className="text-lg font-medium text-gray-800">
-                              {editingStakeholder
-                                ? "Loading stakeholder data"
-                                : "Setting up address data"}
-                            </h4>
-                            <p className="text-gray-500 text-center mt-2">
-                              {editingStakeholder
-                                ? "Retrieving location information for this stakeholder..."
-                                : "Loading location information to ensure accurate data entry"}
-                            </p>
-                            {editingStakeholder && (
-                              <div className="mt-4 flex flex-col items-center">
-                                <div className="flex items-center space-x-2">
-                                  <div
-                                    className={`h-2 w-2 rounded-full ${
-                                      selectedRegion
-                                        ? "bg-green-500"
-                                        : "bg-gray-300"
-                                    }`}
-                                  ></div>
-                                  <span className="text-sm">Region</span>
+                            <div className="flex flex-col items-center justify-center p-12">
+                              <div className="w-16 h-16 border-4 border-t-blue-600 border-blue-200 rounded-full animate-spin mb-4"></div>
+                              <h4 className="text-lg font-medium text-gray-800">
+                                {editingStakeholder
+                                  ? "Loading stakeholder data"
+                                  : "Setting up address data"}
+                              </h4>
+                              <p className="text-gray-500 text-center mt-2">
+                                {editingStakeholder
+                                  ? "Retrieving location information for this stakeholder..."
+                                  : "Loading location information to ensure accurate data entry"}
+                              </p>
+                              {editingStakeholder && (
+                                <div className="mt-4 flex flex-col items-center">
+                                  <div className="flex items-center space-x-2">
+                                    <div
+                                      className={`h-2 w-2 rounded-full ${
+                                        selectedRegion
+                                          ? "bg-green-500"
+                                          : "bg-gray-300"
+                                      }`}
+                                    ></div>
+                                    <span className="text-sm">Region</span>
 
-                                  <div
-                                    className={`h-2 w-2 rounded-full ${
-                                      selectedProvince
-                                        ? "bg-green-500"
-                                        : "bg-gray-300"
-                                    }`}
-                                  ></div>
-                                  <span className="text-sm">Province</span>
+                                    <div
+                                      className={`h-2 w-2 rounded-full ${
+                                        selectedProvince
+                                          ? "bg-green-500"
+                                          : "bg-gray-300"
+                                      }`}
+                                    ></div>
+                                    <span className="text-sm">Province</span>
 
-                                  <div
-                                    className={`h-2 w-2 rounded-full ${
-                                      selectedCity
-                                        ? "bg-green-500"
-                                        : "bg-gray-300"
-                                    }`}
-                                  ></div>
-                                  <span className="text-sm">City</span>
+                                    <div
+                                      className={`h-2 w-2 rounded-full ${
+                                        selectedCity
+                                          ? "bg-green-500"
+                                          : "bg-gray-300"
+                                      }`}
+                                    ></div>
+                                    <span className="text-sm">City</span>
+                                  </div>
                                 </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <form
-                            id="stakeholder-form"
-                            onSubmit={
-                              editingStakeholder
-                                ? handleUpdateStakeholder
-                                : handleAddStakeholder
-                            }
-                            className="p-6"
-                          >
-                            <div className="space-y-8">
-                              {/* Basic Information */}
-                              <fieldset>
-                                <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
-                                  <User
-                                    size={18}
-                                    className="mr-2 text-blue-600"
-                                  />
-                                  Basic Information
-                                </legend>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="name"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      Full Name{" "}
-                                      <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                      type="text"
-                                      id="name"
-                                      required
-                                      value={stakeholderFormData.name}
-                                      onChange={(e) => {
-                                        // Prevent numbers and special characters except hyphen and apostrophe
-                                        const value = e.target.value.replace(/[^a-zA-Z\s\-']/g, '');
-                                        setStakeholderFormData({
-                                          ...stakeholderFormData,
-                                          name: value,
-                                        });
-                                      }}
-                                      onBlur={(e) => {
-                                        // Format name on blur with proper capitalization
-                                        const formattedName = formatName(e.target.value);
-                                        setStakeholderFormData({
-                                          ...stakeholderFormData,
-                                          name: formattedName,
-                                        });
-                                      }}
-                                      className="block text-gray-800 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-                                      placeholder="John Smith"
-                                      pattern="^[A-Za-z\s\-']+$"
-                                      title="Name should only contain letters, spaces, hyphens, and apostrophes"
+                              )}
+                            </div>
+                          ) : (
+                            <form
+                              id="stakeholder-form"
+                              onSubmit={
+                                editingStakeholder
+                                  ? handleUpdateStakeholder
+                                  : handleAddStakeholder
+                              }
+                              className="p-6"
+                            >
+                              <div className="space-y-8">
+                                {/* Basic Information */}
+                                <fieldset>
+                                  <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
+                                    <User
+                                      size={18}
+                                      className="mr-2 text-blue-600"
                                     />
-                                  </div>
-
-                                  {/* NEW: Role Selection Dropdown */}
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="role"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      Role{" "}
-                                      <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="relative">
-                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Briefcase
-                                          size={16}
-                                          className="text-gray-400"
-                                        />
-                                      </div>
-                                      <select
-                                        id="role"
-                                        required
-                                        value={stakeholderFormData.role}
-                                        onChange={(e) =>
-                                          setStakeholderFormData({
-                                            ...stakeholderFormData,
-                                            role: e.target.value,
-                                          })
-                                        }
-                                        className="block text-gray-800 w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all appearance-none"
+                                    Basic Information
+                                  </legend>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="name"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
                                       >
-                                        <option value="Mentor">Mentor</option>
-                                        <option value="Advisor">Advisor</option>
-                                        <option value="Investor">
-                                          Investor
-                                        </option>
-                                        <option value="Angel Investor">
-                                          Angel Investor
-                                        </option>
-                                        <option value="VC Representative">
-                                          VC Representative
-                                        </option>
-                                        <option value="Founder">Founder</option>
-                                        <option value="Co-Founder">
-                                          Co-Founder
-                                        </option>
-                                        <option value="Board Member">
-                                          Board Member
-                                        </option>
-                                        <option value="Executive">
-                                          Executive
-                                        </option>
-                                        <option value="Partner">Partner</option>
-                                        <option value="Strategic Partner">
-                                          Strategic Partner
-                                        </option>
-                                        <option value="Industry Expert">
-                                          Industry Expert
-                                        </option>
-                                        <option value="Service Provider">
-                                          Service Provider
-                                        </option>
-                                        <option value="Family Office">
-                                          Family Office
-                                        </option>
-                                        <option value="Other">Other</option>
-                                      </select>
-                                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                        <ChevronDown
-                                          size={14}
-                                          className="text-gray-500"
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Existing email field */}
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="email"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      Email Address{" "}
-                                      <span className="text-red-500">*</span>
-                                    </label>
-                                    <div>
+                                        Full Name{" "}
+                                        <span className="text-red-500">*</span>
+                                      </label>
                                       <input
-                                        type="email"
-                                        id="email"
+                                        type="text"
+                                        id="name"
                                         required
-                                        value={stakeholderFormData.email}
+                                        value={stakeholderFormData.name}
                                         onChange={(e) => {
-                                          // Convert to lowercase and trim whitespace for consistency
-                                          const cleanEmail = e.target.value.trim().toLowerCase();
+                                          // Prevent numbers and special characters except hyphen and apostrophe
+                                          const value = e.target.value.replace(
+                                            /[^a-zA-Z\s\-']/g,
+                                            ""
+                                          );
                                           setStakeholderFormData({
                                             ...stakeholderFormData,
-                                            email: cleanEmail,
-                                          });
-                                        }}
-                                        className={`block text-gray-800 w-full px-3 py-2 border ${
-                                          stakeholderFormData.email &&
-                                          !validateEmail(
-                                            stakeholderFormData.email
-                                          )
-                                            ? "border-red-300 focus:ring-red-500 focus:border-red-500"
-                                            : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                                        } rounded-md shadow-sm sm:text-sm transition-all`}
-                                        placeholder="john.smith@example.com"
-                                      />
-                                      {stakeholderFormData.email &&
-                                        !validateEmail(
-                                          stakeholderFormData.email
-                                        ) && (
-                                          <p className="mt-1 text-sm text-red-600">
-                                            Please enter a valid email address
-                                          </p>
-                                        )}
-                                    </div>
-                                  </div>
-
-                                  {/* Existing phone number field */}
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="phoneNumber"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      Phone Number
-                                    </label>
-                                    <div className="relative">
-                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Phone
-                                          size={16}
-                                          className="text-gray-400"
-                                        />
-                                      </div>
-                                      <input
-                                        type="tel"
-                                        id="phoneNumber"
-                                        value={stakeholderFormData.phoneNumber}
-                                        onChange={(e) => {
-                                          // Only allow numbers, spaces, +, and hyphens
-                                          const value = e.target.value.replace(/[^\d\s+\-]/g, '');
-                                          setStakeholderFormData({
-                                            ...stakeholderFormData,
-                                            phoneNumber: value,
+                                            name: value,
                                           });
                                         }}
                                         onBlur={(e) => {
-                                          // Format the phone number properly on blur
-                                          let value = e.target.value;
-                                          // Don't process if empty
-                                          if (!value.trim()) return;
-                                          
-                                          // Strip all non-digits
-                                          const digitsOnly = value.replace(/\D/g, '');
-                                          
-                                          // Format based on Philippine number pattern
-                                          if (digitsOnly.length === 10 && digitsOnly.startsWith('9')) {
-                                            // Format as 09xx xxx xxxx
-                                            value = `0${digitsOnly.substring(0, 1)} ${digitsOnly.substring(1, 4)} ${digitsOnly.substring(4, 7)} ${digitsOnly.substring(7)}`;
-                                          } else if (digitsOnly.length === 11 && digitsOnly.startsWith('09')) {
-                                            // Format as 09xx xxx xxxx
-                                            value = `${digitsOnly.substring(0, 2)} ${digitsOnly.substring(2, 5)} ${digitsOnly.substring(5, 8)} ${digitsOnly.substring(8)}`;
-                                          } else if (digitsOnly.length === 12 && digitsOnly.startsWith('639')) {
-                                            // Format as +63 9xx xxx xxxx
-                                            value = `+${digitsOnly.substring(0, 2)} ${digitsOnly.substring(2, 5)} ${digitsOnly.substring(5, 8)} ${digitsOnly.substring(8)}`;
-                                          } else if (digitsOnly.length === 13 && digitsOnly.startsWith('6309')) {
-                                            // Correct common mistake format
-                                            value = `+63 ${digitsOnly.substring(2, 5)} ${digitsOnly.substring(5, 8)} ${digitsOnly.substring(8)}`;
-                                          }
-                                          
+                                          // Format name on blur with proper capitalization
+                                          const formattedName = formatName(
+                                            e.target.value
+                                          );
                                           setStakeholderFormData({
                                             ...stakeholderFormData,
-                                            phoneNumber: value,
+                                            name: formattedName,
                                           });
                                         }}
-                                        className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-                                        placeholder="+63 919 123 4567"
-                                        title="Enter a valid Philippine phone number: +63 9XX XXX XXXX or 09XX XXX XXXX"
+                                        className="block text-gray-800 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+                                        placeholder="John Smith"
+                                        pattern="^[A-Za-z\s\-']+$"
+                                        title="Name should only contain letters, spaces, hyphens, and apostrophes"
                                       />
                                     </div>
-                                  </div>
 
-                                  {/* NEW: Status Selection Dropdown */}
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="status"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      Status{" "}
-                                      <span className="text-red-500">*</span>
-                                    </label>
-                                    <div className="relative">
-                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <div
-                                          className={`w-2 h-2 rounded-full ${
-                                            stakeholderFormData.status ===
-                                            "Active"
-                                              ? "bg-green-500"
-                                              : stakeholderFormData.status ===
-                                                "Inactive"
-                                              ? "bg-gray-400"
-                                              : "bg-yellow-500"
-                                          }`}
-                                        ></div>
-                                      </div>
-                                      <select
-                                        id="status"
-                                        required
-                                        value={stakeholderFormData.status}
-                                        onChange={(e) =>
-                                          setStakeholderFormData({
-                                            ...stakeholderFormData,
-                                            status: e.target.value,
-                                          })
-                                        }
-                                        className="block text-gray-800 w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all appearance-none"
+                                    {/* NEW: Role Selection Dropdown */}
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="role"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
                                       >
-                                        <option value="Active">Active</option>
-                                        <option value="Inactive">
-                                          Inactive
+                                        Role{" "}
+                                        <span className="text-red-500">*</span>
+                                      </label>
+                                      <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                          <Briefcase
+                                            size={16}
+                                            className="text-gray-400"
+                                          />
+                                        </div>
+                                        <select
+                                          id="role"
+                                          required
+                                          value={stakeholderFormData.role}
+                                          onChange={(e) =>
+                                            setStakeholderFormData({
+                                              ...stakeholderFormData,
+                                              role: e.target.value,
+                                            })
+                                          }
+                                          className="block text-gray-800 w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all appearance-none"
+                                        >
+                                          <option value="Mentor">Mentor</option>
+                                          <option value="Advisor">
+                                            Advisor
+                                          </option>
+                                          <option value="Investor">
+                                            Investor
+                                          </option>
+                                          <option value="Angel Investor">
+                                            Angel Investor
+                                          </option>
+                                          <option value="VC Representative">
+                                            VC Representative
+                                          </option>
+                                          <option value="Founder">
+                                            Founder
+                                          </option>
+                                          <option value="Co-Founder">
+                                            Co-Founder
+                                          </option>
+                                          <option value="Board Member">
+                                            Board Member
+                                          </option>
+                                          <option value="Executive">
+                                            Executive
+                                          </option>
+                                          <option value="Partner">
+                                            Partner
+                                          </option>
+                                          <option value="Strategic Partner">
+                                            Strategic Partner
+                                          </option>
+                                          <option value="Industry Expert">
+                                            Industry Expert
+                                          </option>
+                                          <option value="Service Provider">
+                                            Service Provider
+                                          </option>
+                                          <option value="Family Office">
+                                            Family Office
+                                          </option>
+                                          <option value="Other">Other</option>
+                                        </select>
+                                        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                          <ChevronDown
+                                            size={14}
+                                            className="text-gray-500"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Existing email field */}
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="email"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                      >
+                                        Email Address{" "}
+                                        <span className="text-red-500">*</span>
+                                      </label>
+                                      <div>
+                                        <input
+                                          type="email"
+                                          id="email"
+                                          required
+                                          value={stakeholderFormData.email}
+                                          onChange={(e) => {
+                                            // Convert to lowercase and trim whitespace for consistency
+                                            const cleanEmail = e.target.value
+                                              .trim()
+                                              .toLowerCase();
+                                            setStakeholderFormData({
+                                              ...stakeholderFormData,
+                                              email: cleanEmail,
+                                            });
+                                          }}
+                                          className={`block text-gray-800 w-full px-3 py-2 border ${
+                                            stakeholderFormData.email &&
+                                            !validateEmail(
+                                              stakeholderFormData.email
+                                            )
+                                              ? "border-red-300 focus:ring-red-500 focus:border-red-500"
+                                              : "border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+                                          } rounded-md shadow-sm sm:text-sm transition-all`}
+                                          placeholder="john.smith@example.com"
+                                        />
+                                        {stakeholderFormData.email &&
+                                          !validateEmail(
+                                            stakeholderFormData.email
+                                          ) && (
+                                            <p className="mt-1 text-sm text-red-600">
+                                              Please enter a valid email address
+                                            </p>
+                                          )}
+                                      </div>
+                                    </div>
+
+                                    {/* Existing phone number field */}
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="phoneNumber"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                      >
+                                        Phone Number
+                                      </label>
+                                      <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                          <Phone
+                                            size={16}
+                                            className="text-gray-400"
+                                          />
+                                        </div>
+                                        <input
+                                          type="tel"
+                                          id="phoneNumber"
+                                          value={
+                                            stakeholderFormData.phoneNumber
+                                          }
+                                          onChange={(e) => {
+                                            // Only allow numbers, spaces, +, and hyphens
+                                            const value =
+                                              e.target.value.replace(
+                                                /[^\d\s+\-]/g,
+                                                ""
+                                              );
+                                            setStakeholderFormData({
+                                              ...stakeholderFormData,
+                                              phoneNumber: value,
+                                            });
+                                          }}
+                                          onBlur={(e) => {
+                                            // Format the phone number properly on blur
+                                            let value = e.target.value;
+                                            // Don't process if empty
+                                            if (!value.trim()) return;
+
+                                            // Strip all non-digits
+                                            const digitsOnly = value.replace(
+                                              /\D/g,
+                                              ""
+                                            );
+
+                                            // Format based on Philippine number pattern
+                                            if (
+                                              digitsOnly.length === 10 &&
+                                              digitsOnly.startsWith("9")
+                                            ) {
+                                              // Format as 09xx xxx xxxx
+                                              value = `0${digitsOnly.substring(
+                                                0,
+                                                1
+                                              )} ${digitsOnly.substring(
+                                                1,
+                                                4
+                                              )} ${digitsOnly.substring(
+                                                4,
+                                                7
+                                              )} ${digitsOnly.substring(7)}`;
+                                            } else if (
+                                              digitsOnly.length === 11 &&
+                                              digitsOnly.startsWith("09")
+                                            ) {
+                                              // Format as 09xx xxx xxxx
+                                              value = `${digitsOnly.substring(
+                                                0,
+                                                2
+                                              )} ${digitsOnly.substring(
+                                                2,
+                                                5
+                                              )} ${digitsOnly.substring(
+                                                5,
+                                                8
+                                              )} ${digitsOnly.substring(8)}`;
+                                            } else if (
+                                              digitsOnly.length === 12 &&
+                                              digitsOnly.startsWith("639")
+                                            ) {
+                                              // Format as +63 9xx xxx xxxx
+                                              value = `+${digitsOnly.substring(
+                                                0,
+                                                2
+                                              )} ${digitsOnly.substring(
+                                                2,
+                                                5
+                                              )} ${digitsOnly.substring(
+                                                5,
+                                                8
+                                              )} ${digitsOnly.substring(8)}`;
+                                            } else if (
+                                              digitsOnly.length === 13 &&
+                                              digitsOnly.startsWith("6309")
+                                            ) {
+                                              // Correct common mistake format
+                                              value = `+63 ${digitsOnly.substring(
+                                                2,
+                                                5
+                                              )} ${digitsOnly.substring(
+                                                5,
+                                                8
+                                              )} ${digitsOnly.substring(8)}`;
+                                            }
+
+                                            setStakeholderFormData({
+                                              ...stakeholderFormData,
+                                              phoneNumber: value,
+                                            });
+                                          }}
+                                          className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+                                          placeholder="+63 919 123 4567"
+                                          title="Enter a valid Philippine phone number: +63 9XX XXX XXXX or 09XX XXX XXXX"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    {/* NEW: Status Selection Dropdown */}
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="status"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                      >
+                                        Status{" "}
+                                        <span className="text-red-500">*</span>
+                                      </label>
+                                      <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                          <div
+                                            className={`w-2 h-2 rounded-full ${
+                                              stakeholderFormData.status ===
+                                              "Active"
+                                                ? "bg-green-500"
+                                                : stakeholderFormData.status ===
+                                                  "Inactive"
+                                                ? "bg-gray-400"
+                                                : "bg-yellow-500"
+                                            }`}
+                                          ></div>
+                                        </div>
+                                        <select
+                                          id="status"
+                                          required
+                                          value={stakeholderFormData.status}
+                                          onChange={(e) =>
+                                            setStakeholderFormData({
+                                              ...stakeholderFormData,
+                                              status: e.target.value,
+                                            })
+                                          }
+                                          className="block text-gray-800 w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all appearance-none"
+                                        >
+                                          <option value="Active">Active</option>
+                                          <option value="Inactive">
+                                            Inactive
+                                          </option>
+                                          <option value="Pending">
+                                            Pending
+                                          </option>
+                                          <option value="Former">Former</option>
+                                        </select>
+                                        <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                                          <ChevronDown
+                                            size={14}
+                                            className="text-gray-500"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </fieldset>
+
+                                {/* Address Information with PSGC API Integration */}
+                                <fieldset>
+                                  <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
+                                    <MapPin
+                                      size={18}
+                                      className="mr-2 text-blue-600"
+                                    />
+                                    Address Information
+                                  </legend>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                                    {/* Region Selection */}
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="region"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                      >
+                                        Region
+                                      </label>
+                                      <select
+                                        id="region"
+                                        value={selectedRegion}
+                                        onChange={(e) =>
+                                          setSelectedRegion(e.target.value)
+                                        }
+                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
+                                      >
+                                        <option value="">
+                                          Select a region
                                         </option>
-                                        <option value="Pending">Pending</option>
-                                        <option value="Former">Former</option>
+                                        {regions.map((region) => (
+                                          <option
+                                            key={region.code}
+                                            value={region.code}
+                                          >
+                                            {region.name}
+                                          </option>
+                                        ))}
                                       </select>
-                                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                                        <ChevronDown
-                                          size={14}
-                                          className="text-gray-500"
-                                        />
-                                      </div>
                                     </div>
-                                  </div>
-                                </div>
-                              </fieldset>
 
-                              {/* Address Information with PSGC API Integration */}
-                              <fieldset>
-                                <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
-                                  <MapPin
-                                    size={18}
-                                    className="mr-2 text-blue-600"
-                                  />
-                                  Address Information
-                                </legend>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                  {/* Region Selection */}
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="region"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      Region
-                                    </label>
-                                    <select
-                                      id="region"
-                                      value={selectedRegion}
-                                      onChange={(e) =>
-                                        setSelectedRegion(e.target.value)
-                                      }
-                                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
-                                    >
-                                      <option value="">Select a region</option>
-                                      {regions.map((region) => (
-                                        <option
-                                          key={region.code}
-                                          value={region.code}
-                                        >
-                                          {region.name}
+                                    {/* Province Selection */}
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="province"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                      >
+                                        Province
+                                      </label>
+                                      <select
+                                        id="province"
+                                        value={selectedProvince}
+                                        onChange={(e) =>
+                                          setSelectedProvince(e.target.value)
+                                        }
+                                        disabled={
+                                          !selectedRegion ||
+                                          provinces.length === 0
+                                        }
+                                        className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
+                                          !selectedRegion
+                                            ? "bg-gray-100 cursor-not-allowed"
+                                            : ""
+                                        }`}
+                                      >
+                                        <option value="">
+                                          Select a province
                                         </option>
-                                      ))}
-                                    </select>
-                                  </div>
+                                        {provinces.map((province) => (
+                                          <option
+                                            key={province.code}
+                                            value={province.code}
+                                          >
+                                            {province.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                      {selectedRegion &&
+                                        provinces.length === 0 && (
+                                          <p className="mt-1 text-xs text-blue-600">
+                                            Loading provinces or region may not
+                                            have provinces...
+                                          </p>
+                                        )}
+                                    </div>
 
-                                  {/* Province Selection */}
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="province"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      Province
-                                    </label>
-                                    <select
-                                      id="province"
-                                      value={selectedProvince}
-                                      onChange={(e) =>
-                                        setSelectedProvince(e.target.value)
-                                      }
-                                      disabled={
-                                        !selectedRegion ||
-                                        provinces.length === 0
-                                      }
-                                      className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
-                                        !selectedRegion
-                                          ? "bg-gray-100 cursor-not-allowed"
-                                          : ""
-                                      }`}
-                                    >
-                                      <option value="">
-                                        Select a province
-                                      </option>
-                                      {provinces.map((province) => (
-                                        <option
-                                          key={province.code}
-                                          value={province.code}
-                                        >
-                                          {province.name}
+                                    {/* City/Municipality Selection */}
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="city"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                      >
+                                        City / Municipality
+                                      </label>
+                                      <select
+                                        id="city"
+                                        value={selectedCity}
+                                        onChange={(e) =>
+                                          setSelectedCity(e.target.value)
+                                        }
+                                        disabled={
+                                          !selectedProvince ||
+                                          cities.length === 0
+                                        }
+                                        className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
+                                          !selectedProvince
+                                            ? "bg-gray-100 cursor-not-allowed"
+                                            : ""
+                                        }`}
+                                      >
+                                        <option value="">
+                                          Select a city/municipality
                                         </option>
-                                      ))}
-                                    </select>
-                                    {selectedRegion &&
-                                      provinces.length === 0 && (
-                                        <p className="mt-1 text-xs text-blue-600">
-                                          Loading provinces or region may not
-                                          have provinces...
-                                        </p>
-                                      )}
-                                  </div>
+                                        {cities.map((city) => (
+                                          <option
+                                            key={city.code}
+                                            value={city.code}
+                                          >
+                                            {city.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
 
-                                  {/* City/Municipality Selection */}
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="city"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      City / Municipality
-                                    </label>
-                                    <select
-                                      id="city"
-                                      value={selectedCity}
-                                      onChange={(e) =>
-                                        setSelectedCity(e.target.value)
-                                      }
-                                      disabled={
-                                        !selectedProvince || cities.length === 0
-                                      }
-                                      className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
-                                        !selectedProvince
-                                          ? "bg-gray-100 cursor-not-allowed"
-                                          : ""
-                                      }`}
-                                    >
-                                      <option value="">
-                                        Select a city/municipality
-                                      </option>
-                                      {cities.map((city) => (
-                                        <option
-                                          key={city.code}
-                                          value={city.code}
-                                        >
-                                          {city.name}
+                                    {/* Barangay Selection */}
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="barangay"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                      >
+                                        Barangay
+                                      </label>
+                                      <select
+                                        id="barangay"
+                                        value={
+                                          stakeholderFormData.barangayCode || ""
+                                        }
+                                        onChange={handleBarangayChange}
+                                        disabled={
+                                          !selectedCity ||
+                                          barangays.length === 0
+                                        }
+                                        className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
+                                          !selectedCity
+                                            ? "bg-gray-100 cursor-not-allowed"
+                                            : ""
+                                        }`}
+                                      >
+                                        <option value="">
+                                          Select a barangay
                                         </option>
-                                      ))}
-                                    </select>
-                                  </div>
+                                        {barangays.map((barangay) => (
+                                          <option
+                                            key={barangay.code}
+                                            value={barangay.code}
+                                          >
+                                            {barangay.name}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </div>
 
-                                  {/* Barangay Selection */}
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="barangay"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      Barangay
-                                    </label>
-                                    <select
-                                      id="barangay"
-                                      value={
-                                        stakeholderFormData.barangayCode || ""
-                                      }
-                                      onChange={handleBarangayChange}
-                                      disabled={
-                                        !selectedCity || barangays.length === 0
-                                      }
-                                      className={`block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800 ${
-                                        !selectedCity
-                                          ? "bg-gray-100 cursor-not-allowed"
-                                          : ""
-                                      }`}
-                                    >
-                                      <option value="">
-                                        Select a barangay
-                                      </option>
-                                      {barangays.map((barangay) => (
-                                        <option
-                                          key={barangay.code}
-                                          value={barangay.code}
-                                        >
-                                          {barangay.name}
-                                        </option>
-                                      ))}
-                                    </select>
-                                  </div>
-
-                                  {/* Street Address - Keep as free text input */}
-                                  <div className="col-span-2">
-                                    <label
-                                      htmlFor="street"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      Street Address / Building / House No.
-                                    </label>
-                                    <input
-                                      type="text"
-                                      id="street"
-                                      value={stakeholderFormData.street}
-                                      onChange={(e) =>
-                                        setStakeholderFormData({
-                                          ...stakeholderFormData,
-                                          street: e.target.value,
-                                        })
-                                      }
-                                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
-                                      placeholder="123 Main Street"
-                                    />
-                                  </div>
-
-                                  {/* Postal Code - Keep as free text input */}
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="postalCode"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      Postal Code
-                                    </label>
-                                    <input
-                                      type="text"
-                                      id="postalCode"
-                                      value={stakeholderFormData.postalCode}
-                                      onChange={(e) =>
-                                        setStakeholderFormData({
-                                          ...stakeholderFormData,
-                                          postalCode: e.target.value,
-                                        })
-                                      }
-                                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
-                                      placeholder="1200"
-                                    />
-                                  </div>
-                                </div>
-                              </fieldset>
-
-                              {/* Social Media */}
-                              <fieldset>
-                                <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
-                                  <Globe
-                                    size={18}
-                                    className="mr-2 text-blue-600"
-                                  />
-                                  Social Media
-                                </legend>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="facebook"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      Facebook
-                                    </label>
-                                    <div className="relative rounded-md">
-                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Facebook
-                                          size={16}
-                                          className="text-blue-600"
-                                        />
-                                      </div>
+                                    {/* Street Address - Keep as free text input */}
+                                    <div className="col-span-2">
+                                      <label
+                                        htmlFor="street"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                      >
+                                        Street Address / Building / House No.
+                                      </label>
                                       <input
                                         type="text"
-                                        id="facebook"
-                                        value={stakeholderFormData.facebook}
+                                        id="street"
+                                        value={stakeholderFormData.street}
                                         onChange={(e) =>
                                           setStakeholderFormData({
                                             ...stakeholderFormData,
-                                            facebook: e.target.value,
+                                            street: e.target.value,
                                           })
                                         }
-                                        className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-                                        placeholder="facebook.com/profile"
+                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
+                                        placeholder="123 Main Street"
                                       />
                                     </div>
-                                    <p className="mt-1 text-xs text-gray-500">
-                                      Full URL or username
-                                    </p>
-                                  </div>
 
-                                  <div className="col-span-1">
-                                    <label
-                                      htmlFor="linkedIn"
-                                      className="block text-sm font-medium text-gray-700 mb-1"
-                                    >
-                                      LinkedIn
-                                    </label>
-                                    <div className="relative rounded-md">
-                                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Linkedin
-                                          size={16}
-                                          className="text-blue-700"
-                                        />
-                                      </div>
+                                    {/* Postal Code - Keep as free text input */}
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="postalCode"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                      >
+                                        Postal Code
+                                      </label>
                                       <input
                                         type="text"
-                                        id="linkedIn"
-                                        value={stakeholderFormData.linkedIn}
+                                        id="postalCode"
+                                        value={stakeholderFormData.postalCode}
                                         onChange={(e) =>
                                           setStakeholderFormData({
                                             ...stakeholderFormData,
-                                            linkedIn: e.target.value,
+                                            postalCode: e.target.value,
                                           })
                                         }
-                                        className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
-                                        placeholder="linkedin.com/in/profile"
+                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all text-gray-800"
+                                        placeholder="1200"
                                       />
                                     </div>
-                                    <p className="mt-1 text-xs text-gray-500">
-                                      Full URL or username
-                                    </p>
                                   </div>
-                                </div>
-                              </fieldset>
+                                </fieldset>
 
-                              {/* Location on Map (Optional) */}
-                              <fieldset>
-                                <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
-                                  <MapPin
-                                    size={18}
-                                    className="mr-2 text-blue-600"
-                                  />
-                                  Physical Location
-                                </legend>
+                                {/* Social Media */}
+                                <fieldset>
+                                  <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
+                                    <Globe
+                                      size={18}
+                                      className="mr-2 text-blue-600"
+                                    />
+                                    Social Media
+                                  </legend>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="facebook"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                      >
+                                        Facebook
+                                      </label>
+                                      <div className="relative rounded-md">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                          <Facebook
+                                            size={16}
+                                            className="text-blue-600"
+                                          />
+                                        </div>
+                                        <input
+                                          type="text"
+                                          id="facebook"
+                                          value={stakeholderFormData.facebook}
+                                          onChange={(e) =>
+                                            setStakeholderFormData({
+                                              ...stakeholderFormData,
+                                              facebook: e.target.value,
+                                            })
+                                          }
+                                          className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+                                          placeholder="facebook.com/profile"
+                                        />
+                                      </div>
+                                      <p className="mt-1 text-xs text-gray-500">
+                                        Full URL or username
+                                      </p>
+                                    </div>
 
-                                <div className="flex items-center mb-4">
-                                  <div className="form-control">
-                                    <label className="flex items-center cursor-pointer">
-                                      <input
-                                        type="checkbox"
-                                        checked={
-                                          stakeholderFormData.hasPhysicalLocation
-                                        }
-                                        onChange={(e) => {
-                                          setStakeholderFormData({
-                                            ...stakeholderFormData,
-                                            hasPhysicalLocation:
-                                              e.target.checked,
-                                            // Reset location data if toggled off
-                                            ...(e.target.checked
-                                              ? {}
-                                              : {
-                                                  locationLat: null,
-                                                  locationLng: null,
-                                                  locationName: "",
-                                                }),
-                                          });
-                                        }}
-                                        className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                      />
-                                      <span className="text-sm text-gray-700">
-                                        This stakeholder has a physical office
-                                        or workplace to show on the map
-                                      </span>
-                                    </label>
+                                    <div className="col-span-1">
+                                      <label
+                                        htmlFor="linkedIn"
+                                        className="block text-sm font-medium text-gray-700 mb-1"
+                                      >
+                                        LinkedIn
+                                      </label>
+                                      <div className="relative rounded-md">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                          <Linkedin
+                                            size={16}
+                                            className="text-blue-700"
+                                          />
+                                        </div>
+                                        <input
+                                          type="text"
+                                          id="linkedIn"
+                                          value={stakeholderFormData.linkedIn}
+                                          onChange={(e) =>
+                                            setStakeholderFormData({
+                                              ...stakeholderFormData,
+                                              linkedIn: e.target.value,
+                                            })
+                                          }
+                                          className="block text-gray-800 w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-all"
+                                          placeholder="linkedin.com/in/profile"
+                                        />
+                                      </div>
+                                      <p className="mt-1 text-xs text-gray-500">
+                                        Full URL or username
+                                      </p>
+                                    </div>
                                   </div>
-                                </div>
+                                </fieldset>
 
-                                {stakeholderFormData.hasPhysicalLocation && (
-                                  <div className="space-y-4">
-                                    <div className="relative rounded-md border border-gray-300 bg-gray-50 p-4">
-                                      {stakeholderFormData.locationLat &&
-                                      stakeholderFormData.locationLng ? (
-                                        <div className="flex flex-col space-y-3">
-                                          <div className="flex items-center justify-between">
+                                {/* Location on Map (Optional) */}
+                                <fieldset>
+                                  <legend className="text-base font-medium text-gray-700 mb-4 flex items-center">
+                                    <MapPin
+                                      size={18}
+                                      className="mr-2 text-blue-600"
+                                    />
+                                    Physical Location
+                                  </legend>
+
+                                  <div className="flex items-center mb-4">
+                                    <div className="form-control">
+                                      <label className="flex items-center cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={
+                                            stakeholderFormData.hasPhysicalLocation
+                                          }
+                                          onChange={(e) => {
+                                            setStakeholderFormData({
+                                              ...stakeholderFormData,
+                                              hasPhysicalLocation:
+                                                e.target.checked,
+                                              // Reset location data if toggled off
+                                              ...(e.target.checked
+                                                ? {}
+                                                : {
+                                                    locationLat: null,
+                                                    locationLng: null,
+                                                    locationName: "",
+                                                  }),
+                                            });
+                                          }}
+                                          className="mr-2 h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-gray-700">
+                                          This stakeholder has a physical office
+                                          or workplace to show on the map
+                                        </span>
+                                      </label>
+                                    </div>
+                                  </div>
+
+                                  {stakeholderFormData.hasPhysicalLocation && (
+                                    <div className="space-y-4">
+                                      <div className="relative rounded-md border border-gray-300 bg-gray-50 p-4">
+                                        {stakeholderFormData.locationLat &&
+                                        stakeholderFormData.locationLng ? (
+                                          <div className="flex flex-col space-y-3">
+                                            <div className="flex items-center justify-between">
+                                              <div>
+                                                <p className="text-sm font-medium text-gray-900">
+                                                  {
+                                                    stakeholderFormData.locationName
+                                                  }
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                  Latitude:{" "}
+                                                  {stakeholderFormData.locationLat.toFixed(
+                                                    6
+                                                  )}
+                                                  , Longitude:{" "}
+                                                  {stakeholderFormData.locationLng.toFixed(
+                                                    6
+                                                  )}
+                                                </p>
+                                              </div>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  setShowLocationModal(true)
+                                                }
+                                                className="px-3 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 shadow-sm"
+                                              >
+                                                Change
+                                              </button>
+                                            </div>
+
+                                            {/* Preview Map */}
+                                            <div className="h-40 w-full rounded-md overflow-hidden border border-gray-200">
+                                              <iframe
+                                                title="Location preview"
+                                                width="100%"
+                                                height="100%"
+                                                frameBorder="0"
+                                                src={`https://maps.google.com/maps?q=${stakeholderFormData.locationLat},${stakeholderFormData.locationLng}&z=15&output=embed`}
+                                              />
+                                            </div>
+
+                                            {/* Location description input */}
                                             <div>
-                                              <p className="text-sm font-medium text-gray-900">
-                                                {
+                                              <label
+                                                htmlFor="locationName"
+                                                className="block text-sm font-medium text-gray-700 mb-1"
+                                              >
+                                                Location Name{" "}
+                                                <span className="text-xs text-gray-500">
+                                                  (e.g. "Main Office",
+                                                  "Headquarters")
+                                                </span>
+                                              </label>
+                                              <input
+                                                type="text"
+                                                id="locationName"
+                                                value={
                                                   stakeholderFormData.locationName
                                                 }
-                                              </p>
-                                              <p className="text-xs text-gray-500">
-                                                Latitude:{" "}
-                                                {stakeholderFormData.locationLat.toFixed(
-                                                  6
-                                                )}
-                                                , Longitude:{" "}
-                                                {stakeholderFormData.locationLng.toFixed(
-                                                  6
-                                                )}
-                                              </p>
+                                                onChange={(e) =>
+                                                  setStakeholderFormData({
+                                                    ...stakeholderFormData,
+                                                    locationName:
+                                                      e.target.value,
+                                                  })
+                                                }
+                                                className="block w-full text-gray-800 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                                                placeholder="Enter a descriptive name for this location"
+                                              />
                                             </div>
+                                          </div>
+                                        ) : (
+                                          <div className="text-center py-6">
+                                            <MapPin className="h-10 w-10 text-gray-400 mx-auto mb-2" />
+                                            <p className="text-sm font-medium text-gray-900">
+                                              No location selected
+                                            </p>
+                                            <p className="text-xs text-gray-500 mb-4">
+                                              Click the button below to select a
+                                              location on the map
+                                            </p>
                                             <button
                                               type="button"
                                               onClick={() =>
                                                 setShowLocationModal(true)
                                               }
-                                              className="px-3 py-1 text-xs font-medium rounded border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 shadow-sm"
+                                              className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                                             >
-                                              Change
+                                              Select Location on Map
                                             </button>
                                           </div>
-
-                                          {/* Preview Map */}
-                                          <div className="h-40 w-full rounded-md overflow-hidden border border-gray-200">
-                                            <iframe
-                                              title="Location preview"
-                                              width="100%"
-                                              height="100%"
-                                              frameBorder="0"
-                                              src={`https://maps.google.com/maps?q=${stakeholderFormData.locationLat},${stakeholderFormData.locationLng}&z=15&output=embed`}
-                                            />
-                                          </div>
-
-                                          {/* Location description input */}
-                                          <div>
-                                            <label
-                                              htmlFor="locationName"
-                                              className="block text-sm font-medium text-gray-700 mb-1"
-                                            >
-                                              Location Name{" "}
-                                              <span className="text-xs text-gray-500">
-                                                (e.g. "Main Office",
-                                                "Headquarters")
-                                              </span>
-                                            </label>
-                                            <input
-                                              type="text"
-                                              id="locationName"
-                                              value={
-                                                stakeholderFormData.locationName
-                                              }
-                                              onChange={(e) =>
-                                                setStakeholderFormData({
-                                                  ...stakeholderFormData,
-                                                  locationName: e.target.value,
-                                                })
-                                              }
-                                              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                                              placeholder="Enter a descriptive name for this location"
-                                            />
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div className="text-center py-6">
-                                          <MapPin className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                                          <p className="text-sm font-medium text-gray-900">
-                                            No location selected
-                                          </p>
-                                          <p className="text-xs text-gray-500 mb-4">
-                                            Click the button below to select a
-                                            location on the map
-                                          </p>
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              setShowLocationModal(true)
-                                            }
-                                            className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                                          >
-                                            Select Location on Map
-                                          </button>
-                                        </div>
-                                      )}
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                )}
-                              </fieldset>
+                                  )}
+                                </fieldset>
 
-                              {/* Form content ends here - no buttons in the form */}
-                            </div>
-                          </form>
-                        )}
-                      </div>
-                      
-                      {/* Form Buttons - sticky at bottom */}
-                      {!addressDataLoading && (
-                        <div className="sticky bottom-0 border-t border-gray-200 bg-white p-4 flex justify-end space-x-3">
-                          {/* Update this button in the form buttons section */}
-                          <button
-                            type="button"
-                            disabled={isSubmitting}
-                            onClick={closeStakeholderModal}
-                            className={`px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
-                              isSubmitting
-                                ? "bg-gray-100 text-gray-500 cursor-not-allowed"
-                                : "text-gray-700 bg-white hover:bg-gray-50"
-                            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors`}
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            form="stakeholder-form"
-                            disabled={isSubmitting}
-                            className={`px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                              isSubmitting
-                                ? "bg-blue-500 cursor-not-allowed"
-                                : "bg-blue-600 hover:bg-blue-700"
-                            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors inline-flex items-center`}
-                          >
-                            {isSubmitting ? (
-                              <>
-                                <svg
-                                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <circle
-                                    className="opacity-25"
-                                    cx="12"
-                                    cy="12"
-                                    r="10"
-                                    stroke="currentColor"
-                                    strokeWidth="4"
-                                  ></circle>
-                                  <path
-                                    className="opacity-75"
-                                    fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                  ></path>
-                                </svg>
-                                {editingStakeholder
-                                  ? "Saving..."
-                                  : "Adding..."}
-                              </>
-                            ) : (
-                              <>
-                                {editingStakeholder
-                                  ? "Save Changes"
-                                  : "Add Stakeholder"}
-                              </>
-                            )}
-                          </button>
+                                {/* Form content ends here - no buttons in the form */}
+                              </div>
+                            </form>
+                          )}
                         </div>
-                      )}
+
+                        {/* Form Buttons - sticky at bottom */}
+                        {!addressDataLoading && (
+                          <div className="sticky bottom-0 border-t border-gray-200 bg-white p-4 flex justify-end space-x-3">
+                            {/* Update this button in the form buttons section */}
+                            <button
+                              type="button"
+                              disabled={isSubmitting}
+                              onClick={closeStakeholderModal}
+                              className={`px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium ${
+                                isSubmitting
+                                  ? "bg-gray-100 text-gray-500 cursor-not-allowed"
+                                  : "text-gray-700 bg-white hover:bg-gray-50"
+                              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors`}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="submit"
+                              form="stakeholder-form"
+                              disabled={isSubmitting}
+                              className={`px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                                isSubmitting
+                                  ? "bg-blue-500 cursor-not-allowed"
+                                  : "bg-blue-600 hover:bg-blue-700"
+                              } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors inline-flex items-center`}
+                            >
+                              {isSubmitting ? (
+                                <>
+                                  <svg
+                                    className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <circle
+                                      className="opacity-25"
+                                      cx="12"
+                                      cy="12"
+                                      r="10"
+                                      stroke="currentColor"
+                                      strokeWidth="4"
+                                    ></circle>
+                                    <path
+                                      className="opacity-75"
+                                      fill="currentColor"
+                                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                    ></path>
+                                  </svg>
+                                  {editingStakeholder
+                                    ? "Saving..."
+                                    : "Adding..."}
+                                </>
+                              ) : (
+                                <>
+                                  {editingStakeholder
+                                    ? "Save Changes"
+                                    : "Add Stakeholder"}
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -3020,8 +3120,7 @@ export default function StartupDetail() {
                           <button
                             type="button"
                             onClick={() => {
-                              resetStakeholderForm();
-                              setShowStakeholderForm(true);
+                              setShowStakeholderBrowser(true);
                             }}
                             className={`inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white ${
                               isStartupVerified
@@ -3221,6 +3320,15 @@ export default function StartupDetail() {
           </div>
         </div>
       )}
+
+      {/* Stakeholder Browser Modal */}
+      <StakeholderBrowser
+        isOpen={showStakeholderBrowser}
+        onClose={() => setShowStakeholderBrowser(false)}
+        onSelectStakeholder={handleSelectExistingStakeholder}
+        onCreateNew={handleCreateNewStakeholder}
+        startupId={id}
+      />
     </div>
   );
 }
