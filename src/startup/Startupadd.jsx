@@ -8,7 +8,7 @@ import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Verification from "../modals/Verification";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 mapboxgl.accessToken =
   import.meta.env.VITE_MAPBOX_TOKEN ||
@@ -132,6 +132,10 @@ export default function Startupadd() {
   const [selectedCity, setSelectedCity] = useState(null);
   const [selectedBarangay, setSelectedBarangay] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const location = useLocation();
+  const urlParams = new URLSearchParams(location.search);
+  const draftIdFromUrl = urlParams.get("draftId"); // ← This is the key
+  const [loadingDraftId, setLoadingDraftId] = useState(draftIdFromUrl);
   const [formData, setFormData] = useState({
     companyName: "",
     companyDescription: "",
@@ -343,26 +347,36 @@ export default function Startupadd() {
   };
 
   const initializeMap = () => {
-    if (!mapContainerRef.current || mapInstanceRef.current) {
-      return;
+    if (!mapContainerRef.current) return;
+
+    // Prevent double initialization
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.resize();
+      return mapInstanceRef.current;
     }
+
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v11",
       center: [120.9842, 14.5995],
       zoom: 12,
     });
+
     mapInstanceRef.current = map;
+
+    // Add geocoder
     const geocoder = new MapboxGeocoder({
       accessToken: mapboxgl.accessToken,
       mapboxgl: mapboxgl,
       marker: false,
       placeholder: "Search for places...",
     });
+
     if (geocoderContainerRef.current) {
       geocoderContainerRef.current.innerHTML = "";
       geocoderContainerRef.current.appendChild(geocoder.onAdd(map));
     }
+
     geocoder.on("result", (event) => {
       const { center, place_name } = event.result;
       map.flyTo({ center, zoom: 14 });
@@ -372,25 +386,29 @@ export default function Startupadd() {
         .addTo(map);
       handleMapClick(center[1], center[0], place_name);
     });
+
     map.on("click", (e) => {
       const { lng, lat } = e.lngLat;
       if (markerRef.current) markerRef.current.remove();
       markerRef.current = new mapboxgl.Marker({ color: "red" })
         .setLngLat([lng, lat])
         .addTo(map);
+
       fetch(
         `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}`
       )
-        .then((response) => response.json())
+        .then((res) => res.json())
         .then((data) => {
-          const locationName =
-            data.features[0]?.place_name || "Unknown Location";
+          const locationName = data.features[0]?.place_name || "Unknown Location";
           handleMapClick(lat, lng, locationName);
-        })
-        .catch((error) =>
-          console.error("Failed to fetch location name:", error)
-        );
+        });
     });
+
+    // Important: Resize after load to prevent blank map
+    map.on("load", () => {
+      map.resize();
+    });
+
     return map;
   };
 
@@ -584,11 +602,105 @@ export default function Startupadd() {
     })();
   }, [regions]);
 
+
   useEffect(() => {
-    if (selectedTab === "Location Info" && mapContainerRef.current) {
-      initializeMap();
+    let map = null;
+
+    if (selectedTab === "Location Info") {
+      // Small delay to ensure container is in DOM and visible
+      const timer = setTimeout(() => {
+        if (!mapContainerRef.current) return;
+
+        // Always create fresh map when entering the tab
+        map = new mapboxgl.Map({
+          container: mapContainerRef.current,
+          style: "mapbox://styles/mapbox/streets-v11",
+          center: [120.9842, 14.5995],
+          zoom: 12,
+        });
+
+        mapInstanceRef.current = map;
+
+        // Geocoder
+        const geocoder = new MapboxGeocoder({
+          accessToken: mapboxgl.accessToken,
+          mapboxgl: mapboxgl,
+          marker: false,
+          placeholder: "Search for places...",
+        });
+
+        if (geocoderContainerRef.current) {
+          geocoderContainerRef.current.innerHTML = "";
+          geocoderContainerRef.current.appendChild(geocoder.onAdd(map));
+        }
+
+        // Restore saved location + marker
+        if (formData.locationLat && formData.locationLng) {
+          const lng = formData.locationLng;
+          const lat = formData.locationLat;
+
+          map.on("load", () => {
+            map.flyTo({ center: [lng, lat], zoom: 15 });
+
+            if (markerRef.current) markerRef.current.remove();
+            markerRef.current = new mapboxgl.Marker({ color: "red" })
+              .setLngLat([lng, lat])
+              .addTo(map);
+          });
+        }
+
+        // Geocoder result
+        geocoder.on("result", (e) => {
+          const { center, place_name } = e.result;
+          map.flyTo({ center, zoom: 15 });
+
+          if (markerRef.current) markerRef.current.remove();
+          markerRef.current = new mapboxgl.Marker({ color: "red" })
+            .setLngLat(center)
+            .addTo(map);
+
+          handleMapClick(center[1], center[0], place_name);
+        });
+
+        // Click to place marker
+        map.on("click", (e) => {
+          const { lng, lat } = e.lngLat;
+
+          if (markerRef.current) markerRef.current.remove();
+          markerRef.current = new mapboxgl.Marker({ color: "red" })
+            .setLngLat([lng, lat])
+            .addTo(map);
+
+          fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}`)
+            .then(r => r.json())
+            .then(data => {
+              const name = data.features[0]?.place_name || "Unknown Location";
+              handleMapClick(lat, lng, name);
+            });
+        });
+
+        // Force resize after load
+        map.on("load", () => map.resize());
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
+
+    // —————— CLEANUP: Destroy map when leaving tab ——————
+    return () => {
+      if (mapInstanceRef.current) {
+        console.log("Destroying map instance");
+        mapInstanceRef.current.remove();   // This is the key
+        mapInstanceRef.current = null;
+        markerRef.current?.remove();
+        markerRef.current = null;
+        if (geocoderContainerRef.current) {
+          geocoderContainerRef.current.innerHTML = "";
+        }
+      }
+    };
   }, [selectedTab]);
+
 
   // Update validation for Company Information
   const validateCompanyInformation = () => {
@@ -1013,8 +1125,58 @@ const handleSubmit = async () => {
 
   return (
     <div className="bg-gray-100 min-h-screen text-gray-800 relative">
-      <div className="bg-[#1D3557] px-10 py-6 text-white">
-        <h1 className="text-3xl font-semibold">Add Startup</h1>
+      <div className="bg-white border-b border-gray-200 px-10 py-5">  
+        <div className="flex items-center text-sm font-medium">
+        {/*Back Arrow*/}
+        <button
+          onClick={() => navigate("/startup-dashboard")}
+          className="mr-3 text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
+
+          {/* Breadcrumb Links */}
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => navigate("/")}
+              className="text-gray-500 hover:text-[#1D3557] transition-colors"
+            >
+              Home
+            </button>
+            <span className="text-gray-400">&gt;</span>
+            <button
+              onClick={() => navigate("/startup-dashboard")}
+              className="text-gray-500 hover:text-[#1D3557] transition-colors"
+              >
+                Dashboard
+            </button>
+            <span className="text-gray-400">&gt;</span>
+            <span className="text-gray-500">Add Startup</span>
+            <span className="text-gray-400">&gt;</span>
+            <span className="text-[#1D3557] font-semibold">
+              {selectedTab}
+            </span>
+          </div>
+
+          {/* Optional: Auto-save indicator */}
+          <div className="ml-auto flex items-center space-x-2 text-xs text-gray-500">
+            {isSaving ? (
+              <>
+                <div className="w-4 h-4 bg-yellow-500 rounded-full animate-pulse"></div>
+                <span>Saving draft...</span>
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 - -11.414-1.414L8 12.58617.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                <span>Draft saved</span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="bg-white shadow-md rounded-md p-8 w-4/5 mx-auto mt-8">
@@ -1732,51 +1894,52 @@ const handleSubmit = async () => {
             </div>
           </form>
         )}
-        {selectedTab === "Location Info" && (
-          <div className="relative">
-            {/* 1. Geocoder container — positioned ON TOP of the map */}
-            <div
-              ref={geocoderContainerRef}
-              className="absolute top-4 left-4 z-10 w-full max-w-md"
-            />
+          {selectedTab === "Location Info" && (
+            <div className="relative">
+              {/* Geocoder search box – always visible when tab is active */}
+              <div
+                ref={geocoderContainerRef}
+                className="absolute top-4 left-4 z-10 w-full max-w-md pointer-events-auto"
+              />
 
-            {/* 2. Map container — allow overflow so dropdown isn't clipped */}
-            <div
-              ref={mapContainerRef}
-              className="w-full h-96 rounded-md overflow-visible"
-            />
+              {/* MAP CONTAINER – this is the key change */}
+              <div
+                ref={mapContainerRef}
+                className="w-full h-96 rounded-md border border-gray-300"
+                style={{ minHeight: "384px" }} // optional: forces layout
+              />
 
-            {/* 3. Display selected location (unchanged) */}
-            <div className="mt-4 p-4 bg-gray-50 rounded-md">
-              <p className="font-medium">
-                Selected Location: <span className="font-normal">{formData.locationName || "None"}</span>
-              </p>
-              <p className="text-sm text-gray-600">
-                Latitude: {formData.locationLat?.toFixed(6) || "N/A"}, 
-                Longitude: {formData.locationLng?.toFixed(6) || "N/A"}
-              </p>
+              {/* Selected location display */}
+              <div className="mt-4 p-4 bg-gray-50 rounded-md">
+                <p className="font-medium">
+                  Selected Location: <span className="font-normal">{formData.locationName || "None"}</span>
+                </p>
+                <p className="text-sm text-gray-600">
+                  Latitude: {formData.locationLat?.toFixed(6) || "N/A"},
+                  Longitude: {formData.locationLng?.toFixed(6) || "N/A"}
+                </p>
+              </div>
+
+              {/* Back & Submit buttons */}
+              <div className="flex justify-between mt-6">
+                <button
+                  type="button"
+                  className="bg-gray-300 px-6 py-2 rounded-md"
+                  onClick={handleBack}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? "Submitting..." : "Submit"}
+                </button>
+              </div>
             </div>
-
-            {/* Back & Submit buttons */}
-            <div className="flex justify-between mt-6">
-              <button
-                type="button"
-                className="bg-gray-300 px-6 py-2 rounded-md"
-                onClick={handleBack}
-              >
-                Back
-              </button>
-              <button
-                type="button"
-                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Submitting..." : "Submit"}
-              </button>
-            </div>
-          </div>
-        )}
+          )}
         {selectedTab === "Upload Data" && (
           <div className="max-w-4xl mx-auto">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
