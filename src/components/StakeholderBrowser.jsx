@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Search, X, UserPlus, Users, Mail, Phone, MapPin, ChevronRight, Loader2 } from "lucide-react";
+import { Search, X, UserPlus, Users, Mail, Phone, MapPin, ChevronRight, Loader2, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 const StakeholderBrowser = ({ 
   isOpen, 
@@ -12,17 +12,25 @@ const StakeholderBrowser = ({
   const [stakeholders, setStakeholders] = useState([]);
   const [filteredStakeholders, setFilteredStakeholders] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [associatedStakeholderIds, setAssociatedStakeholderIds] = useState(new Set());
   const [selectedStakeholder, setSelectedStakeholder] = useState(null);
   const [isAssociating, setIsAssociating] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [pendingStakeholder, setPendingStakeholder] = useState(null);
   const [associationRole, setAssociationRole] = useState("Mentor");
   const [associationStatus, setAssociationStatus] = useState("Active");
+  const [errorModal, setErrorModal] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    stakeholderName: "",
+  });
 
   // Fetch all stakeholders from database
   useEffect(() => {
     if (isOpen) {
       fetchStakeholders();
+      fetchStartupStakeholders();
     }
   }, [isOpen]);
 
@@ -68,7 +76,44 @@ const StakeholderBrowser = ({
     }
   };
 
+  const fetchStartupStakeholders = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startup-stakeholders/startup/${startupId}/stakeholders`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch startup stakeholders");
+      }
+
+      const data = await response.json();
+      // Create a Set of stakeholder IDs that are already associated
+      // The stakeholder ID is in the nested stakeholder object
+      const associatedIds = new Set(data.map(s => s.stakeholder?.id).filter(Boolean));
+      setAssociatedStakeholderIds(associatedIds);
+    } catch (error) {
+      console.error("Error fetching startup stakeholders:", error);
+    }
+  };
+
   const handleSelectAndAssociate = async (stakeholder) => {
+    // Check if stakeholder is already associated
+    if (associatedStakeholderIds.has(stakeholder.id)) {
+      setErrorModal({
+        isOpen: true,
+        title: "Already Associated",
+        message: "This stakeholder is already associated with this startup. You can view or edit their details in the stakeholders list.",
+        stakeholderName: stakeholder.name,
+      });
+      return;
+    }
+
     // Show role selection modal first
     setPendingStakeholder(stakeholder);
     setAssociationRole(stakeholder.role || "Mentor");
@@ -102,9 +147,15 @@ const StakeholderBrowser = ({
         }
       );
 
+      const data = await response.json();
+
+      // Check for duplicate stakeholder (success: false in response)
+      if (!data.success) {
+        throw new Error(data.message || "Failed to associate stakeholder");
+      }
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to associate stakeholder");
+        throw new Error(data.message || "Failed to associate stakeholder");
       }
 
       // Call the parent callback with success
@@ -116,13 +167,28 @@ const StakeholderBrowser = ({
       handleClose();
     } catch (error) {
       console.error("Error associating stakeholder:", error);
-      alert(error.message || "Failed to associate stakeholder with startup");
-      setIsAssociating(false);
-    } finally {
+      
+      // Show professional error notification
       setShowRoleModal(false);
       setPendingStakeholder(null);
       setSelectedStakeholder(null);
       setIsAssociating(false);
+      
+      // Display error in a modal instead of alert
+      setErrorModal({
+        isOpen: true,
+        title: "Unable to Add Stakeholder",
+        message: error.message || "Failed to associate stakeholder with startup",
+        stakeholderName: pendingStakeholder.name,
+      });
+      return;
+    } finally {
+      if (!errorModal.isOpen) {
+        setShowRoleModal(false);
+        setPendingStakeholder(null);
+        setSelectedStakeholder(null);
+        setIsAssociating(false);
+      }
     }
   };
 
@@ -234,21 +300,37 @@ const StakeholderBrowser = ({
             </div>
           ) : (
             <div className="space-y-3">
-              {filteredStakeholders.map((stakeholder) => (
+              {filteredStakeholders.map((stakeholder) => {
+                const isAlreadyAssociated = associatedStakeholderIds.has(stakeholder.id);
+                return (
                 <div
                   key={stakeholder.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer bg-white"
-                  onClick={() => !isAssociating && handleSelectAndAssociate(stakeholder)}
+                  className={`border rounded-lg p-4 transition-all bg-white ${
+                    isAlreadyAssociated
+                      ? "border-green-300 bg-green-50/30 cursor-not-allowed opacity-75"
+                      : "border-gray-200 hover:border-blue-300 hover:shadow-md cursor-pointer"
+                  }`}
+                  onClick={() => !isAssociating && !isAlreadyAssociated && handleSelectAndAssociate(stakeholder)}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {stakeholder.name}
-                        </h3>
-                        <span className="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                          {stakeholder.role || "Stakeholder"}
-                        </span>
+                        <div className="flex items-center gap-2 flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {stakeholder.name}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isAlreadyAssociated && (
+                            <span className="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-sm">
+                              <CheckCircle2 size={14} className="mr-1.5" />
+                              ASSOCIATED
+                            </span>
+                          )}
+                          <span className="px-3 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
+                            {stakeholder.role || "Stakeholder"}
+                          </span>
+                        </div>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
@@ -295,14 +377,15 @@ const StakeholderBrowser = ({
                       <div className="ml-4 flex items-center text-blue-600">
                         <Loader2 className="animate-spin" size={20} />
                       </div>
-                    ) : (
+                    ) : !isAlreadyAssociated ? (
                       <div className="ml-4 flex items-center text-gray-400">
                         <ChevronRight size={20} />
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>
@@ -421,6 +504,68 @@ const StakeholderBrowser = ({
                     Associate Stakeholder
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {errorModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 z-[70] flex justify-center items-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            {/* Header with icon */}
+            <div className="px-6 py-5 border-b border-red-100 bg-gradient-to-r from-red-50 to-white">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <AlertTriangle className="text-red-600" size={24} />
+                  </div>
+                </div>
+                <div className="ml-4 flex-1">
+                  <h3 className="text-lg font-bold text-gray-900">
+                    {errorModal.title}
+                  </h3>
+                  {errorModal.stakeholderName && (
+                    <p className="text-sm text-gray-600 mt-1">
+                      <span className="font-semibold">{errorModal.stakeholderName}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-red-800 leading-relaxed">
+                  {errorModal.message}
+                </p>
+              </div>
+              
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs text-blue-800">
+                  <strong>Tip:</strong> This stakeholder is already associated with this startup. 
+                  You can view or edit their details in the stakeholders list.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setErrorModal({
+                    isOpen: false,
+                    title: "",
+                    message: "",
+                    stakeholderName: "",
+                  });
+                }}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              >
+                Got it
               </button>
             </div>
           </div>
