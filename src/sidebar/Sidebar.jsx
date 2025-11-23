@@ -98,7 +98,7 @@ const StakeholderCard = memo(({ stakeholder, onClick }) => {
   );
 });
 
-export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStakeholderRef }) {
+export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStakeholderRef, handleStartupClickRef }) {
   const navigate = useNavigate();
   const [openLogin, setOpenLogin] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
@@ -213,6 +213,15 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
       }
     }
   }, [isAuthenticated, currentUser?.role]);
+
+  // Register startup click handler from map
+  useEffect(() => {
+    if (handleStartupClickRef) {
+      handleStartupClickRef.current = (startupData) => {
+        handleStartupClick(startupData);
+      };
+    }
+  }, [handleStartupClickRef]);
 
   useEffect(() => {
     if (isAuthenticated) {

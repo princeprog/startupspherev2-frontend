@@ -238,21 +238,44 @@ export default function Startupadd() {
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (file.type !== "text/csv" && !file.name.endsWith(".csv")) {
-        toast.error("Invalid file type. Please upload a .csv file.");
-        return;
-      }
-      setUploadedFile(file);
-      toast.success("CSV file selected successfully!");
-    } else {
+    if (!file) {
       toast.error("No file selected.");
+      return;
     }
+
+    // Get file extension
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    
+    // Check for valid file types
+    const validExtensions = ['csv', 'xlsx'];
+    const validMimeTypes = [
+      'text/csv',
+      'application/csv',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel'
+    ];
+    
+    const isValidExtension = validExtensions.includes(fileExtension);
+    
+    if (!isValidExtension) {
+      toast.error("Invalid file type. Please upload a .csv or .xlsx file.");
+      return;
+    }
+    
+    // Check file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > maxSize) {
+      toast.error("File size too large. Maximum file size is 10MB.");
+      return;
+    }
+    
+    setUploadedFile(file);
+    toast.success(`${fileExtension.toUpperCase()} file selected successfully!`);
   };
 
   const handleFileSubmit = async () => {
     if (!uploadedFile) {
-      toast.error("Please select a CSV file.");
+      toast.error("Please select a file.");
       return;
     }
     if (!startupId) {
@@ -279,7 +302,7 @@ export default function Startupadd() {
         });
       }, 500);
 
-      setLoadingStatus("Uploading CSV data...");
+      setLoadingStatus("Uploading data...");
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-csv`,
         {
@@ -906,15 +929,29 @@ const handleSubmit = async () => {
   }
 };
 
-  const downloadCsvTemplate = () => {
-    const csvContent =
-      "revenue,annualRevenue,paidUpCapital,numberOfActiveStartups,numberOfNewStartupsThisYear,averageStartupGrowthRate,startupSurvivalRate,totalStartupFundingReceived,averageFundingPerStartup,numberOfFundingRounds,numberOfStartupsWithForeignInvestment,amountOfGovernmentGrantsOrSubsidiesReceived,numberOfStartupIncubatorsOrAccelerators,numberOfStartupsInIncubationPrograms,numberOfMentorsOrAdvisorsInvolved,publicPrivatePartnershipsInvolvingStartups\n";
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "startup_data_template.csv";
-    link.click();
-    URL.revokeObjectURL(link.href);
+  const downloadCsvTemplate = async () => {
+    try {
+      // Fetch the template from the public folder
+      const response = await fetch('/startup_data_template.xlsx');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch template');
+      }
+      
+      const blob = await response.blob();
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "startup_data_template.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      
+      toast.success("Template downloaded successfully!");
+    } catch (error) {
+      console.error("Error downloading template:", error);
+      toast.error("Failed to download template. Please try again.");
+    }
   };
 
 
@@ -1800,17 +1837,31 @@ const handleSubmit = async () => {
                   <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                     <h3 className="text-lg font-medium text-blue-800 mb-2">Quick Start Guide</h3>
                     <ol className="list-decimal list-inside space-y-2 text-blue-700">
-                      <li>Download the CSV template</li>
+                      <li>Download the Excel template</li>
                       <li>Fill in your startup's data</li>
                       <li>Upload the completed file</li>
                       <li>Review and submit</li>
                     </ol>
                   </div>
 
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                  <div 
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const droppedFile = e.dataTransfer.files[0];
+                      if (droppedFile) {
+                        handleFileUpload({ target: { files: [droppedFile] } });
+                      }
+                    }}
+                  >
                     <input
                       type="file"
-                      accept=".csv"
+                      accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
                       onChange={handleFileUpload}
                       className="hidden"
                       id="csv-upload"
@@ -1824,10 +1875,13 @@ const handleSubmit = async () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         <span className="text-gray-600 font-medium">
-                          {uploadedFile ? uploadedFile.name : "Click to upload CSV file"}
+                          {uploadedFile ? uploadedFile.name : "Click to upload file"}
                         </span>
                         <span className="text-sm text-gray-500 mt-1">
                           or drag and drop your file here
+                        </span>
+                        <span className="text-xs text-gray-400 mt-2">
+                          Supports .CSV and .XLSX files (Max 10MB)
                         </span>
                       </div>
                     </label>
@@ -1847,7 +1901,7 @@ const handleSubmit = async () => {
                       onClick={handleFileSubmit}
                       disabled={!uploadedFile}
                     >
-                      Upload CSV
+                      Upload File
                     </button>
                     <button
                       type="button"
@@ -1906,15 +1960,43 @@ const handleSubmit = async () => {
 
                   {uploadedFile && (
                     <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-                      <div className="flex items-center">
-                        <svg className="w-5 h-5 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span className="text-blue-700 font-medium">File Ready to Upload</span>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center flex-1">
+                          <div className="flex-shrink-0 w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center">
+                              <svg className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span className="text-blue-700 font-medium truncate">File Ready to Upload</span>
+                            </div>
+                            <p className="text-sm text-blue-600 mt-1 truncate">
+                              {uploadedFile.name}
+                            </p>
+                            <p className="text-xs text-blue-500 mt-0.5">
+                              {(uploadedFile.size / 1024).toFixed(2)} KB • {uploadedFile.name.split('.').pop().toUpperCase()}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setUploadedFile(null);
+                            const fileInput = document.getElementById('csv-upload');
+                            if (fileInput) fileInput.value = '';
+                            toast.info("File removed");
+                          }}
+                          className="ml-3 p-2 hover:bg-blue-200 rounded-lg transition-colors flex-shrink-0"
+                          title="Remove file"
+                        >
+                          <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       </div>
-                      <p className="text-sm text-blue-600 mt-1">
-                        {uploadedFile.name} ({Math.round(uploadedFile.size / 1024)} KB)
-                      </p>
                     </div>
                   )}
                 </div>
