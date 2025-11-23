@@ -34,6 +34,7 @@ export default function Startupmap({
   onMapClick,
   onLoginSuccess,
   onHighlightStakeholder,
+  onStartupClick,
 }) {
   const [openLogin, setOpenLogin] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
@@ -680,7 +681,7 @@ export default function Startupmap({
               </div>
               <div style="padding: 14px 18px; background: #fff; border-radius: 0 0 10px 10px;">
                 ${props.locationName ? 
-                  `<div style="margin-bottom: 12px; font-size: 13px; color: #4B5563; display: flex; align-items: center;">
+                  `<div style="font-size: 13px; color: #4B5563; display: flex; align-items: center;">
                     <div style="min-width: 24px; height: 24px; background-color: rgba(10, 102, 194, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 8px;">
                       <svg style="width: 14px; height: 14px;" fill="none" stroke="#0A66C2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
@@ -690,17 +691,9 @@ export default function Startupmap({
                     <span>${props.locationName}</span>
                   </div>` : ''
                 }
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0f0f0;">
-                  <div style="font-size: 12px; font-weight: 500; color: #0A66C2;">View Details</div>
-                  <div style="width: 24px; height: 24px; background-color: rgba(10, 102, 194, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                    <svg style="width: 14px; height: 14px;" fill="none" stroke="#0A66C2" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
-                  </div>
-                </div>
               </div>
             </div>`;
-          new mapboxgl.Popup({ offset: 25, closeButton: true, className: "startup-popup" })
+          const popup = new mapboxgl.Popup({ offset: 25, closeButton: true, className: "startup-popup" })
             .setLngLat([lng, lat])
             .setHTML(html)
             .addTo(map);

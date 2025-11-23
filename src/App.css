@@ -289,3 +289,16 @@
     box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
   }
 }
+/* View Details button styling in popup */
+.startup-popup [id^="view-details-btn-"],
+.stakeholder-popup [id^="view-details-btn-"] {
+  cursor: pointer !important;
+  pointer-events: auto !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+.startup-popup [id^="view-details-btn-"]:active,
+.stakeholder-popup [id^="view-details-btn-"]:active {
+  transform: scale(0.98) !important;
+}
