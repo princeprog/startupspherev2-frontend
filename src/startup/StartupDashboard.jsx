@@ -111,11 +111,18 @@ export default function StartupDashboard({ openAddMethodModal }) {
   });
 
   const fetchCompanyLogo = async (startupId) => {
+    // Skip if already fetching or fetched
+    if (logoUrls[startupId] || logoUrls[startupId] === null) {
+      return;
+    }
+
     try {
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/photo`,
         {
           credentials: "include",
+          // Add cache control for faster subsequent loads
+          cache: "force-cache",
         }
       );
 
@@ -126,9 +133,20 @@ export default function StartupDashboard({ openAddMethodModal }) {
           ...prev,
           [startupId]: imageUrl,
         }));
+      } else {
+        // Mark as failed to avoid refetching
+        setLogoUrls((prev) => ({
+          ...prev,
+          [startupId]: null,
+        }));
       }
     } catch (error) {
       console.error(`Error fetching logo for startup ${startupId}:`, error);
+      // Mark as failed to avoid refetching
+      setLogoUrls((prev) => ({
+        ...prev,
+        [startupId]: null,
+      }));
     }
   };
 
@@ -615,7 +633,12 @@ export default function StartupDashboard({ openAddMethodModal }) {
       }
 
       const startupsData = await fetchStartups();
-      startupsData.forEach((startup) => fetchCompanyLogo(startup.id));
+      
+      // Fetch all logos in parallel for faster loading
+      const logoPromises = startupsData.map((startup) => fetchCompanyLogo(startup.id));
+      Promise.all(logoPromises).catch((err) => {
+        console.error("Error fetching some logos:", err);
+      });
 
       const totalMetrics = await fetchTotalMetrics(ids);
 
@@ -1168,16 +1191,23 @@ const handleVerifyNow = (id, email) => {
       setLoading(true);
       try {
         // Run all three in parallel
-        await Promise.all([
+        const [ids, startupsData] = await Promise.all([
           fetchStartupIds(),
           fetchStartups(),
           fetchDrafts(),   // ← This loads your draft
         ]);
 
-        // After startups are loaded, fetch logos and metrics
-        startups.forEach(s => fetchCompanyLogo(s.id));
-        if (startupIds.length > 0) {
-          await fetchTotalMetrics(startupIds);
+        // After startups are loaded, fetch all logos in parallel for faster loading
+        if (startupsData && startupsData.length > 0) {
+          const logoPromises = startupsData.map((startup) => fetchCompanyLogo(startup.id));
+          Promise.all(logoPromises).catch((err) => {
+            console.error("Error fetching some logos:", err);
+          });
+        }
+        
+        // Fetch metrics
+        if (ids && ids.length > 0) {
+          await fetchTotalMetrics(ids);
           await fetchAllStartupsEngagementData();
         }
       } catch (err) {
@@ -1189,443 +1219,610 @@ const handleVerifyNow = (id, email) => {
     };
 
     initializeDashboard();
+
+    // Cleanup function to revoke object URLs and prevent memory leaks
+    return () => {
+      Object.values(logoUrls).forEach((url) => {
+        if (url && typeof url === 'string' && url.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
+      });
+    };
   }, []); // ← Only runs once on mount
 
 
   return (
-    <div className="min-h-screen p-6 md:p-8 lg:p-10 space-y-6 bg-white text-black">
-      <button
-        onClick={() => navigate("/")}
-        className="cursor-pointer flex items-center text-black mb-6 transition-colors hover:text-white hover:bg-indigo-500 rounded-md p-1.5"
-      >
-        <ArrowLeft className="h-5 w-5 mr-2" />
-        <span>Back to Home</span>
-      </button>
+    <div className="min-h-screen p-4 md:p-6 lg:p-8 xl:p-10 bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/40 text-gray-900">
+      {/* Header Section with Back Button */}
+      <div className="max-w-7xl mx-auto">
+        <button
+          onClick={() => navigate("/")}
+          className="group inline-flex items-center gap-2 px-4 py-2.5 mb-8 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-300 hover:text-indigo-700 transition-all duration-200 ease-in-out"
+        >
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+          <span>Back to Home</span>
+        </button>
 
-      {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-md">
-          <div className="flex items-center">
-            <div className="py-1">
-              <svg
-                className="h-6 w-6 mr-4 text-red-500"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+        {error && (
+          <div className="max-w-7xl mx-auto mb-6 bg-red-50 border border-red-200 rounded-2xl shadow-sm overflow-hidden animate-fadeIn">
+            <div className="flex items-start gap-4 p-4">
+              <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="h-5 w-5 text-red-600"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1 pt-0.5">
+                <p className="font-semibold text-red-900 mb-1">Error</p>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {actionSuccess && (
+          <div className="max-w-7xl mx-auto mb-6 bg-green-50 border border-green-200 rounded-2xl shadow-sm overflow-hidden animate-fadeIn">
+            <div className="flex items-start gap-4 p-4">
+              <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="h-5 w-5 text-green-600"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1 pt-0.5">
+                <p className="font-semibold text-green-900 mb-1">Success</p>
+                <p className="text-sm text-green-700">{actionSuccess}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Search and Filter Section */}
+        <div className="max-w-7xl mx-auto mb-8">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              {/* Search Input */}
+              <div className="relative flex-1 max-w-md">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search startups by name, industry, or location..."
+                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
-              </svg>
-            </div>
-            <div>
-              <p className="font-bold">Error</p>
-              <p className="text-sm">{error}</p>
-            </div>
-          </div>
-        </div>
-      )}
+              </div>
 
-      {actionSuccess && (
-        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded shadow-md">
-          <div className="flex items-center">
-            <div className="py-1">
-              <svg
-                className="h-6 w-6 mr-4 text-green-500"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-            <div>
-              <p className="font-bold">Success</p>
-              <p className="text-sm">{actionSuccess}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 pr-10">
-        <input
-          type="text"
-          placeholder="Search Startups"
-          className="input input-bordered w-full md:max-w-xs bg-white border-gray-300 border-2"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <div className="flex flex-wrap gap-2">
-          <button
-            className={`btn ${
-              activeFilter === "All" ? "btn-primary" : "btn-outline"
-            } btn-sm`}
-            onClick={() => handleFilterClick("All")}
-          >
-            All
-          </button>
-          <button
-            className={`btn ${
-              activeFilter === "Likes" ? "btn-primary" : "btn-outline"
-            } btn-sm`}
-            onClick={() => handleFilterClick("Likes")}
-          >
-            Likes
-          </button>
-          <button
-            className={`btn ${
-              activeFilter === "Bookmarks" ? "btn-primary" : "btn-outline"
-            } btn-sm`}
-            onClick={() => handleFilterClick("Bookmarks")}
-          >
-            Bookmarks
-          </button>
-          <button
-            className={`btn ${
-              activeFilter === "Views" ? "btn-primary" : "btn-outline"
-            } btn-sm`}
-            onClick={() => handleFilterClick("Views")}
-          >
-            Views
-          </button>
-        </div>
-      </div>
-
-      <div className="stats shadow w-full text-black">
-        <div className="stat place-items-center">
-          <div className="stat-title text-black">Views</div>
-          <div className="stat-value">{loading ? "..." : metrics.views}</div>
-        </div>
-
-        <div className="stat place-items-center">
-          <div className="stat-title text-black">Bookmarks</div>
-          <div className="stat-value text-secondary">
-            {loading ? "..." : metrics.bookmarks}
-          </div>
-        </div>
-
-        <div className="stat place-items-center">
-          <div className="stat-title text-black">Likes</div>
-          <div className="stat-value">{loading ? "..." : metrics.likes}</div>
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="card w-full lg:w-1/2 p-4 bg-white shadow-md rounded-md">
-          <div className="flex flex-col md:flex-row md:items-center gap-4">
-            <h3 className="text-lg font-bold text-blue-900">
-              {startupIds.length} Total Startups
-            </h3>
-            <div className="w-full max-w-sm">
-              <label
-                htmlFor="startup-select"
-                className="block mb-2 text-sm font-medium text-gray-900"
-              >
-                Select a startup
-              </label>
-              <select
-                id="startup-select"
-                value={selectedStartup}
-                onChange={handleChange}
-                className="bg-gray-50 border border-gray-300 text-black text-sm rounded-lg 
-                focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
-                disabled={loading}
-              >
-                <option value="all">All Startups</option>
-                {startups.map((st) => (
-                  <option value={st.id} key={st.id}>
-                    {st.companyName}
-                  </option>
+              {/* Filter Buttons */}
+              <div className="flex flex-wrap gap-2">
+                {["All", "Likes", "Bookmarks", "Views"].map((filter) => (
+                  <button
+                    key={filter}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      activeFilter === filter
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/30 hover:bg-indigo-700"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
+                    }`}
+                    onClick={() => handleFilterClick(filter)}
+                  >
+                    {filter}
+                  </button>
                 ))}
-              </select>
+              </div>
             </div>
           </div>
+        </div>
 
-          {loading ? (
-            <div className="flex justify-center items-center h-48">
-              <div className="loading loading-spinner loading-lg text-blue-900"></div>
+        {/* Metrics Cards */}
+        <div className="max-w-7xl mx-auto mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Views Card */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl shadow-sm border border-amber-100 p-6 hover:shadow-lg transition-shadow duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                  <FaEye className="h-6 w-6 text-amber-600" />
+                </div>
+                <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">Total</span>
+              </div>
+              <h3 className="text-sm font-medium text-amber-900 mb-1">Total Views</h3>
+              <p className="text-3xl font-bold text-amber-700">
+                {loading ? (
+                  <span className="inline-block w-20 h-8 bg-amber-200 rounded animate-pulse"></span>
+                ) : (
+                  metrics.views.toLocaleString()
+                )}
+              </p>
             </div>
-          ) : (
-            <>
-              <div className="text-center flex flex-wrap items-center justify-evenly text-sm font-semibold text-gray-400 mt-4">
-                <div className="mx-4 my-2">
-                  <p>Views</p>
-                  <p className="text-2xl flex items-center">
-                    {metrics.views} <FaEye className="ml-2 text-blue-900" />
-                  </p>
+
+            {/* Bookmarks Card */}
+            <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl shadow-sm border border-emerald-100 p-6 hover:shadow-lg transition-shadow duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <FaBookBookmark className="h-6 w-6 text-emerald-600" />
                 </div>
-                <div className="mx-4 my-2">
-                  <p>Likes</p>
-                  <p className="text-2xl flex items-center">
-                    {metrics.likes} <BiLike className="ml-2 text-blue-900" />
-                  </p>
+                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">Saved</span>
+              </div>
+              <h3 className="text-sm font-medium text-emerald-900 mb-1">Bookmarks</h3>
+              <p className="text-3xl font-bold text-emerald-700">
+                {loading ? (
+                  <span className="inline-block w-20 h-8 bg-emerald-200 rounded animate-pulse"></span>
+                ) : (
+                  metrics.bookmarks.toLocaleString()
+                )}
+              </p>
+            </div>
+
+            {/* Likes Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-sm border border-blue-100 p-6 hover:shadow-lg transition-shadow duration-300">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <BiLike className="h-6 w-6 text-blue-600" />
                 </div>
-                <div className="mx-4 my-2">
-                  <p>Bookmarks</p>
-                  <p className="text-2xl flex items-center">
-                    {metrics.bookmarks}{" "}
-                    <FaBookBookmark className="ml-2 text-blue-900" />
-                  </p>
+                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">Reactions</span>
+              </div>
+              <h3 className="text-sm font-medium text-blue-900 mb-1">Total Likes</h3>
+              <p className="text-3xl font-bold text-blue-700">
+                {loading ? (
+                  <span className="inline-block w-20 h-8 bg-blue-200 rounded animate-pulse"></span>
+                ) : (
+                  metrics.likes.toLocaleString()
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Charts Section */}
+        <div className="max-w-7xl mx-auto mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Donut Chart Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-1">
+                    Engagement Distribution
+                  </h3>
+                  <p className="text-sm text-gray-500">{startupIds.length} Total Startups</p>
+                </div>
+                <div className="w-full md:w-64">
+                  <label
+                    htmlFor="startup-select"
+                    className="block mb-2 text-xs font-medium text-gray-700 uppercase tracking-wide"
+                  >
+                    Select Startup
+                  </label>
+                  <select
+                    id="startup-select"
+                    value={selectedStartup}
+                    onChange={handleChange}
+                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={loading}
+                  >
+                    <option value="all">All Startups</option>
+                    {startups.map((st) => (
+                      <option value={st.id} key={st.id}>
+                        {st.companyName}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
-              <div className="w-40 h-40 mx-auto p-1 border-4 border-blue-900 mt-4 rounded-full flex items-center justify-center">
-                <Doughnut
-                  data={donutData}
-                  options={{
-                    plugins: {
-                      legend: {
-                        display: false,
-                      },
-                      tooltip: {
-                        enabled: true,
-                        callbacks: {
-                          title: (tooltipItems) => {
-                            return donutData.labels[tooltipItems[0].dataIndex];
-                          },
-                          label: (context) => {
-                            const label = donutData.labels[context.dataIndex];
-                            const value =
-                              donutData.datasets[0].data[context.dataIndex];
 
-                            if (selectedStartup === "all") {
-                              return `${label}: ${value} likes`;
-                            } else {
-                              const metrics = ["Likes", "Bookmarks", "Views"];
-                              return `${metrics[context.dataIndex]}: ${value}`;
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="relative w-16 h-16">
+                    <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-200 rounded-full"></div>
+                    <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="text-center p-4 bg-amber-50 rounded-xl">
+                      <p className="text-xs font-medium text-amber-700 mb-2">Views</p>
+                      <p className="text-2xl font-bold text-amber-900 flex items-center justify-center gap-2">
+                        {metrics.views.toLocaleString()} <FaEye className="text-amber-600" />
+                      </p>
+                    </div>
+                    <div className="text-center p-4 bg-blue-50 rounded-xl">
+                      <p className="text-xs font-medium text-blue-700 mb-2">Likes</p>
+                      <p className="text-2xl font-bold text-blue-900 flex items-center justify-center gap-2">
+                        {metrics.likes.toLocaleString()} <BiLike className="text-blue-600" />
+                      </p>
+                    </div>
+                    <div className="text-center p-4 bg-emerald-50 rounded-xl">
+                      <p className="text-xs font-medium text-emerald-700 mb-2">Bookmarks</p>
+                      <p className="text-2xl font-bold text-emerald-900 flex items-center justify-center gap-2">
+                        {metrics.bookmarks.toLocaleString()} <FaBookBookmark className="text-emerald-600" />
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-48 h-48 mx-auto p-2 border-4 border-indigo-500 rounded-full flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50">
+                    <Doughnut
+                      data={donutData}
+                      options={{
+                        plugins: {
+                          legend: {
+                            display: false,
+                          },
+                          tooltip: {
+                            enabled: true,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            padding: 12,
+                            cornerRadius: 8,
+                            titleFont: {
+                              size: 13,
+                              weight: 'bold'
+                            },
+                            bodyFont: {
+                              size: 12
+                            },
+                            callbacks: {
+                              title: (tooltipItems) => {
+                                return donutData.labels[tooltipItems[0].dataIndex];
+                              },
+                              label: (context) => {
+                                const label = donutData.labels[context.dataIndex];
+                                const value =
+                                  donutData.datasets[0].data[context.dataIndex];
+
+                                if (selectedStartup === "all") {
+                                  return `${label}: ${value} likes`;
+                                } else {
+                                  const metrics = ["Likes", "Bookmarks", "Views"];
+                                  return `${metrics[context.dataIndex]}: ${value}`;
+                                }
+                              },
+                            },
+                          },
+                        },
+                        cutout: "70%",
+                        animation: {
+                          animateRotate: true,
+                          animateScale: true,
+                        },
+                      }}
+                      plugins={[centerTextPlugin]}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Line Chart Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+              <div className="mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-1">
+                  Engagement Over Time
+                </h2>
+                <p className="text-sm text-gray-500">Monthly trends for views, likes, and bookmarks</p>
+              </div>
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <div className="relative w-16 h-16">
+                    <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-200 rounded-full"></div>
+                    <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full h-72">
+                  <Line
+                    data={engagementData}
+                    options={{
+                      maintainAspectRatio: false,
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: "top",
+                          labels: {
+                            usePointStyle: true,
+                            padding: 15,
+                            font: {
+                              size: 12,
+                              weight: '500'
                             }
                           },
                         },
+                        tooltip: {
+                          mode: "index",
+                          intersect: false,
+                          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                          padding: 12,
+                          cornerRadius: 8,
+                          titleFont: {
+                            size: 13,
+                            weight: 'bold'
+                          },
+                          bodyFont: {
+                            size: 12
+                          }
+                        },
                       },
-                    },
-                    cutout: "70%",
-                    animation: {
-                      animateRotate: true,
-                      animateScale: true,
-                    },
-                  }}
-                  plugins={[centerTextPlugin]}
-                />
-              </div>
-            </>
-          )}
-        </div>
-
-        <Card className="w-full lg:w-1/2">
-          <CardContent>
-            <h2 className="text-xl text-blue-900 font-semibold mb-2">
-              Engagement Over Time
-            </h2>
-            {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="loading loading-spinner loading-lg text-blue-900"></div>
-              </div>
-            ) : (
-              <div className="w-full h-64">
-                <Line
-                  data={engagementData}
-                  options={{
-                    maintainAspectRatio: false,
-                    responsive: true,
-                    plugins: {
-                      legend: {
-                        position: "top",
+                      scales: {
+                        x: {
+                          grid: {
+                            display: false,
+                          },
+                          title: {
+                            display: true,
+                            text: "Months",
+                            font: {
+                              size: 12,
+                              weight: '600'
+                            }
+                          },
+                        },
+                        y: {
+                          grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                          },
+                          title: {
+                            display: true,
+                            text: "Engagement Count",
+                            font: {
+                              size: 12,
+                              weight: '600'
+                            }
+                          },
+                          beginAtZero: true,
+                        },
                       },
-                      tooltip: {
-                        mode: "index",
+                      interaction: {
+                        mode: "nearest",
+                        axis: "x",
                         intersect: false,
                       },
-                    },
-                    scales: {
-                      x: {
-                        title: {
-                          display: true,
-                          text: "Months",
-                        },
-                      },
-                      y: {
-                        title: {
-                          display: true,
-                          text: "Engagement Count",
-                        },
-                        beginAtZero: true,
-                      },
-                    },
-                    interaction: {
-                      mode: "nearest",
-                      axis: "x",
-                      intersect: false,
-                    },
-                  }}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
-      <div className="overflow-x-auto">
-        <table className="table w-full">
-          <thead className="text-white bg-blue-900">
-            <tr>
-              <th>Startup Name</th>
-              <th>Industry</th>
-              <th>Founded Date</th>
-              <th>Email</th>
-              <th>Phone Number</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="text-center py-8">
-                  Loading startups...
-                </td>
-              </tr>
-            ) : displayList.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">
-                  No startups or drafts found
-                </td>
-              </tr>
-            ) : (
-              displayList.map((item) => {
-                const isDraft = !!item.isDraft;
-                const formattedDate = item.foundedDate
-                  ? new Date(item.foundedDate).toLocaleDateString()
-                  : "N/A";
-
-                return (
-                  <tr
-                    key={`${isDraft ? 'draft' : 'startup'}-${item.id}`}
-                    className={`${!isDraft ? "hover cursor-pointer" : "bg-amber-50"} transition-colors`}
-                    onClick={() => !isDraft && navigate(`/startup/${item.id}`)}
-                  >
-                    {/* Startup Name + Logo + Location */}
-                    <td>
-                      <div className="flex items-center gap-4">
-                        <div className="avatar">
-                          <div className="w-14 h-14 rounded-full ring-4 ring-blue-900 ring-offset-2 ring-offset-white">
-                            {logoUrls[item.id] ? (
-                              <img
-                                src={logoUrls[item.id]}
-                                alt={item.companyName}
-                                className="w-full h-full rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full rounded-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-700">
-                                {(item.companyName || "?")[0].toUpperCase()}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <div className="font-bold text-base flex items-center gap-2">
-                            {item.companyName || "Untitled Draft"}
-                            {isDraft && <span className="badge badge-warning badge-sm">Draft</span>}
-                          </div>
-                          <div className="text-sm opacity-70">
-                            {item.locationName || "No location"}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-
-                    {/* Industry */}
-                    <td className="font-medium">{item.industry || "N/A"}</td>
-
-                    {/* Founded Date */}
-                    <td>{formattedDate}</td>
-
-                    {/* Email */}
-                    <td className="text-sm">{item.contactEmail || "N/A"}</td>
-
-                    {/* Phone Number */}
-                    <td className="text-sm">{item.phoneNumber || "N/A"}</td>
-
-                    {/* Status */}
-                    <td>
-                      {isDraft ? (
-                        <span className="badge badge-ghost badge-sm">Draft</span>
-                      ) : item.emailVerified ? (
-                        <span className="badge badge-success badge-sm">Verified</span>
-                      ) : (
-                        <button
-                          className="btn btn-xs btn-outline btn-info"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleVerifyNow(item.id, item.contactEmail);
-                          }}
-                        >
-                          Verify Now
-                        </button>
-                      )}
-                    </td>
-
-                    {/* Actions */}
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <div className="flex gap-2">
-                        {isDraft ? (
-                          <>
-                            <button
-                              onClick={() => navigate(`/add-startup?draftId=${item.id}`)}
-                              className="btn btn-sm btn-primary flex items-center gap-1"
-                              title="Continue editing draft"
-                            >
-                              <PlayCircle size={18} /> Continue
-                            </button>
-                            <button
-                              onClick={() => handleDeleteDraftClick(item.id, item.companyName)}
-                              className="btn btn-sm btn-outline btn-error flex items-center gap-1"
-                              title="Delete draft"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => handleNavigateToUpdate(item)}
-                              className="btn btn-sm btn-outline"
-                              title="Edit"
-                            >
-                              <Edit size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClick(item)}
-                              className="btn btn-sm btn-outline btn-error"
-                              title="Delete"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
+        {/* Startups Table */}
+        <div className="max-w-7xl mx-auto">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-indigo-600 to-blue-600">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Startup Name</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Industry</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Founded Date</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Phone Number</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                   </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-        <div className="text-right mt-4">
-          <button
-            onClick={openAddMethodModal} 
-            className="btn btn-primary"
-            disabled={loading}
-          >
-            Add Startup
-          </button>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {loading ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="relative w-12 h-12 mb-4">
+                            <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-200 rounded-full"></div>
+                            <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+                          </div>
+                          <p className="text-gray-500 font-medium">Loading startups...</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : displayList.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-500 font-medium mb-2">No startups or drafts found</p>
+                          <p className="text-gray-400 text-sm">Start by adding your first startup</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    displayList.map((item) => {
+                      const isDraft = !!item.isDraft;
+                      const formattedDate = item.foundedDate
+                        ? new Date(item.foundedDate).toLocaleDateString()
+                        : "N/A";
+
+                      return (
+                        <tr
+                          key={`${isDraft ? 'draft' : 'startup'}-${item.id}`}
+                          className={`${
+                            isDraft 
+                              ? "bg-amber-50/50" 
+                              : "hover:bg-gray-50 cursor-pointer"
+                          } transition-all duration-200`}
+                          onClick={() => !isDraft && navigate(`/startup/${item.id}`)}
+                        >
+                          {/* Startup Name + Logo + Location */}
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-4">
+                              <div className="flex-shrink-0">
+                                <div className="w-14 h-14 rounded-xl ring-2 ring-indigo-100 ring-offset-2 ring-offset-white shadow-sm overflow-hidden">
+                                  {logoUrls[item.id] ? (
+                                    <img
+                                      src={logoUrls[item.id]}
+                                      alt={item.companyName}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                      decoding="async"
+                                    />
+                                  ) : logoUrls[item.id] === null ? (
+                                    <div className="w-full h-full bg-gradient-to-br bg-gray-400 from-gray-800 to-gray-700 flex items-center justify-center">
+                                      <span className="text-2xl font-bold text-white">
+                                        {(item.companyName || "?")[0].toUpperCase()}
+                                      </span>
+                                    </div>
+                                  ) : (
+                                    <div className="w-full h-full bg-gray-300 flex items-center justify-center animate-pulse">
+                                      <svg className="w-8 h-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="font-semibold text-gray-900 truncate">
+                                    {item.companyName || "Untitled Draft"}
+                                  </p>
+                                  {isDraft && (
+                                    <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">Draft</span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-500 truncate flex items-center gap-1">
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                  {item.locationName || "No location"}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Industry */}
+                          <td className="px-6 py-4">
+                            <span className="inline-flex items-center px-2.5 py-1 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg">
+                              {item.industry || "N/A"}
+                            </span>
+                          </td>
+
+                          {/* Founded Date */}
+                          <td className="px-6 py-4 text-sm text-gray-600">{formattedDate}</td>
+
+                          {/* Email */}
+                          <td className="px-6 py-4">
+                            <a href={`mailto:${item.contactEmail}`} className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline">
+                              {item.contactEmail || "N/A"}
+                            </a>
+                          </td>
+
+                          {/* Phone Number */}
+                          <td className="px-6 py-4 text-sm text-gray-600">{item.phoneNumber || "N/A"}</td>
+
+                          {/* Status */}
+                          <td className="px-6 py-4">
+                            {isDraft ? (
+                              <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
+                                Draft
+                              </span>
+                            ) : item.emailVerified ? (
+                              <span className="inline-flex items-center px-3 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                </svg>
+                                Verified
+                              </span>
+                            ) : (
+                              <button
+                                className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors duration-200"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleVerifyNow(item.id, item.contactEmail);
+                                }}
+                              >
+                                Verify Now
+                              </button>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex gap-2">
+                              {isDraft ? (
+                                <>
+                                  <button
+                                    onClick={() => navigate(`/add-startup?draftId=${item.id}`)}
+                                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors duration-200 shadow-sm hover:shadow"
+                                    title="Continue editing draft"
+                                  >
+                                    <PlayCircle size={16} /> Continue
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteDraftClick(item.id, item.companyName)}
+                                    className="inline-flex items-center justify-center w-9 h-9 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors duration-200"
+                                    title="Delete draft"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => handleNavigateToUpdate(item)}
+                                    className="inline-flex items-center justify-center w-9 h-9 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors duration-200"
+                                    title="Edit"
+                                  >
+                                    <Edit size={16} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteClick(item)}
+                                    className="inline-flex items-center justify-center w-9 h-9 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors duration-200"
+                                    title="Delete"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600">
+                  Showing <span className="font-medium text-gray-900">{displayList.length}</span> {displayList.length === 1 ? 'startup' : 'startups'}
+                </p>
+                <button
+                  onClick={openAddMethodModal}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 shadow-md shadow-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={loading}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Startup
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
         {verificationModal && (
           <Verification
@@ -1633,7 +1830,7 @@ const handleVerifyNow = (id, email) => {
             startupId={selectedStartupId}
             contactEmail={selectedContactEmail}
             resetForm={() => {}}
-            onVerifySuccess={handleVerifySuccess} // Pass the callback
+            onVerifySuccess={handleVerifySuccess}
           />
         )}
         {/* Delete Confirmation Modal */}
