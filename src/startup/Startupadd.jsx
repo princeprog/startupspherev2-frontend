@@ -131,11 +131,6 @@ export default function Startupadd() {
   const [selectedProvince, setSelectedProvince] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
   const [selectedBarangay, setSelectedBarangay] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const location = useLocation();
-  const urlParams = new URLSearchParams(location.search);
-  const draftIdFromUrl = urlParams.get("draftId"); // ← This is the key
-  const [loadingDraftId, setLoadingDraftId] = useState(draftIdFromUrl);
   const [formData, setFormData] = useState({
     companyName: "",
     companyDescription: "",
@@ -168,6 +163,7 @@ export default function Startupadd() {
     businessLicenseNumber: "",
     tin: "",
     registrationCertificate: null,
+    isDraft: false,
   });
 
   const [verificationModal, setVerificationModal] = useState(false);
@@ -192,6 +188,9 @@ export default function Startupadd() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingStatus, setLoadingStatus] = useState("");
+  const [draftId, setDraftId] = useState(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
 
   const resetForm = () => {
     setFormData({
@@ -218,8 +217,10 @@ export default function Startupadd() {
       fundingStage: "",
       operatingHours: "",
       businessActivity: "",
+      isDraft: false,
     });
     setStartupId(null);
+    setDraftId(null);
     setUploadedFile(null);
     setUploadedImage(null);
   };
@@ -435,6 +436,102 @@ export default function Startupadd() {
     return map;
   };
 
+  const fetchDraftData = async (id) => {
+    if (!id || id === 'undefined' || id === 'null') {
+      console.error("Invalid draft ID:", id);
+      toast.error("Invalid draft ID. Redirecting to dashboard...");
+      setTimeout(() => {
+        navigate("/startup-dashboard");
+      }, 2000);
+      return;
+    }
+
+    setIsLoadingDraft(true);
+    try {
+      const apiUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_REACT_APP_API_URL;
+      console.log("Fetching draft with ID:", id, "from:", `${apiUrl}/startups/draft/${id}`);
+      
+      const response = await fetch(
+        `${apiUrl}/startups/draft/${id}`,
+        {
+          method: "GET",
+          credentials: "include",
+          headers: {
+            "Accept": "application/json",
+          },
+        }
+      );
+
+      // Check if response is JSON
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const errorText = await response.text();
+        console.error("Response is not JSON:", errorText);
+        throw new Error("Server returned an invalid response. Please check if the API endpoint exists.");
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to fetch draft data");
+      }
+
+      const data = await response.json();
+      
+      // Populate form with draft data
+      setFormData({
+        companyName: data.companyName || "",
+        companyDescription: data.companyDescription || "",
+        foundedDate: data.foundedDate ? new Date(data.foundedDate) : null,
+        typeOfCompany: data.typeOfCompany || "",
+        numberOfEmployees: data.numberOfEmployees || "",
+        industry: data.industry || "",
+        phoneNumber: data.phoneNumber || "",
+        contactEmail: data.contactEmail || "",
+        website: data.website || "",
+        streetAddress: data.streetAddress || "",
+        city: data.city || "",
+        province: data.province || "",
+        region: data.region || "",
+        barangay: data.barangay || "",
+        postalCode: data.postalCode || "",
+        facebook: data.facebook || "",
+        twitter: data.twitter || "",
+        instagram: data.instagram || "",
+        linkedIn: data.linkedIn || "",
+        locationLat: data.locationLat || null,
+        locationLng: data.locationLng || null,
+        locationName: data.locationName || "",
+        fundingStage: data.fundingStage || "",
+        operatingHours: data.operatingHours || "",
+        businessActivity: data.businessActivity || "",
+        isGovernmentRegistered: data.isGovernmentRegistered || "",
+        registrationAgency: data.registrationAgency || "",
+        registrationNumber: data.registrationNumber || "",
+        registrationDate: data.registrationDate ? new Date(data.registrationDate) : null,
+        otherRegistrationAgency: data.otherRegistrationAgency || "",
+        businessLicenseNumber: data.businessLicenseNumber || "",
+        tin: data.tin || "",
+        registrationCertificate: null,
+        isDraft: true,
+      });
+
+      setDraftId(data.id || id);
+      setStartupId(data.id || id);
+      
+      toast.success("Draft loaded successfully! Continue where you left off.");
+    } catch (error) {
+      console.error("Error fetching draft:", error);
+      toast.error(error.message || "Failed to load draft. Please try again.");
+      
+      // Redirect back to dashboard if draft fetch fails
+      setTimeout(() => {
+        navigate("/startup-dashboard");
+      }, 2000);
+    } finally {
+      setIsLoadingDraft(false);
+    }
+  };
+
   useEffect(() => {
     // Only run when the map is ready AND we have saved coordinates
     if (!mapInstanceRef.current || !formData.locationLat || !formData.locationLng) return;
@@ -455,176 +552,26 @@ export default function Startupadd() {
     map.flyTo({ center: [lng, lat], zoom: 14 });
   }, [formData.locationLat, formData.locationLng, mapInstanceRef.current]);
 
-  // Auto-save draft to backend
   useEffect(() => {
-    // Only save if user started typing
-    if (!formData.companyName) return;
-
-    setIsSaving(true);
-
-    const timer = setTimeout(async () => {
-      try {
-        await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/draft`, {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            formData: JSON.stringify(formData),
-            selectedTab,
-          }),
-        });
-      } catch (err) {
-        console.warn("Failed to save draft:", err);
-      } finally {
-        setIsSaving(false);
-      }
-    }, 800); // 0.8s after last change
-
-    return () => clearTimeout(timer);
-  }, [formData, selectedTab]);
-
-  useEffect(() => {
-  console.log("Cookies:", document.cookie);
+    console.log("Cookies:", document.cookie);
+    
+    // Check for draftId in URL params - only load draft when explicitly continuing
+    const urlParams = new URLSearchParams(window.location.search);
+    const draftIdFromUrl = urlParams.get('draftId');
+    
+    if (draftIdFromUrl) {
+      // Fetch draft data from backend when user clicks "Continue"
+      fetchDraftData(draftIdFromUrl);
+    }
+    // Form starts fresh if no draftId in URL
   }, []);
 
-    useEffect(() => {
+  useEffect(() => {
     fetch("https://psgc.gitlab.io/api/regions/")
       .then((response) => response.json())
       .then((data) => setRegions(data))
       .catch((error) => console.error("Error fetching regions:", error));
   }, []);
-
-  // Load draft when component mounts
-  useEffect(() => {
-    
-    if (regions.length === 0) return;
-
-    (async () => {
-      try {
-        const res = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/startups/draft`,
-          { method: "GET", credentials: "include" }
-        );
-
-        if (!res.ok || res.status === 204 || res.status === 404) {
-          console.log("No draft – starting fresh");
-          return;
-        }
-
-        const data = await res.json();
-
-        
-        let parsed;
-        try {
-          parsed = JSON.parse(data.formData);
-          if (typeof parsed === "string") parsed = JSON.parse(parsed);
-        } catch (e) {
-          console.error("Failed to parse draft formData", e);
-          return;
-        }
-
-        
-        const safeFormData = {
-          companyName: "",
-          companyDescription: "",
-          foundedDate: null,
-          typeOfCompany: "",
-          numberOfEmployees: "",
-          industry: "",
-          phoneNumber: "",
-          contactEmail: "",
-          website: "",
-          streetAddress: "",
-          city: "",
-          province: "",
-          postalCode: "",
-          facebook: "",
-          twitter: "",
-          instagram: "",
-          linkedIn: "",
-          locationLat: null,
-          locationLng: null,
-          locationName: "",
-          fundingStage: "",
-          operatingHours: "",
-          businessActivity: "",
-          isGovernmentRegistered: "",
-          registrationAgency: "",
-          registrationNumber: "",
-          registrationDate: null,
-          otherRegistrationAgency: "",
-          businessLicenseNumber: "",
-          tin: "",
-          registrationCertificate: null,
-          region: "",
-          barangay: "",
-          ...parsed,
-        };
-
-        setFormData(safeFormData);
-        setSelectedTab(data.selectedTab || "Company Information");
-
-        const restoreAddress = async () => {
-
-          if (safeFormData.region) {
-            const regionObj = regions.find((r) => r.name === safeFormData.region);
-            if (regionObj) {
-              setSelectedRegion(regionObj);
-
-              
-              const provRes = await fetch(
-                `https://psgc.gitlab.io/api/regions/${regionObj.code}/provinces/`
-              );
-              const provs = await provRes.json();
-              setProvinces(provs);
-
-              if (safeFormData.province) {
-                const provObj = provs.find((p) => p.name === safeFormData.province);
-                if (provObj) {
-                  setSelectedProvince(provObj);
-
-                  
-                  const cityRes = await fetch(
-                    `https://psgc.gitlab.io/api/provinces/${provObj.code}/cities-municipalities/`
-                  );
-                  const cities = await cityRes.json();
-                  setCities(cities);
-
-                  if (safeFormData.city) {
-                    const cityObj = cities.find((c) => c.name === safeFormData.city);
-                    if (cityObj) {
-                      setSelectedCity(cityObj);
-
-                      
-                      const brgyRes = await fetch(
-                        `https://psgc.gitlab.io/api/cities-municipalities/${cityObj.code}/barangays/`
-                      );
-                      const brgys = await brgyRes.json();
-                      setBarangays(brgys);
-
-                      if (safeFormData.barangay) {
-                        const brgyObj = brgys.find(
-                          (b) => b.name === safeFormData.barangay
-                        );
-                        if (brgyObj) setSelectedBarangay(brgyObj);
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        };
-
-        await restoreAddress();
-
-        toast.success("Draft restored from previous session!");
-      } catch (err) {
-        console.error("Failed to load draft:", err);
-      }
-    })();
-  }, [regions]);
-
 
   useEffect(() => {
     let map = null;
@@ -852,8 +799,142 @@ export default function Startupadd() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const saveDraft = async () => {
+    setIsSavingDraft(true);
+    try {
+      // Prepare JSON payload
+      const draftData = {
+        companyName: formData.companyName,
+        companyDescription: formData.companyDescription,
+        foundedDate: formData.foundedDate,
+        typeOfCompany: formData.typeOfCompany,
+        numberOfEmployees: formData.numberOfEmployees,
+        phoneNumber: formData.phoneNumber,
+        contactEmail: formData.contactEmail,
+        streetAddress: formData.streetAddress,
+        city: formData.city,
+        province: formData.province,
+        region: formData.region,
+        barangay: formData.barangay,
+        postalCode: formData.postalCode,
+        industry: formData.industry,
+        website: formData.website,
+        facebook: formData.facebook,
+        twitter: formData.twitter,
+        instagram: formData.instagram,
+        linkedIn: formData.linkedIn,
+        locationLat: formData.locationLat,
+        locationLng: formData.locationLng,
+        locationName: formData.locationName,
+        fundingStage: formData.fundingStage,
+        businessActivity: formData.businessActivity,
+        operatingHours: formData.operatingHours,
+        isGovernmentRegistered: formData.isGovernmentRegistered,
+        registrationAgency: formData.registrationAgency,
+        registrationNumber: formData.registrationNumber,
+        registrationDate: formData.registrationDate,
+        otherRegistrationAgency: formData.otherRegistrationAgency,
+        businessLicenseNumber: formData.businessLicenseNumber,
+        tin: formData.tin,
+        isDraft: true,
+      };
+
+      // Remove empty/null values
+      Object.keys(draftData).forEach(key => {
+        if (draftData[key] === null || draftData[key] === undefined || draftData[key] === "") {
+          delete draftData[key];
+        }
+      });
+
+      let response;
+
+      if (draftId) {
+        // Update existing draft
+        response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/startups/draft/${draftId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(draftData),
+            credentials: "include",
+          }
+        );
+        
+        if (!response.ok) {
+          const text = await response.text();
+          let errorMessage = "Failed to update draft";
+          try {
+            const errorData = JSON.parse(text);
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            errorMessage = text || errorMessage;
+          }
+          throw new Error(errorMessage);
+        }
+        
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : {};
+        toast.success("Draft updated successfully!");
+        setDraftId(data._id || draftId);
+        setStartupId(data._id || draftId);
+        
+        // Navigate to dashboard after successful save
+        setTimeout(() => {
+          navigate("/startup-dashboard");
+        }, 1500);
+      } else {
+        // Create new draft
+        response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/startups/draft`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(draftData),
+            credentials: "include",
+          }
+        );
+        
+        if (!response.ok) {
+          const text = await response.text();
+          let errorMessage = "Failed to save draft";
+          try {
+            const errorData = JSON.parse(text);
+            errorMessage = errorData.message || errorMessage;
+          } catch (e) {
+            errorMessage = text || errorMessage;
+          }
+          throw new Error(errorMessage);
+        }
+        
+        const text = await response.text();
+        const data = text ? JSON.parse(text) : {};
+        toast.success("Draft saved successfully!");
+        setDraftId(data._id);
+        setStartupId(data._id);
+        
+        // Navigate to dashboard after successful save
+        setTimeout(() => {
+          navigate("/startup-dashboard");
+        }, 1500);
+      }
+    } catch (error) {
+      console.error("Error saving draft:", error);
+      toast.error(error.message || "Failed to save draft");
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
 const handleSubmit = async () => {
   setIsSubmitting(true);
+  
+  // Set isDraft to false for final submission
+  setFormData(prev => ({ ...prev, isDraft: false }));
+  
   let errorMessage = validateCompanyInformation();
   if (errorMessage) {
     setError(errorMessage);
@@ -892,27 +973,60 @@ const handleSubmit = async () => {
   }
 
   try {
-    // Prepare a copy of formData without the registrationCertificate file for JSON POST
-    const { registrationCertificate, ...startupData } = formData;
-
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(startupData),
-      credentials: "include",
-    });
-
-    const data = await response.json();
-    if (response.ok) {
-      console.log("Startup added successfully: ", data);
-      const startupId = data.id;
+    let response;
+    let startupId;
+    
+    // If updating an existing draft, use submit endpoint
+    if (draftId) {
+      response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/draft/${draftId}/submit`,
+        {
+          method: "PUT",
+          credentials: "include",
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to submit draft");
+      }
+      
+      const data = await response.json();
+      console.log("Draft submitted successfully: ", data);
+      startupId = data.id || data._id;
       setStartupId(startupId);
-      setUploadedFile(null);
+      
+      // Clear draft state
+      setDraftId(null);
+    } else {
+      // Create new startup submission
+      const { registrationCertificate, ...startupData } = formData;
 
-      // Upload registration certificate if present
-      if (formData.registrationCertificate) {
+      response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(startupData),
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to submit startup");
+      }
+      
+      const data = await response.json();
+      console.log("Startup added successfully: ", data);
+      startupId = data.id || data._id;
+      setStartupId(startupId);
+    }
+
+    // Continue with file uploads using the startupId
+    setUploadedFile(null);
+
+    // Upload registration certificate if present
+    if (formData.registrationCertificate) {
         const certFormData = new FormData();
         certFormData.append("file", formData.registrationCertificate);
         try {
@@ -1005,7 +1119,6 @@ const handleSubmit = async () => {
       if (emailResponse.ok) {
         toast.success("Startup added successfully! Verification email sent.");
 
-        // CLEAR DRAFT ONLY ON FULL SUCCESS (email sent)
         try {
           await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/draft`, {
             method: "DELETE",
@@ -1024,14 +1137,6 @@ const handleSubmit = async () => {
           }`
         );
       }
-    } else {
-      console.error("Error adding a startup: ", data);
-      toast.error(
-        `Failed to add startup: ${
-          data.message || data.error || "Unknown error"
-        }`
-      );
-    }
 
   } catch (error) {
     console.error("Error:", error);
@@ -1134,6 +1239,34 @@ const handleSubmit = async () => {
     );
   };
 
+  const DraftLoadingModal = () => {
+    if (!isLoadingDraft) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-gradient-to-br from-blue-50/90 to-indigo-50/90">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 border border-blue-100">
+          <div className="text-center">
+            <div className="mb-6 relative">
+              <div className="w-20 h-20 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <svg className="w-10 h-10 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Loading Your Draft</h2>
+            <p className="text-gray-600 mb-4">Retrieving your saved information...</p>
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const handleSkip = () => {
     setIsLoading(true);
     setLoadingProgress(0);
@@ -1195,23 +1328,6 @@ const handleSubmit = async () => {
             <span className="text-[#1D3557] font-semibold">
               {selectedTab}
             </span>
-          </div>
-
-          {/* Optional: Auto-save indicator */}
-          <div className="ml-auto flex items-center space-x-2 text-xs text-gray-500">
-            {isSaving ? (
-              <>
-                <div className="w-4 h-4 bg-yellow-500 rounded-full animate-pulse"></div>
-                <span>Saving draft...</span>
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 - -11.414-1.414L8 12.58617.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                <span>Draft saved</span>
-              </>
-            )}
           </div>
         </div>
       </div>
@@ -1533,10 +1649,33 @@ const handleSubmit = async () => {
               />
             </div>
 
-            <div className="col-span-2 text-center mt-4">
+            <div className="col-span-2 flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
               <button
                 type="button"
-                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
+                className="flex items-center gap-2 px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                onClick={saveDraft}
+                disabled={isSavingDraft}
+              >
+                {isSavingDraft ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    <span>Save as Draft</span>
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                className="bg-[#1D3557] text-white px-6 py-2.5 rounded-lg hover:bg-[#16324f] transition-all duration-200 shadow-sm"
                 onClick={handleNext}
               >
                 Next
@@ -1602,21 +1741,46 @@ const handleSubmit = async () => {
                 onChange={handleChange}
               />
             </div>
-            <div className="col-span-2 flex justify-between mt-4">
+            <div className="col-span-2 flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
               <button
                 type="button"
-                className="bg-gray-300 px-6 py-2 rounded-md"
+                className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 shadow-sm"
                 onClick={handleBack}
               >
                 Back
               </button>
-              <button
-                type="button"
-                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
-                onClick={handleNext}
-              >
-                Next
-              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  onClick={saveDraft}
+                  disabled={isSavingDraft}
+                >
+                  {isSavingDraft ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      <span>Save as Draft</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="bg-[#1D3557] text-white px-6 py-2.5 rounded-lg hover:bg-[#16324f] transition-all duration-200 shadow-sm"
+                  onClick={handleNext}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </form>
         )}
@@ -1777,21 +1941,46 @@ const handleSubmit = async () => {
             </div>
 
             {/* Buttons */}
-            <div className="col-span-2 flex justify-between mt-6">
+            <div className="col-span-2 flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
               <button
                 type="button"
-                className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400 transition"
+                className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 shadow-sm"
                 onClick={handleBack}
               >
                 Back
               </button>
-              <button
-                type="button"
-                className="bg-[#1D3557] text-white px-6 py-2 rounded-md hover:bg-[#16324f] transition"
-                onClick={handleNext}
-              >
-                Next
-              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  onClick={saveDraft}
+                  disabled={isSavingDraft}
+                >
+                  {isSavingDraft ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      <span>Save as Draft</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="bg-[#1D3557] text-white px-6 py-2.5 rounded-lg hover:bg-[#16324f] transition-all duration-200 shadow-sm"
+                  onClick={handleNext}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </form>
         )}
@@ -1848,21 +2037,46 @@ const handleSubmit = async () => {
                 onChange={handleChange}
               />
             </div>
-            <div className="col-span-2 flex justify-between mt-4">
+            <div className="col-span-2 flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
               <button
                 type="button"
-                className="bg-gray-300 px-6 py-2 rounded-md"
+                className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 shadow-sm"
                 onClick={handleBack}
               >
                 Back
               </button>
-              <button
-                type="button"
-                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
-                onClick={handleNext}
-              >
-                Next
-              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  onClick={saveDraft}
+                  disabled={isSavingDraft}
+                >
+                  {isSavingDraft ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      <span>Save as Draft</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="bg-[#1D3557] text-white px-6 py-2.5 rounded-lg hover:bg-[#16324f] transition-all duration-200 shadow-sm"
+                  onClick={handleNext}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </form>
         )}
@@ -1913,21 +2127,46 @@ const handleSubmit = async () => {
                 onChange={handleChange}
               />
             </div>
-            <div className="col-span-2 flex justify-between mt-4">
+            <div className="col-span-2 flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
               <button
                 type="button"
-                className="bg-gray-300 px-6 py-2 rounded-md"
+                className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 shadow-sm"
                 onClick={handleBack}
               >
                 Back
               </button>
-              <button
-                type="button"
-                className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
-                onClick={handleNext}
-              >
-                Next
-              </button>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                  onClick={saveDraft}
+                  disabled={isSavingDraft}
+                >
+                  {isSavingDraft ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                      </svg>
+                      <span>Save as Draft</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="bg-[#1D3557] text-white px-6 py-2.5 rounded-lg hover:bg-[#16324f] transition-all duration-200 shadow-sm"
+                  onClick={handleNext}
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </form>
         )}
@@ -1958,22 +2197,62 @@ const handleSubmit = async () => {
               </div>
 
               {/* Back & Submit buttons */}
-              <div className="flex justify-between mt-6">
+              <div className="flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
                 <button
                   type="button"
-                  className="bg-gray-300 px-6 py-2 rounded-md"
+                  className="px-6 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-all duration-200 shadow-sm"
                   onClick={handleBack}
                 >
                   Back
                 </button>
-                <button
-                  type="button"
-                  className="bg-[#1D3557] text-white px-6 py-2 rounded-md"
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Submitting..." : "Submit"}
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    onClick={saveDraft}
+                    disabled={isSavingDraft}
+                  >
+                    {isSavingDraft ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        <span>Save as Draft</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 bg-[#1D3557] text-white px-6 py-2.5 rounded-lg hover:bg-[#16324f] transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Submitting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>Submit</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -2185,6 +2464,7 @@ const handleSubmit = async () => {
       />
 
       <LoadingModal />
+      <DraftLoadingModal />
       <ToastContainer />
     </div>
   );

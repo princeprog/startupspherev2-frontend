@@ -75,6 +75,15 @@ export default function StartupDashboard({ openAddMethodModal }) {
     error: null,
   });
 
+  // State for delete draft confirmation modal
+  const [deleteDraftModal, setDeleteDraftModal] = useState({
+    isOpen: false,
+    draftId: null,
+    draftName: "",
+    isDeleting: false,
+    error: null,
+  });
+
   const months = [
     "January",
     "February",
@@ -125,7 +134,7 @@ export default function StartupDashboard({ openAddMethodModal }) {
 
   const fetchDrafts = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/draft`, {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/my-drafts`, {
         credentials: "include",
       });
 
@@ -137,32 +146,37 @@ export default function StartupDashboard({ openAddMethodModal }) {
 
       const rawDraft = await res.json();
 
-      // Backend currently returns: { formData: "...stringified...", selectedTab: "..." }
-      let parsedFormData;
-      try {
-        // Sometimes it's double-stringified because of how backend saves it
-        parsedFormData = typeof rawDraft.formData === "string" 
-          ? JSON.parse(rawDraft.formData) 
-          : rawDraft.formData;
+      // Backend returns the draft object directly with all fields
+      // For backwards compatibility, check if formData is stringified
+      let draftData;
+      if (rawDraft.formData) {
+        // Old format: { formData: "...", selectedTab: "..." }
+        try {
+          draftData = typeof rawDraft.formData === "string" 
+            ? JSON.parse(rawDraft.formData) 
+            : rawDraft.formData;
 
-        if (typeof parsedFormData === "string") {
-          parsedFormData = JSON.parse(parsedFormData);
+          if (typeof draftData === "string") {
+            draftData = JSON.parse(draftData);
+          }
+        } catch (e) {
+          console.warn("Failed to parse draft formData, using raw", e);
+          draftData = {};
         }
-      } catch (e) {
-        console.warn("Failed to parse draft formData, using raw", e);
-        parsedFormData = {};
+      } else {
+        // New format: direct draft object with all fields
+        draftData = rawDraft;
       }
 
       const draftObject = {
-        ...parsedFormData,
-        companyName: parsedFormData.companyName || "Untitled Draft",
-        industry: parsedFormData.industry || "Not specified",
-        locationName: parsedFormData.locationName || "No location",
-        contactEmail: parsedFormData.contactEmail || "",
-        foundedDate: parsedFormData.foundedDate || null,
+        id: rawDraft.id || draftData.id, // Use the actual draft ID from backend
+        companyName: draftData.companyName || "Untitled Draft",
+        industry: draftData.industry || "Not specified",
+        locationName: draftData.locationName || "No location",
+        contactEmail: draftData.contactEmail || "",
+        foundedDate: draftData.foundedDate || null,
         selectedTab: rawDraft.selectedTab || "Company Information",
         isDraft: true,
-        draftId: `server-draft-${Date.now()}`, // unique key even with one draft
       };
 
       // CURRENT: Only one draft allowed → replace array
@@ -219,6 +233,60 @@ export default function StartupDashboard({ openAddMethodModal }) {
       isDeleting: false,
       error: null,
     });
+  };
+
+  const handleDeleteDraftClick = (draftId, draftName) => {
+    setDeleteDraftModal({
+      isOpen: true,
+      draftId: draftId,
+      draftName: draftName || "Untitled Draft",
+      isDeleting: false,
+      error: null,
+    });
+  };
+
+  const handleDeleteDraft = async () => {
+    const draftId = deleteDraftModal.draftId;
+    setDeleteDraftModal({ ...deleteDraftModal, isDeleting: true, error: null });
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/draft/${draftId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete draft");
+      }
+
+      toast.success("Draft deleted successfully!");
+      
+      // Remove the draft from the state - using String() to ensure type consistency
+      setDrafts(prevDrafts => prevDrafts.filter(draft => String(draft.id) !== String(draftId)));
+      
+      // Close modal
+      setDeleteDraftModal({
+        isOpen: false,
+        draftId: null,
+        draftName: "",
+        isDeleting: false,
+        error: null,
+      });
+
+    } catch (error) {
+      console.error("Error deleting draft:", error);
+      setDeleteDraftModal({
+        ...deleteDraftModal,
+        isDeleting: false,
+        error: error.message || "Failed to delete draft. Please try again.",
+      });
+    }
+
+    fetchStartups();
   };
 
   const confirmDeleteStartup = async () => {
@@ -1439,7 +1507,7 @@ const handleVerifyNow = (id, email) => {
 
                 return (
                   <tr
-                    key={isDraft ? item.draftId : item.id}
+                    key={`${isDraft ? 'draft' : 'startup'}-${item.id}`}
                     className={`${!isDraft ? "hover cursor-pointer" : "bg-amber-50"} transition-colors`}
                     onClick={() => !isDraft && navigate(`/startup/${item.id}`)}
                   >
@@ -1508,12 +1576,22 @@ const handleVerifyNow = (id, email) => {
                     <td onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
                         {isDraft ? (
-                          <button
-                            onClick={() => navigate("/add-startup?draft=true")}
-                            className="btn btn-sm btn-primary flex items-center gap-1"
-                          >
-                            <PlayCircle size={18} /> Continue
-                          </button>
+                          <>
+                            <button
+                              onClick={() => navigate(`/add-startup?draftId=${item.id}`)}
+                              className="btn btn-sm btn-primary flex items-center gap-1"
+                              title="Continue editing draft"
+                            >
+                              <PlayCircle size={18} /> Continue
+                            </button>
+                            <button
+                              onClick={() => handleDeleteDraftClick(item.id, item.companyName)}
+                              className="btn btn-sm btn-outline btn-error flex items-center gap-1"
+                              title="Delete draft"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
                         ) : (
                           <>
                             <button
@@ -1714,6 +1792,334 @@ const handleVerifyNow = (id, email) => {
               }`}
                     onClick={() => setDeleteModal({ ...deleteModal, isOpen: false })}
                     disabled={deleteModal.isDeleting}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Delete Draft Confirmation Modal */}
+        {deleteDraftModal.isOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out z-50"
+              onClick={() =>
+                !deleteDraftModal.isDeleting &&
+                setDeleteDraftModal({ ...deleteDraftModal, isOpen: false })
+              }
+              aria-hidden="true"
+            ></div>
+
+            {/* Modal */}
+            <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 sm:px-0">
+              <div
+                className="relative bg-white dark:bg-gray-800 rounded-lg shadow-2xl overflow-hidden w-full max-w-md mx-auto transform transition-all duration-300 ease-in-out"
+                style={{ animation: "0.3s ease-out 0s 1 slideInFromBottom" }}
+              >
+                {/* Modal Content */}
+                <div className="px-6 pt-6 pb-4">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0 bg-red-100 rounded-full p-2.5 dark:bg-red-900/30">
+                      <Trash2 className="h-6 w-6 text-red-600 dark:text-red-500" />
+                    </div>
+                    <div className="ml-4 w-full">
+                      <div className="flex justify-between">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white leading-6">
+                          Delete Draft
+                        </h3>
+                        <button
+                          onClick={() =>
+                            !deleteDraftModal.isDeleting &&
+                            setDeleteDraftModal({ ...deleteDraftModal, isOpen: false })
+                          }
+                          className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                          disabled={deleteDraftModal.isDeleting}
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                      <div className="mt-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Are you sure you want to delete the draft{" "}
+                          <span className="font-semibold text-gray-800 dark:text-white">
+                            {deleteDraftModal.draftName}
+                          </span>
+                          ?
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          This action cannot be undone and the draft will be permanently removed.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Error Message */}
+                  {deleteDraftModal.error && (
+                    <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 rounded animate-pulse">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="h-5 w-5 text-red-500"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <p className="ml-2 text-sm text-red-700 dark:text-red-400">
+                          {deleteDraftModal.error}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-200 dark:border-gray-700"></div>
+
+                {/* Actions */}
+                <div className="px-6 py-4 sm:flex sm:flex-row-reverse">
+                  {/* Delete Button */}
+                  <button
+                    type="button"
+                    className={`w-full sm:w-auto px-4 py-2.5 rounded-lg text-white font-medium 
+              ${
+                deleteDraftModal.isDeleting
+                  ? "bg-red-400 dark:bg-red-500/70"
+                  : "bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+              } 
+              shadow-sm focus:ring-4 focus:ring-red-300 dark:focus:ring-red-700 focus:outline-none
+              transition-all duration-200 ease-in-out sm:ml-3
+              ${
+                deleteDraftModal.isDeleting
+                  ? "opacity-80 cursor-not-allowed"
+                  : "cursor-pointer"
+              }`}
+                    onClick={handleDeleteDraft}
+                    disabled={deleteDraftModal.isDeleting}
+                  >
+                    <div className="flex items-center justify-center">
+                      {deleteDraftModal.isDeleting ? (
+                        <>
+                          <svg
+                            className="w-4 h-4 mr-2 animate-spin"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          <span>Deleting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4 mr-1.5" />
+                          <span>Delete Draft</span>
+                        </>
+                      )}
+                    </div>
+                  </button>
+
+                  {/* Cancel Button */}
+                  <button
+                    type="button"
+                    className={`mt-3 sm:mt-0 w-full sm:w-auto px-4 py-2.5 rounded-lg
+              border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 
+              text-gray-700 dark:text-gray-200 font-medium
+              hover:bg-gray-50 dark:hover:bg-gray-600
+              focus:ring-4 focus:ring-indigo-100 dark:focus:ring-gray-700 focus:outline-none
+              transition-all duration-200 ease-in-out
+              ${
+                deleteDraftModal.isDeleting
+                  ? "opacity-50 cursor-not-allowed"
+                  : "cursor-pointer"
+              }`}
+                    onClick={() => setDeleteDraftModal({ ...deleteDraftModal, isOpen: false })}
+                    disabled={deleteDraftModal.isDeleting}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Delete Draft Confirmation Modal */}
+        {deleteDraftModal.isOpen && (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ease-in-out z-50"
+              onClick={() =>
+                !deleteDraftModal.isDeleting &&
+                setDeleteDraftModal({ ...deleteDraftModal, isOpen: false })
+              }
+              aria-hidden="true"
+            ></div>
+
+            {/* Modal */}
+            <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-4 sm:px-0">
+              <div
+                className="relative bg-white dark:bg-gray-800 rounded-lg shadow-2xl overflow-hidden w-full max-w-md mx-auto transform transition-all duration-300 ease-in-out"
+                style={{ animation: "0.3s ease-out 0s 1 slideInFromBottom" }}
+              >
+                {/* Modal Content */}
+                <div className="px-6 pt-6 pb-4">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0 bg-red-100 rounded-full p-2.5 dark:bg-red-900/30">
+                      <Trash2 className="h-6 w-6 text-red-600 dark:text-red-500" />
+                    </div>
+                    <div className="ml-4 w-full">
+                      <div className="flex justify-between">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white leading-6">
+                          Delete Draft
+                        </h3>
+                        <button
+                          onClick={() =>
+                            !deleteDraftModal.isDeleting &&
+                            setDeleteDraftModal({ ...deleteDraftModal, isOpen: false })
+                          }
+                          className="text-gray-400 hover:text-gray-500 focus:outline-none"
+                          disabled={deleteDraftModal.isDeleting}
+                        >
+                          <X size={18} />
+                        </button>
+                      </div>
+                      <div className="mt-3">
+                        <p className="text-sm text-gray-600 dark:text-gray-300">
+                          Are you sure you want to delete the draft{" "}
+                          <span className="font-semibold text-gray-800 dark:text-white">
+                            {deleteDraftModal.draftName}
+                          </span>
+                          ?
+                        </p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                          This action cannot be undone and the draft will be permanently removed.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Error Message */}
+                  {deleteDraftModal.error && (
+                    <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 rounded animate-pulse">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="h-5 w-5 text-red-500"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <p className="ml-2 text-sm text-red-700 dark:text-red-400">
+                          {deleteDraftModal.error}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-200 dark:border-gray-700"></div>
+
+                {/* Actions */}
+                <div className="px-6 py-4 sm:flex sm:flex-row-reverse">
+                  {/* Delete Button */}
+                  <button
+                    type="button"
+                    className={`w-full sm:w-auto px-4 py-2.5 rounded-lg text-white font-medium 
+              ${
+                deleteDraftModal.isDeleting
+                  ? "bg-red-400 dark:bg-red-500/70"
+                  : "bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600"
+              } 
+              shadow-sm focus:ring-4 focus:ring-red-300 dark:focus:ring-red-700 focus:outline-none
+              transition-all duration-200 ease-in-out sm:ml-3
+              ${
+                deleteDraftModal.isDeleting
+                  ? "opacity-80 cursor-not-allowed"
+                  : "cursor-pointer"
+              }`}
+                    onClick={handleDeleteDraft}
+                    disabled={deleteDraftModal.isDeleting}
+                  >
+                    <div className="flex items-center justify-center">
+                      {deleteDraftModal.isDeleting ? (
+                        <>
+                          <svg
+                            className="w-4 h-4 mr-2 animate-spin"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          <span>Deleting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4 mr-1.5" />
+                          <span>Delete Draft</span>
+                        </>
+                      )}
+                    </div>
+                  </button>
+
+                  {/* Cancel Button */}
+                  <button
+                    type="button"
+                    className={`mt-3 sm:mt-0 w-full sm:w-auto px-4 py-2.5 rounded-lg
+              border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 
+              text-gray-700 dark:text-gray-200 font-medium
+              hover:bg-gray-50 dark:hover:bg-gray-600
+              focus:ring-4 focus:ring-indigo-100 dark:focus:ring-gray-700 focus:outline-none
+              transition-all duration-200 ease-in-out
+              ${
+                deleteDraftModal.isDeleting
+                  ? "opacity-50 cursor-not-allowed"
+                  : "cursor-pointer"
+              }`}
+                    onClick={() => setDeleteDraftModal({ ...deleteDraftModal, isOpen: false })}
+                    disabled={deleteDraftModal.isDeleting}
                   >
                     Cancel
                   </button>
