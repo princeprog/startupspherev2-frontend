@@ -1131,11 +1131,9 @@ const handleSubmit = async () => {
 
         setVerificationModal(true);
       } else {
-        toast.error(
-          `Failed to send verification email: ${
-            emailResponseData.error || "Unknown error"
-          }`
-        );
+        // User-friendly error only
+        toast.warning("Couldn't send verification email right now. You can resend it anytime from your dashboard.");
+        setVerificationModal(true); // Keep guiding the user forward
       }
 
   } catch (error) {
