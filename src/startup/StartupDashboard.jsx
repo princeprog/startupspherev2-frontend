@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { FaEye } from "react-icons/fa";
 import { BiLike } from "react-icons/bi";
 import { FaBookBookmark } from "react-icons/fa6";
-import { ArrowLeft, Edit, Trash2, Save, X, ExternalLink } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Save, X, ExternalLink, PlayCircle } from "lucide-react";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -17,8 +17,8 @@ import { Doughnut, Line } from "react-chartjs-2";
 import Card from "../components/Card";
 import CardContent from "../components/CardContent";
 import { useNavigate } from "react-router-dom";
-import Verification from "../modals/DashboardVerification"; // Adjust path as needed
-import { toast } from "react-toastify"; // Assuming you use toast for notifications
+import Verification from "../modals/DashboardVerification";
+import { toast } from "react-toastify";
 
 ChartJS.register(
   ArcElement,
@@ -33,6 +33,7 @@ ChartJS.register(
 export default function StartupDashboard({ openAddMethodModal }) {
   const [startupIds, setStartupIds] = useState([]);
   const [startups, setStartups] = useState([]);
+  const [drafts, setDrafts] = useState([]);
   const [selectedStartup, setSelectedStartup] = useState("all");
   const [logoUrls, setLogoUrls] = useState({});
 
@@ -121,6 +122,70 @@ export default function StartupDashboard({ openAddMethodModal }) {
       console.error(`Error fetching logo for startup ${startupId}:`, error);
     }
   };
+
+  const fetchDrafts = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/draft`, {
+        credentials: "include",
+      });
+
+      // If no draft → 204 or error
+      if (res.status === 204 || !res.ok) {
+        setDrafts([]); // ← Important: clear drafts
+        return;
+      }
+
+      const rawDraft = await res.json();
+
+      // Backend currently returns: { formData: "...stringified...", selectedTab: "..." }
+      let parsedFormData;
+      try {
+        // Sometimes it's double-stringified because of how backend saves it
+        parsedFormData = typeof rawDraft.formData === "string" 
+          ? JSON.parse(rawDraft.formData) 
+          : rawDraft.formData;
+
+        if (typeof parsedFormData === "string") {
+          parsedFormData = JSON.parse(parsedFormData);
+        }
+      } catch (e) {
+        console.warn("Failed to parse draft formData, using raw", e);
+        parsedFormData = {};
+      }
+
+      const draftObject = {
+        ...parsedFormData,
+        companyName: parsedFormData.companyName || "Untitled Draft",
+        industry: parsedFormData.industry || "Not specified",
+        locationName: parsedFormData.locationName || "No location",
+        contactEmail: parsedFormData.contactEmail || "",
+        foundedDate: parsedFormData.foundedDate || null,
+        selectedTab: rawDraft.selectedTab || "Company Information",
+        isDraft: true,
+        draftId: `server-draft-${Date.now()}`, // unique key even with one draft
+      };
+
+      // CURRENT: Only one draft allowed → replace array
+      setDrafts([draftObject]);
+
+      // FUTURE: When backend supports multiple drafts → just change this line to:
+      // setDrafts(prev => [...prev, draftObject]);
+    } catch (err) {
+      console.error("Error fetching draft:", err);
+      setDrafts([]);
+    }
+  };
+
+  const displayList = useMemo(() => {
+    const filteredStartups = startups.filter(s =>
+      [s.companyName, s.industry, s.locationName].some(field =>
+        field?.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    );
+
+    // Always show published startups first, then all drafts at the bottom
+    return [...filteredStartups, ...drafts];
+  }, [startups, drafts, searchQuery]);
 
   const [engagementData, setEngagementData] = useState({
     labels: months,
@@ -894,14 +959,6 @@ export default function StartupDashboard({ openAddMethodModal }) {
     }
   };
 
-  const filteredStartups = startups.filter((startup) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      startup.companyName?.toLowerCase().includes(query) ||
-      startup.industry?.toLowerCase().includes(query) ||
-      startup.locationName?.toLowerCase().includes(query)
-    );
-  });
 
   const handleFilterClick = (filter) => {
     setActiveFilter(filter);
@@ -1039,33 +1096,33 @@ const handleVerifyNow = (id, email) => {
   };
 
   useEffect(() => {
-    const initializeData = async () => {
+    const initializeDashboard = async () => {
       setLoading(true);
-      setError(null);
-
       try {
-        const ids = await fetchStartupIds();
-        const startupsData = await fetchStartups();
+        // Run all three in parallel
+        await Promise.all([
+          fetchStartupIds(),
+          fetchStartups(),
+          fetchDrafts(),   // ← This loads your draft
+        ]);
 
-        if (startupsData && startupsData.length > 0) {
-          startupsData.forEach((startup) => {
-            fetchCompanyLogo(startup.id);
-          });
+        // After startups are loaded, fetch logos and metrics
+        startups.forEach(s => fetchCompanyLogo(s.id));
+        if (startupIds.length > 0) {
+          await fetchTotalMetrics(startupIds);
+          await fetchAllStartupsEngagementData();
         }
-
-        if (ids && ids.length > 0) {
-          await fetchAllStartupsData();
-        }
-      } catch (error) {
-        console.error("Error during initialization:", error);
-        setError("Failed to initialize dashboard. Please try again later.");
+      } catch (err) {
+        console.error("Failed to initialize dashboard:", err);
+        setError("Failed to load dashboard data");
       } finally {
         setLoading(false);
       }
     };
 
-    initializeData();
-  }, []);
+    initializeDashboard();
+  }, []); // ← Only runs once on mount
+
 
   return (
     <div className="min-h-screen p-6 md:p-8 lg:p-10 space-y-6 bg-white text-black">
@@ -1363,145 +1420,118 @@ const handleVerifyNow = (id, email) => {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-4">
-                  Loading...
+                <td colSpan={7} className="text-center py-8">
+                  Loading startups...
                 </td>
               </tr>
-            ) : filteredStartups.length === 0 ? (
+            ) : displayList.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-4">
-                  No startups found
+                <td colSpan={7} className="text-center py-8 text-gray-500">
+                  No startups or drafts found
                 </td>
               </tr>
             ) : (
-              filteredStartups.map((st) => {
-                const formattedDate = st.foundedDate
-                  ? new Date(st.foundedDate).toLocaleDateString("en-US", {
-                      month: "numeric",
-                      day: "numeric",
-                      year: "numeric",
-                    })
+              displayList.map((item) => {
+                const isDraft = !!item.isDraft;
+                const formattedDate = item.foundedDate
+                  ? new Date(item.foundedDate).toLocaleDateString()
                   : "N/A";
 
                 return (
                   <tr
-                    key={st.id}
-                    className="hover cursor-pointer"
-                    onClick={() => navigate(`/startup/${st.id}`)}
+                    key={isDraft ? item.draftId : item.id}
+                    className={`${!isDraft ? "hover cursor-pointer" : "bg-amber-50"} transition-colors`}
+                    onClick={() => !isDraft && navigate(`/startup/${item.id}`)}
                   >
+                    {/* Startup Name + Logo + Location */}
                     <td>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4">
                         <div className="avatar">
-                          <div className="mask mask-squircle h-12 w-12">
-                            {logoUrls[st.id] ? (
+                          <div className="w-14 h-14 rounded-full ring-4 ring-blue-900 ring-offset-2 ring-offset-white">
+                            {logoUrls[item.id] ? (
                               <img
-                                src={logoUrls[st.id]}
-                                alt={`${st.companyName} logo`}
-                                className="object-cover"
-                                onError={(e) => {
-                                  e.target.onerror = null;
-                                  e.target.src =
-                                    "https://via.placeholder.com/100?text=No+Logo";
-                                }}
+                                src={logoUrls[item.id]}
+                                alt={item.companyName}
+                                className="w-full h-full rounded-full object-cover"
                               />
                             ) : (
-                              <div className="bg-gray-200 h-full w-full flex items-center justify-center">
-                                <span className="text-gray-500 text-xs">
-                                  {st.companyName?.charAt(0)?.toUpperCase() ||
-                                    "?"}
-                                </span>
+                              <div className="w-full h-full rounded-full bg-gray-300 flex items-center justify-center text-3xl font-bold text-gray-700">
+                                {(item.companyName || "?")[0].toUpperCase()}
                               </div>
                             )}
                           </div>
                         </div>
                         <div>
-                          <div className="font-bold">{st.companyName}</div>
-                          <div className="text-sm opacity-50">
-                            {st.locationName || "Location not specified"}
+                          <div className="font-bold text-base flex items-center gap-2">
+                            {item.companyName || "Untitled Draft"}
+                            {isDraft && <span className="badge badge-warning badge-sm">Draft</span>}
+                          </div>
+                          <div className="text-sm opacity-70">
+                            {item.locationName || "No location"}
                           </div>
                         </div>
                       </div>
                     </td>
-                    <td>
-                      {st.industry || "N/A"}
-                      <br />
-                      <span className="badge badge-ghost badge-sm">
-                        {st.website ? (
-                          <a
-                            href={
-                              st.website.startsWith("http")
-                                ? st.website
-                                : `https://${st.website}`
-                            }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {st.website} <ExternalLink size={12} />
-                          </a>
-                        ) : (
-                          "No website"
-                        )}
-                      </span>
-                    </td>
+
+                    {/* Industry */}
+                    <td className="font-medium">{item.industry || "N/A"}</td>
+
+                    {/* Founded Date */}
                     <td>{formattedDate}</td>
-                    <td>{st.contactEmail || "N/A"}</td>
-                    <td>{st.phoneNumber || "N/A"}</td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      {st.emailVerified ? (
-                        <span className="inline-flex items-center px-3 py-1 rounded-full bg-green-100 text-green-800 text-sm font-medium">
-                          <svg
-                            className="w-4 h-4 mr-1 text-green-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth="2"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          Verified
-                        </span>
+
+                    {/* Email */}
+                    <td className="text-sm">{item.contactEmail || "N/A"}</td>
+
+                    {/* Phone Number */}
+                    <td className="text-sm">{item.phoneNumber || "N/A"}</td>
+
+                    {/* Status */}
+                    <td>
+                      {isDraft ? (
+                        <span className="badge badge-ghost badge-sm">Draft</span>
+                      ) : item.emailVerified ? (
+                        <span className="badge badge-success badge-sm">Verified</span>
                       ) : (
-                    <button
-                      className="btn btn-sm btn-outline border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white transition-colors duration-200"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleVerifyNow(st.id, st.contactEmail);
-                      }}
-                      disabled={submitting || !st.contactEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(st.contactEmail)}
-                    >
-                      Verify Now
-                    </button>
+                        <button
+                          className="btn btn-xs btn-outline btn-info"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleVerifyNow(item.id, item.contactEmail);
+                          }}
+                        >
+                          Verify Now
+                        </button>
                       )}
                     </td>
+
+                    {/* Actions */}
                     <td onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleNavigateToUpdate(st);
-                          }}
-                          className="btn btn-sm btn-outline btn-info"
-                          disabled={submitting}
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteClick(st); // Changed from handleDeleteStartup(st.id)
-                          }}
-                          className="btn btn-sm btn-outline btn-error"
-                          disabled={submitting}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {isDraft ? (
+                          <button
+                            onClick={() => navigate("/add-startup?draft=true")}
+                            className="btn btn-sm btn-primary flex items-center gap-1"
+                          >
+                            <PlayCircle size={18} /> Continue
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleNavigateToUpdate(item)}
+                              className="btn btn-sm btn-outline"
+                              title="Edit"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteClick(item)}
+                              className="btn btn-sm btn-outline btn-error"
+                              title="Delete"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
