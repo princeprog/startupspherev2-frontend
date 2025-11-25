@@ -1419,14 +1419,25 @@ const handleSubmit = async () => {
                 onChange={handleChange}
               >
                 <option value="">Select type of company</option>
-                <option value="sole_proprietorship">Sole Proprietorship</option>
-                <option value="partnership">Partnership</option>
-                <option value="corporation">Corporation</option>
-                <option value="llc">Limited Liability Company (LLC)</option>
-                <option value="cooperative">Cooperative</option>
-                <option value="non_profit">Non-Profit Organization</option>
-                <option value="public_company">Public Company</option>
-                <option value="private_company">Private Company</option>
+                <option value="Cooperative">Cooperative</option>
+                <option value="Corporation">Corporation</option>
+                <option value="Family Business">Family Business</option>
+                <option value="Foundation">Foundation</option>
+                <option value="Franchise">Franchise</option>
+                <option value="General Partnership">General Partnership</option>
+                <option value="Large Enterprise">Large Enterprise (200+ employees)</option>
+                <option value="Limited Partnership">Limited Partnership</option>
+                <option value="Medium Enterprise">Medium Enterprise (100-199 employees)</option>
+                <option value="Microenterprise">Microenterprise (1-9 employees)</option>
+                <option value="NGO (Non-Governmental Organization)">NGO (Non-Governmental Organization)</option>
+                <option value="Non-Profit Organization">Non-Profit Organization</option>
+                <option value="Non-Stock Corporation">Non-Stock Corporation</option>
+                <option value="One Person Corporation (OPC)">One Person Corporation (OPC)</option>
+                <option value="Partnership">Partnership</option>
+                <option value="Small Enterprise">Small Enterprise (10-99 employees)</option>
+                <option value="Social Enterprise">Social Enterprise</option>
+                <option value="Sole Proprietorship">Sole Proprietorship</option>
+                <option value="Stock Corporation">Stock Corporation</option>
               </select>
             </div>
 
@@ -1441,21 +1452,65 @@ const handleSubmit = async () => {
                 onChange={handleChange}
               >
                 <option value="">Select industry</option>
-                <option value="technology">Technology</option>
-                <option value="finance">Finance</option>
-                <option value="healthcare">Healthcare</option>
-                <option value="education">Education</option>
-                <option value="retail">Retail</option>
-                <option value="manufacturing">Manufacturing</option>
-                <option value="construction">Construction</option>
-                <option value="hospitality">Hospitality</option>
-                <option value="transportation">Transportation</option>
-                <option value="real_estate">Real Estate</option>
-                <option value="agriculture">Agriculture</option>
-                <option value="entertainment">Entertainment</option>
-                <option value="legal_services">Legal Services</option>
-                <option value="energy">Energy</option>
-                <option value="telecommunications">Telecommunications</option>
+                <option value="Accounting & Bookkeeping">Accounting & Bookkeeping</option>
+                <option value="Agriculture & Farming">Agriculture & Farming</option>
+                <option value="Aquaculture & Fisheries">Aquaculture & Fisheries</option>
+                <option value="Automotive & Repair">Automotive & Repair</option>
+                <option value="Beauty & Wellness">Beauty & Wellness</option>
+                <option value="BPO & Call Center">BPO & Call Center</option>
+                <option value="Cleaning Services">Cleaning Services</option>
+                <option value="Consulting Services">Consulting Services</option>
+                <option value="Construction & Engineering">Construction & Engineering</option>
+                <option value="Content Creation">Content Creation</option>
+                <option value="Courier Services">Courier Services</option>
+                <option value="Delivery Services">Delivery Services</option>
+                <option value="Dental Clinic">Dental Clinic</option>
+                <option value="Digital Marketing">Digital Marketing</option>
+                <option value="Education & Training">Education & Training</option>
+                <option value="Energy & Utilities">Energy & Utilities</option>
+                <option value="Entertainment & Media">Entertainment & Media</option>
+                <option value="Event Planning">Event Planning</option>
+                <option value="Financial Services">Financial Services</option>
+                <option value="Fitness & Gym">Fitness & Gym</option>
+                <option value="Food & Beverage">Food & Beverage</option>
+                <option value="Food Manufacturing">Food Manufacturing</option>
+                <option value="Freight & Cargo">Freight & Cargo</option>
+                <option value="Garments & Textiles">Garments & Textiles</option>
+                <option value="Graphic Design">Graphic Design</option>
+                <option value="Handicrafts & Crafts">Handicrafts & Crafts</option>
+                <option value="Healthcare & Medical Services">Healthcare & Medical Services</option>
+                <option value="Home Services & Repair">Home Services & Repair</option>
+                <option value="Hospitality & Tourism">Hospitality & Tourism</option>
+                <option value="Hotel & Resort">Hotel & Resort</option>
+                <option value="Insurance">Insurance</option>
+                <option value="IT Solutions & Consulting">IT Solutions & Consulting</option>
+                <option value="Laundry & Dry Cleaning">Laundry & Dry Cleaning</option>
+                <option value="Legal Services">Legal Services</option>
+                <option value="Manufacturing & Production">Manufacturing & Production</option>
+                <option value="Mobile App Development">Mobile App Development</option>
+                <option value="Online Tutoring">Online Tutoring</option>
+                <option value="Other Services">Other Services</option>
+                <option value="Pet Care Services">Pet Care Services</option>
+                <option value="Pharmacy & Drugstore">Pharmacy & Drugstore</option>
+                <option value="Photography & Videography">Photography & Videography</option>
+                <option value="Printing & Publishing">Printing & Publishing</option>
+                <option value="Real Estate & Property">Real Estate & Property</option>
+                <option value="Renewable Energy">Renewable Energy</option>
+                <option value="Restaurant & Catering">Restaurant & Catering</option>
+                <option value="Retail & E-commerce">Retail & E-commerce</option>
+                <option value="Salon & Barbershop">Salon & Barbershop</option>
+                <option value="Sari-Sari Store">Sari-Sari Store</option>
+                <option value="Security Services">Security Services</option>
+                <option value="Skills Training Center">Skills Training Center</option>
+                <option value="Social Media Management">Social Media Management</option>
+                <option value="Software Development">Software Development</option>
+                <option value="Spa & Massage">Spa & Massage</option>
+                <option value="Technology & IT Services">Technology & IT Services</option>
+                <option value="Telecommunications">Telecommunications</option>
+                <option value="Transportation & Logistics">Transportation & Logistics</option>
+                <option value="Travel Agency">Travel Agency</option>
+                <option value="Web Development">Web Development</option>
+                <option value="Wholesale Trade">Wholesale Trade</option>
               </select>
             </div>
 
@@ -1508,11 +1563,9 @@ const handleSubmit = async () => {
                   }
                 >
                   <option value="">Select agency</option>
+                  <option value="DICT">DICT (Department of Information and Communications Technology)</option>
+                  <option value="DOST">DOST (Department of Science and Technology)</option>
                   <option value="DTI">DTI (Department of Trade and Industry)</option>
-                  <option value="SEC">SEC (Securities and Exchange Commission)</option>
-                  <option value="CDA">CDA (Cooperative Development Authority)</option>
-                  <option value="BIR">BIR (Bureau of Internal Revenue)</option>
-                  <option value="other">Other</option>
                 </select>
               </div>
             )}
@@ -2093,12 +2146,25 @@ const handleSubmit = async () => {
                 onChange={handleChange}
               >
                 <option value="">Select funding stage</option>
-                <option value="bootstrapped">Bootstrapped</option>
-                <option value="seed">Seed</option>
-                <option value="series_a">Series A</option>
-                <option value="series_b">Series B</option>
-                <option value="series_c">Series C</option>
-                <option value="public">Public</option>
+                <option value="Angel Investment">Angel Investment</option>
+                <option value="Bank Loan">Bank Loan</option>
+                <option value="Crowdfunding">Crowdfunding</option>
+                <option value="DOST Funding">DOST Funding</option>
+                <option value="DTI Funding">DTI Funding</option>
+                <option value="Family & Friends">Family & Friends</option>
+                <option value="Government Grant">Government Grant</option>
+                <option value="IPO / Public Offering">IPO / Public Offering</option>
+                <option value="Microfinance">Microfinance</option>
+                <option value="Not Seeking Funding">Not Seeking Funding</option>
+                <option value="Pre-Seed">Pre-Seed</option>
+                <option value="Private Equity">Private Equity</option>
+                <option value="Seed Funding">Seed Funding</option>
+                <option value="Self-Funded / Bootstrapped">Self-Funded / Bootstrapped</option>
+                <option value="Series A">Series A</option>
+                <option value="Series B">Series B</option>
+                <option value="Series C">Series C</option>
+                <option value="Series D+">Series D+</option>
+                <option value="Venture Capital">Venture Capital</option>
               </select>
             </div>
             <div>
