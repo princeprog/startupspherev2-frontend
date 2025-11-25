@@ -197,8 +197,16 @@ export default function StartupDashboard({ openAddMethodModal }) {
         isDraft: true,
       };
 
-      // CURRENT: Only one draft allowed → replace array
-      setDrafts([draftObject]);
+      console.log('Draft fetched from backend:', draftObject);
+
+      // Only add draft if it has a valid ID
+      if (draftObject.id && draftObject.id !== 'undefined' && draftObject.id !== 'null') {
+        // CURRENT: Only one draft allowed → replace array
+        setDrafts([draftObject]);
+      } else {
+        console.warn('Draft has no valid ID, skipping:', draftObject);
+        setDrafts([]);
+      }
 
       // FUTURE: When backend supports multiple drafts → just change this line to:
       // setDrafts(prev => [...prev, draftObject]);
@@ -254,6 +262,7 @@ export default function StartupDashboard({ openAddMethodModal }) {
   };
 
   const handleDeleteDraftClick = (draftId, draftName) => {
+    console.log('Attempting to delete draft with ID:', draftId, 'Name:', draftName);
     setDeleteDraftModal({
       isOpen: true,
       draftId: draftId,
@@ -1609,15 +1618,15 @@ const handleVerifyNow = (id, email) => {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gradient-to-r from-indigo-600 to-blue-600">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Startup Name</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Industry</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Founded Date</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Phone Number</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
+                <thead className=" bg-gradient-to-r from-indigo-600 to-blue-600">
+                  <tr className="">
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Startup Name</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Industry</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Founded Date</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Phone Number</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
