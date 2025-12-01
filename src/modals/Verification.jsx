@@ -1,9 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 
 export default function Verification({ setVerificationModal, setSelectedTab, startupId, contactEmail, resetForm }) {
   const [verificationCode, setVerificationCode] = useState("");
   const [error, setError] = useState("");
+  const [resendTimer, setResendTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => {
+        setResendTimer(resendTimer - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setCanResend(true);
+    }
+  }, [resendTimer]);
 
   const handleVerify = async () => {
     if (!verificationCode) {
@@ -58,6 +71,8 @@ export default function Verification({ setVerificationModal, setSelectedTab, sta
 
       if (response.ok) {
         toast.success("Verification code sent to your email!");
+        setResendTimer(60);
+        setCanResend(false);
       } else {
         const errorData = await response.json();
         toast.error(`Failed to send code: ${errorData.error || "Try again"}`);
@@ -80,7 +95,7 @@ export default function Verification({ setVerificationModal, setSelectedTab, sta
       <div className="bg-white p-6 rounded-md shadow-md w-1/3">
         <h2 className="text-xl font-semibold mb-4">Verify Your Email</h2>
         <p className="text-sm text-gray-600 mb-4">
-          A verification code has been sent to {contactEmail}. Please enter the code below.
+          A verification code has been sent to <span className="font-semibold text-gray-800">{contactEmail}</span>. Please enter the code below.
         </p>
         <div className="mb-4">
           <label className="block mb-1 text-sm font-medium">Verification Code</label>
@@ -89,28 +104,45 @@ export default function Verification({ setVerificationModal, setSelectedTab, sta
             value={verificationCode}
             onChange={(e) => setVerificationCode(e.target.value)}
             placeholder="Enter code"
-            className="w-full border border-gray-300 rounded-md px-4 py-2"
+            className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
           {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
         </div>
+        
+        {/* Resend Code Section */}
+        <div className="mb-4 flex items-center justify-between bg-gray-50 p-3 rounded-md">
+          <span className="text-sm text-gray-600">
+            {!canResend ? (
+              <>Didn't receive the code? Resend in <span className="font-semibold text-blue-600">{resendTimer}s</span></>
+            ) : (
+              <>Didn't receive the code?</>
+            )}
+          </span>
+          <button
+            type="button"
+            className={`text-sm font-medium px-3 py-1 rounded-md transition-all duration-200 ${
+              canResend
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+            onClick={handleSendCode}
+            disabled={!canResend}
+          >
+            Resend Code
+          </button>
+        </div>
+
         <div className="flex justify-end gap-4">
           <button
             type="button"
-            className="bg-gray-300 px-4 py-2 rounded-md"
+            className="bg-gray-300 px-4 py-2 rounded-md hover:bg-gray-400 transition-colors"
             onClick={handleVerifyLater}
           >
             Verify Later
           </button>
           <button
             type="button"
-            className="bg-[#1D3557] text-white px-4 py-2 rounded-md mr-2"
-            onClick={handleSendCode}
-          >
-            Send Code
-          </button>
-          <button
-            type="button"
-            className="bg-[#1D3557] text-white px-4 py-2 rounded-md"
+            className="bg-[#1D3557] text-white px-4 py-2 rounded-md hover:bg-[#16324f] transition-colors"
             onClick={handleVerify}
           >
             Verify

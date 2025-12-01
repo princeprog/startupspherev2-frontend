@@ -9,6 +9,7 @@ export default function Signup({ closeModal, openLogin }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -17,6 +18,12 @@ export default function Signup({ closeModal, openLogin }) {
     // Validate passwords match
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      return;
+    }
+
+    // Validate Terms and Conditions acceptance
+    if (!acceptedTerms) {
+      setError("You must accept the Terms and Conditions to create an account");
       return;
     }
 
@@ -288,6 +295,37 @@ export default function Signup({ closeModal, openLogin }) {
               </div>
             </div>
 
+            {/* Terms and Conditions Checkbox */}
+            <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <input
+                id="terms"
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
+              />
+              <label htmlFor="terms" className="text-sm text-gray-700 leading-relaxed cursor-pointer select-none">
+                I agree to the{" "}
+                <a
+                  href="/terms-and-conditions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  Terms and Conditions
+                </a>
+                {" "}and{" "}
+                <a
+                  href="/privacy-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  Privacy Policy
+                </a>
+              </label>
+            </div>
+
             {/* Error message */}
             {error && (
               <motion.div 
@@ -319,7 +357,7 @@ export default function Signup({ closeModal, openLogin }) {
 
             <button
               type="submit"
-              disabled={loading || (confirmPassword && password !== confirmPassword)}
+              disabled={loading || (confirmPassword && password !== confirmPassword) || !acceptedTerms}
               className="w-full py-2.5 sm:py-3 px-4 cursor-pointer text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-medium rounded-lg transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm border-0 flex items-center justify-center mt-3 text-sm sm:text-base"
             >
               {loading ? (
