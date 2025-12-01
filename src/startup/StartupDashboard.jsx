@@ -1241,236 +1241,298 @@ const handleVerifyNow = (id, email) => {
 
 
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:p-8 xl:p-10 bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/40 text-gray-900">
-      {/* Header Section with Back Button */}
-      <div className="max-w-7xl mx-auto">
-        <button
-          onClick={() => navigate("/")}
-          className="group inline-flex items-center gap-2 px-4 py-2.5 mb-8 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-300 hover:text-indigo-700 transition-all duration-200 ease-in-out"
-        >
-          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-          <span>Back to Home</span>
-        </button>
-
-        {error && (
-          <div className="max-w-7xl mx-auto mb-6 bg-red-50 border border-red-200 rounded-2xl shadow-sm overflow-hidden animate-fadeIn">
-            <div className="flex items-start gap-4 p-4">
-              <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="h-5 w-5 text-red-600"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30">
+      {/* Sticky Modern Header */}
+      <div className="sticky top-0 z-40 backdrop-blur-xl bg-white/80 border-b border-gray-200/50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-6">
+              <button
+                onClick={() => navigate("/")}
+                className="group inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white/60 hover:bg-white border border-gray-200/60 rounded-xl shadow-sm hover:shadow-md hover:border-indigo-300 hover:text-indigo-700 transition-all duration-300 ease-out backdrop-blur-sm"
+              >
+                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1 duration-300" />
+                <span className="hidden sm:inline">Back to Home</span>
+                <span className="sm:hidden">Back</span>
+              </button>
+              <div>
+                <h1 className="text-2xl sm:text-3xl text-gray-900 font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-blue-900 bg-clip-text">
+                  Startup Dashboard
+                </h1>
+                <p className="text-sm text-gray-600 mt-0.5 hidden sm:block">Manage and monitor your startup portfolio</p>
               </div>
-              <div className="flex-1 pt-0.5">
-                <p className="font-semibold text-red-900 mb-1">Error</p>
-                <p className="text-sm text-red-700">{error}</p>
+            </div>
+            <button
+              onClick={openAddMethodModal}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">Add Startup</span>
+              <span className="sm:hidden">Add</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10">
+
+        {/* Enhanced Alert Messages */}
+        {error && (
+          <div className="mb-6 animate-fadeIn">
+            <div className="bg-gradient-to-r from-red-50 to-rose-50 border border-red-200/60 rounded-2xl shadow-lg shadow-red-500/10 overflow-hidden backdrop-blur-sm">
+              <div className="flex items-start gap-4 p-5">
+                <div className="flex-shrink-0 w-11 h-11 bg-gradient-to-br from-red-100 to-red-200 rounded-xl flex items-center justify-center shadow-inner">
+                  <svg
+                    className="h-6 w-6 text-red-600"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <div className="flex-1 pt-0.5">
+                  <p className="font-bold text-red-900 mb-1.5 text-base">Error Occurred</p>
+                  <p className="text-sm text-red-700 leading-relaxed">{error}</p>
+                </div>
+                <button 
+                  onClick={() => setError(null)}
+                  className="text-red-400 hover:text-red-600 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
             </div>
           </div>
         )}
 
         {actionSuccess && (
-          <div className="max-w-7xl mx-auto mb-6 bg-green-50 border border-green-200 rounded-2xl shadow-sm overflow-hidden animate-fadeIn">
-            <div className="flex items-start gap-4 p-4">
-              <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                <svg
-                  className="h-5 w-5 text-green-600"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+          <div className="mb-6 animate-fadeIn">
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200/60 rounded-2xl shadow-lg shadow-green-500/10 overflow-hidden backdrop-blur-sm">
+              <div className="flex items-start gap-4 p-5">
+                <div className="flex-shrink-0 w-11 h-11 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center shadow-inner">
+                  <svg
+                    className="h-6 w-6 text-green-600"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+                <div className="flex-1 pt-0.5">
+                  <p className="font-bold text-green-900 mb-1.5 text-base">Success!</p>
+                  <p className="text-sm text-green-700 leading-relaxed">{actionSuccess}</p>
+                </div>
+                <button 
+                  onClick={() => setActionSuccess(null)}
+                  className="text-green-400 hover:text-green-600 transition-colors"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </div>
-              <div className="flex-1 pt-0.5">
-                <p className="font-semibold text-green-900 mb-1">Success</p>
-                <p className="text-sm text-green-700">{actionSuccess}</p>
+                  <X className="h-5 w-5" />
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Search and Filter Section */}
-        <div className="max-w-7xl mx-auto mb-8">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              {/* Search Input */}
-              <div className="relative flex-1 max-w-md">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search startups by name, industry, or location..."
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
+        {/* Filter Section */}
+        <div className="mb-8">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-200/60 p-6 lg:p-7 hover:shadow-xl transition-shadow duration-300">
+            <div className="flex flex-wrap gap-2.5 justify-center">
+              {["All", "Likes", "Bookmarks", "Views"].map((filter) => (
+                <button
+                  key={filter}
+                  className={`px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                    activeFilter === filter
+                      ? "bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg shadow-indigo-500/40 hover:shadow-xl hover:shadow-indigo-500/50"
+                      : "bg-gray-100/80 text-gray-700 hover:bg-gray-200 border border-gray-200/60 hover:border-gray-300 shadow-sm hover:shadow-md"
+                  }`}
+                  onClick={() => handleFilterClick(filter)}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
-              {/* Filter Buttons */}
-              <div className="flex flex-wrap gap-2">
-                {["All", "Likes", "Bookmarks", "Views"].map((filter) => (
-                  <button
-                    key={filter}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      activeFilter === filter
-                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/30 hover:bg-indigo-700"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200"
-                    }`}
-                    onClick={() => handleFilterClick(filter)}
-                  >
-                    {filter}
-                  </button>
-                ))}
+        {/* Premium Metrics Cards with Glassmorphism */}
+        <div className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6">
+            {/* Views Card - Enhanced */}
+            <div className="group relative bg-gradient-to-br from-amber-50/90 via-orange-50/80 to-amber-100/70 backdrop-blur-sm rounded-2xl shadow-lg shadow-amber-500/20 border border-amber-200/60 p-6 lg:p-7 hover:shadow-2xl hover:shadow-amber-500/30 transition-all duration-500 transform hover:-translate-y-1 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-400/10 to-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="w-14 h-14 bg-gradient-to-br from-amber-100 to-amber-200 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/30 transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                    <FaEye className="h-7 w-7 text-amber-600" />
+                  </div>
+                  <span className="px-3.5 py-1.5 bg-white/80 backdrop-blur-sm text-amber-700 text-xs font-bold rounded-full shadow-sm border border-amber-200/60">TOTAL</span>
+                </div>
+                <h3 className="text-sm font-semibold text-amber-900/80 mb-2 uppercase tracking-wide">Total Views</h3>
+                <p className="text-4xl font-bold bg-gradient-to-r from-amber-700 to-orange-600 bg-clip-text text-orange-500">
+                  {loading ? (
+                    <span className="inline-block w-28 h-10 bg-amber-200/60 rounded-lg animate-pulse"></span>
+                  ) : (
+                    metrics.views.toLocaleString()
+                  )}
+                </p>
+                <div className="mt-3 flex items-center gap-2 text-xs text-amber-700/80">
+                  <span className="inline-block w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+                  <span>Live tracking</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bookmarks Card - Enhanced */}
+            <div className="group relative bg-gradient-to-br from-emerald-50/90 via-green-50/80 to-emerald-100/70 backdrop-blur-sm rounded-2xl shadow-lg shadow-emerald-500/20 border border-emerald-200/60 p-6 lg:p-7 hover:shadow-2xl hover:shadow-emerald-500/30 transition-all duration-500 transform hover:-translate-y-1 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/10 to-green-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="w-14 h-14 bg-gradient-to-br from-emerald-100 to-emerald-200 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30 transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                    <FaBookBookmark className="h-7 w-7 text-emerald-600" />
+                  </div>
+                  <span className="px-3.5 py-1.5 bg-white/80 backdrop-blur-sm text-emerald-700 text-xs font-bold rounded-full shadow-sm border border-emerald-200/60">SAVED</span>
+                </div>
+                <h3 className="text-sm font-semibold text-emerald-900/80 mb-2 uppercase tracking-wide">Bookmarks</h3>
+                <p className="text-4xl font-bold bg-gradient-to-r from-emerald-700 to-green-600 bg-clip-text text-transparent">
+                  {loading ? (
+                    <span className="inline-block w-28 h-10 bg-emerald-200/60 rounded-lg animate-pulse"></span>
+                  ) : (
+                    metrics.bookmarks.toLocaleString()
+                  )}
+                </p>
+                <div className="mt-3 flex items-center gap-2 text-xs text-emerald-700/80">
+                  <span className="inline-block w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                  <span>User favorites</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Likes Card - Enhanced */}
+            <div className="group relative bg-gradient-to-br from-blue-50/90 via-indigo-50/80 to-blue-100/70 backdrop-blur-sm rounded-2xl shadow-lg shadow-blue-500/20 border border-blue-200/60 p-6 lg:p-7 hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-500 transform hover:-translate-y-1 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 to-indigo-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between mb-5">
+                  <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30 transform group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                    <BiLike className="h-7 w-7 text-blue-600" />
+                  </div>
+                  <span className="px-3.5 py-1.5 bg-white/80 backdrop-blur-sm text-blue-700 text-xs font-bold rounded-full shadow-sm border border-blue-200/60">REACTIONS</span>
+                </div>
+                <h3 className="text-sm font-semibold text-blue-900/80 mb-2 uppercase tracking-wide">Total Likes</h3>
+                <p className="text-4xl font-bold bg-gradient-to-r from-blue-700 to-indigo-600 bg-clip-text text-blue-500">
+                  {loading ? (
+                    <span className="inline-block w-28 h-10 bg-blue-200/60 rounded-lg animate-pulse"></span>
+                  ) : (
+                    metrics.likes.toLocaleString()
+                  )}
+                </p>
+                <div className="mt-3 flex items-center gap-2 text-xs text-blue-700/80">
+                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                  <span>Community engagement</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Metrics Cards */}
-        <div className="max-w-7xl mx-auto mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Views Card */}
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl shadow-sm border border-amber-100 p-6 hover:shadow-lg transition-shadow duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                  <FaEye className="h-6 w-6 text-amber-600" />
-                </div>
-                <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">Total</span>
-              </div>
-              <h3 className="text-sm font-medium text-amber-900 mb-1">Total Views</h3>
-              <p className="text-3xl font-bold text-amber-700">
-                {loading ? (
-                  <span className="inline-block w-20 h-8 bg-amber-200 rounded animate-pulse"></span>
-                ) : (
-                  metrics.views.toLocaleString()
-                )}
-              </p>
-            </div>
-
-            {/* Bookmarks Card */}
-            <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl shadow-sm border border-emerald-100 p-6 hover:shadow-lg transition-shadow duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                  <FaBookBookmark className="h-6 w-6 text-emerald-600" />
-                </div>
-                <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-semibold rounded-full">Saved</span>
-              </div>
-              <h3 className="text-sm font-medium text-emerald-900 mb-1">Bookmarks</h3>
-              <p className="text-3xl font-bold text-emerald-700">
-                {loading ? (
-                  <span className="inline-block w-20 h-8 bg-emerald-200 rounded animate-pulse"></span>
-                ) : (
-                  metrics.bookmarks.toLocaleString()
-                )}
-              </p>
-            </div>
-
-            {/* Likes Card */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl shadow-sm border border-blue-100 p-6 hover:shadow-lg transition-shadow duration-300">
-              <div className="flex items-center justify-between mb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <BiLike className="h-6 w-6 text-blue-600" />
-                </div>
-                <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">Reactions</span>
-              </div>
-              <h3 className="text-sm font-medium text-blue-900 mb-1">Total Likes</h3>
-              <p className="text-3xl font-bold text-blue-700">
-                {loading ? (
-                  <span className="inline-block w-20 h-8 bg-blue-200 rounded animate-pulse"></span>
-                ) : (
-                  metrics.likes.toLocaleString()
-                )}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Charts Section */}
-        <div className="max-w-7xl mx-auto mb-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Donut Chart Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">
+        {/* Enhanced Charts Section */}
+        <div className="mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-7">
+            {/* Donut Chart Card - Redesigned */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-200/60 p-6 lg:p-7 hover:shadow-2xl transition-all duration-500">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5 mb-7">
+                <div className="flex-1">
+                  <h3 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-blue-900 bg-clip-text text-transparent mb-2">
                     Engagement Distribution
                   </h3>
-                  <p className="text-sm text-gray-500">{startupIds.length} Total Startups</p>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span className="inline-flex items-center justify-center w-6 h-6 bg-indigo-100 rounded-full">
+                      <span className="text-xs font-bold text-indigo-600">{startupIds.length}</span>
+                    </span>
+                    <span className="font-medium">Total Startups</span>
+                  </div>
                 </div>
-                <div className="w-full md:w-64">
+                <div className="w-full sm:w-72">
                   <label
                     htmlFor="startup-select"
-                    className="block mb-2 text-xs font-medium text-gray-700 uppercase tracking-wide"
+                    className="block mb-2.5 text-xs font-bold text-gray-700 uppercase tracking-wider"
                   >
                     Select Startup
                   </label>
-                  <select
-                    id="startup-select"
-                    value={selectedStartup}
-                    onChange={handleChange}
-                    className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={loading}
-                  >
-                    <option value="all">All Startups</option>
-                    {startups.map((st) => (
-                      <option value={st.id} key={st.id}>
-                        {st.companyName}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      id="startup-select"
+                      value={selectedStartup}
+                      onChange={handleChange}
+                      className="w-full appearance-none bg-gray-50/80 backdrop-blur-sm border border-gray-200/80 text-gray-900 text-sm font-medium rounded-xl px-4 py-3 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:bg-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md cursor-pointer"
+                      disabled={loading}
+                    >
+                      <option value="all">All Startups</option>
+                      {startups.map((st) => (
+                        <option value={st.id} key={st.id}>
+                          {st.companyName}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {loading ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="relative w-16 h-16">
-                    <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-200 rounded-full"></div>
-                    <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+                <div className="flex justify-center items-center h-80">
+                  <div className="relative w-20 h-20">
+                    <div className="absolute inset-0 border-4 border-indigo-200/40 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-transparent border-t-indigo-600 rounded-full animate-spin"></div>
+                    <div className="absolute inset-2 border-4 border-transparent border-t-blue-500 rounded-full animate-spin" style={{animationDirection: 'reverse', animationDuration: '0.8s'}}></div>
                   </div>
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="text-center p-4 bg-amber-50 rounded-xl">
-                      <p className="text-xs font-medium text-amber-700 mb-2">Views</p>
-                      <p className="text-2xl font-bold text-amber-900 flex items-center justify-center gap-2">
-                        {metrics.views.toLocaleString()} <FaEye className="text-amber-600" />
+                  <div className="grid grid-cols-3 gap-4 mb-8">
+                    <div className="group text-center p-5 bg-gradient-to-br from-amber-50/80 to-amber-100/60 backdrop-blur-sm rounded-2xl border border-amber-200/40 hover:shadow-lg hover:shadow-amber-500/20 transition-all duration-300 transform hover:-translate-y-1">
+                      <p className="text-xs font-bold text-amber-700/80 mb-3 uppercase tracking-wider">Views</p>
+                      <p className="text-3xl font-extrabold text-amber-900 flex items-center justify-center gap-2.5">
+                        {metrics.views.toLocaleString()} 
+                        <FaEye className="text-amber-600 group-hover:scale-125 transition-transform duration-300" />
                       </p>
                     </div>
-                    <div className="text-center p-4 bg-blue-50 rounded-xl">
-                      <p className="text-xs font-medium text-blue-700 mb-2">Likes</p>
-                      <p className="text-2xl font-bold text-blue-900 flex items-center justify-center gap-2">
-                        {metrics.likes.toLocaleString()} <BiLike className="text-blue-600" />
+                    <div className="group text-center p-5 bg-gradient-to-br from-blue-50/80 to-blue-100/60 backdrop-blur-sm rounded-2xl border border-blue-200/40 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 transform hover:-translate-y-1">
+                      <p className="text-xs font-bold text-blue-700/80 mb-3 uppercase tracking-wider">Likes</p>
+                      <p className="text-3xl font-extrabold text-blue-900 flex items-center justify-center gap-2.5">
+                        {metrics.likes.toLocaleString()} 
+                        <BiLike className="text-blue-600 group-hover:scale-125 transition-transform duration-300" />
                       </p>
                     </div>
-                    <div className="text-center p-4 bg-emerald-50 rounded-xl">
-                      <p className="text-xs font-medium text-emerald-700 mb-2">Bookmarks</p>
-                      <p className="text-2xl font-bold text-emerald-900 flex items-center justify-center gap-2">
-                        {metrics.bookmarks.toLocaleString()} <FaBookBookmark className="text-emerald-600" />
+                    <div className="group text-center p-5 bg-gradient-to-br from-emerald-50/80 to-emerald-100/60 backdrop-blur-sm rounded-2xl border border-emerald-200/40 hover:shadow-lg hover:shadow-emerald-500/20 transition-all duration-300 transform hover:-translate-y-1">
+                      <p className="text-xs font-bold text-emerald-700/80 mb-3 uppercase tracking-wider">Bookmarks</p>
+                      <p className="text-3xl font-extrabold text-emerald-900 flex items-center justify-center gap-2.5">
+                        {metrics.bookmarks.toLocaleString()} 
+                        <FaBookBookmark className="text-emerald-600 group-hover:scale-125 transition-transform duration-300" />
                       </p>
                     </div>
                   </div>
-                  <div className="w-48 h-48 mx-auto p-2 border-4 border-indigo-500 rounded-full flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-50">
+                  <div className="relative w-56 h-56 mx-auto p-3 border-4 border-gradient-to-r from-indigo-500 via-purple-500 to-blue-500 rounded-full flex items-center justify-center bg-gradient-to-br from-indigo-50/80 via-purple-50/60 to-blue-50/80 backdrop-blur-sm shadow-2xl shadow-indigo-500/30">
                     <Doughnut
                       data={donutData}
                       options={{
@@ -1522,13 +1584,13 @@ const handleVerifyNow = (id, email) => {
               )}
             </div>
 
-            {/* Line Chart Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-              <div className="mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-1">
+            {/* Line Chart Card - Enhanced */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-200/60 p-6 lg:p-7 hover:shadow-2xl transition-all duration-500">
+              <div className="mb-7">
+                <h2 className="text-xl lg:text-2xl font-bold bg-gradient-to-r from-gray-900 via-indigo-900 to-blue-900 bg-clip-text text-transparent mb-2">
                   Engagement Over Time
                 </h2>
-                <p className="text-sm text-gray-500">Monthly trends for views, likes, and bookmarks</p>
+                <p className="text-sm text-gray-600 font-medium">Monthly trends for views, likes, and bookmarks</p>
               </div>
               {loading ? (
                 <div className="flex justify-center items-center h-64">
@@ -1613,46 +1675,57 @@ const handleVerifyNow = (id, email) => {
           </div>
         </div>
 
-        {/* Startups Table */}
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        {/* Professional Startups Table */}
+        <div className="mb-8">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg shadow-gray-200/50 border border-gray-200/60 overflow-hidden hover:shadow-2xl transition-all duration-500">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className=" bg-gradient-to-r from-indigo-600 to-blue-600">
-                  <tr className="">
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Startup Name</th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Industry</th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Founded Date</th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Phone Number</th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
+                <thead>
+                  <tr className="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700">
+                    <th className="px-6 py-5 text-left text-xs font-bold text-white uppercase tracking-wider">Startup Name</th>
+                    <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">Industry</th>
+                    <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">Founded Date</th>
+                    <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">Phone Number</th>
+                    <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-5 text-center text-xs font-bold text-white uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-gray-100">
                   {loading ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center">
+                      <td colSpan={7} className="px-6 py-16 text-center bg-gradient-to-b from-gray-50/50 to-white">
                         <div className="flex flex-col items-center justify-center">
-                          <div className="relative w-12 h-12 mb-4">
-                            <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-200 rounded-full"></div>
-                            <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+                          <div className="relative w-16 h-16 mb-5">
+                            <div className="absolute inset-0 border-4 border-indigo-200/40 rounded-full"></div>
+                            <div className="absolute inset-0 border-4 border-transparent border-t-indigo-600 rounded-full animate-spin"></div>
+                            <div className="absolute inset-2 border-4 border-transparent border-t-blue-500 rounded-full animate-spin" style={{animationDirection: 'reverse', animationDuration: '0.8s'}}></div>
                           </div>
-                          <p className="text-gray-500 font-medium">Loading startups...</p>
+                          <p className="text-gray-600 font-semibold text-base">Loading startups...</p>
+                          <p className="text-gray-400 text-sm mt-2">Please wait while we fetch your data</p>
                         </div>
                       </td>
                     </tr>
                   ) : displayList.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center">
+                      <td colSpan={7} className="px-6 py-16 text-center bg-gradient-to-b from-gray-50/50 to-white">
                         <div className="flex flex-col items-center justify-center">
-                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mb-5 shadow-inner">
+                            <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                             </svg>
                           </div>
-                          <p className="text-gray-500 font-medium mb-2">No startups or drafts found</p>
-                          <p className="text-gray-400 text-sm">Start by adding your first startup</p>
+                          <p className="text-gray-600 font-bold text-lg mb-2">No startups or drafts found</p>
+                          <p className="text-gray-400 text-sm mb-5">Start by adding your first startup to the platform</p>
+                          <button
+                            onClick={openAddMethodModal}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-indigo-500/30 hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Your First Startup
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1813,23 +1886,6 @@ const handleVerifyNow = (id, email) => {
                   )}
                 </tbody>
               </table>
-            </div>
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  Showing <span className="font-medium text-gray-900">{displayList.length}</span> {displayList.length === 1 ? 'startup' : 'startups'}
-                </p>
-                <button
-                  onClick={openAddMethodModal}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white text-sm font-semibold rounded-xl hover:bg-indigo-700 shadow-md shadow-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={loading}
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Add Startup
-                </button>
-              </div>
             </div>
           </div>
         </div>

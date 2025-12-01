@@ -12,6 +12,8 @@ import Notification from "./Notifications/Notification";
 import StartupDetail from "./startup/StartupDetail";
 import AddMethodModal from "./startup/AddMethodModal"; 
 import CsvUploadPage from "./startup/CsvUploadPage";
+import TermsAndConditions from "./pages/TermsAndConditions";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 
 function App() {
@@ -82,7 +84,9 @@ function App() {
           </Route>
         </Route>
         <Route path="/add-startup" element={<Startupadd />} />
-        <Route path="/add-startup-csv" element={<CsvUploadPage />} /> 
+        <Route path="/add-startup-csv" element={<CsvUploadPage />} />
+        <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
       </Routes>
       <AddMethodModal 
         isOpen={isAddMethodModalOpen} 

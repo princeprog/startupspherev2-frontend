@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Login from "../modals/Login";
 import Signup from "../modals/Signup";
 import { CiLocationOn } from "react-icons/ci";
@@ -100,6 +100,7 @@ const StakeholderCard = memo(({ stakeholder, onClick }) => {
 
 export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStakeholderRef, handleStartupClickRef }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [openLogin, setOpenLogin] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -3269,8 +3270,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
       )}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <Outlet />
+      <div className="flex-1 overflow-auto flex flex-col">
+        <div className="flex-1">
+          <Outlet />
+        </div>
       </div>
 
       {/* Modals */}
