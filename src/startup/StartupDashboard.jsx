@@ -1563,7 +1563,7 @@ const handleVerifyNow = (id, email) => {
                 <h2 className="text-lg font-bold text-gray-900 mb-1">
                   Engagement Over Time
                 </h2>
-                <p className="text-sm text-gray-500">Monthly trends for views, likes, and bookmarks</p>
+                <p className="text-sm text-gray-600 font-medium">Monthly trends for views, likes, and bookmarks</p>
               </div>
               {loading ? (
                 <div className="flex justify-center items-center h-64">
