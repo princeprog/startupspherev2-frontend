@@ -66,7 +66,7 @@ export default function Signup({ closeModal, openLogin }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="w-full max-h-[90vh] my-auto max-w-sm sm:max-w-md mx-auto overflow-hidden bg-white rounded-xl shadow-[0_15px_50px_-12px_rgba(0,0,0,0.25)] border border-gray-100"
+        className="w-full max-h-[90vh] my-auto max-w-sm sm:max-w-md mx-auto bg-white rounded-xl shadow-[0_15px_50px_-12px_rgba(0,0,0,0.25)] border border-gray-100 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Subtle top accent line */}
@@ -117,8 +117,8 @@ export default function Signup({ closeModal, openLogin }) {
         </div>
 
         {/* Registration Form */}
-        <div className="px-5 sm:px-8 py-5 sm:py-7 bg-white overflow-y-auto">
-          <form onSubmit={handleSignup} className="space-y-4 sm:space-y-5">
+        <div className="px-5 sm:px-8 py-5 sm:py-7 bg-white overflow-y-auto flex-1">
+          <form onSubmit={handleSignup} className="space-y-4 sm:space-y-5 pb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="firstname" className="block text-sm font-medium text-gray-700 mb-1.5 ml-0.5">
@@ -303,9 +303,11 @@ export default function Signup({ closeModal, openLogin }) {
                 checked={acceptedTerms}
                 onChange={(e) => setAcceptedTerms(e.target.checked)}
                 className="mt-1 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
+                required
               />
               <label htmlFor="terms" className="text-sm text-gray-700 leading-relaxed cursor-pointer select-none">
                 I agree to the{" "}
+                <span className="text-red-500">*</span>
                 <a
                   href="/terms-and-conditions"
                   target="_blank"
