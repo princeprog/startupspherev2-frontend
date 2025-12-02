@@ -436,101 +436,136 @@ export default function Startupadd() {
     return map;
   };
 
-  const fetchDraftData = async (id) => {
-    if (!id || id === 'undefined' || id === 'null') {
-      console.error("Invalid draft ID:", id);
-      toast.error("Invalid draft ID. Redirecting to dashboard...");
-      setTimeout(() => {
-        navigate("/startup-dashboard");
-      }, 2000);
-      return;
+const fetchDraftData = async (id) => {
+  if (!id || id === "undefined" || id === "null") {
+    toast.error("Invalid draft ID");
+    navigate("/startup-dashboard");
+    return;
+  }
+
+  setIsLoadingDraft(true);
+
+  try {
+    const apiUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_REACT_APP_API_URL;
+    const response = await fetch(`${apiUrl}/startups/draft/${id}`, {
+      method: "GET",
+      credentials: "include",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to fetch draft");
     }
 
-    setIsLoadingDraft(true);
-    try {
-      const apiUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_REACT_APP_API_URL;
-      console.log("Fetching draft with ID:", id, "from:", `${apiUrl}/startups/draft/${id}`);
-      
-      const response = await fetch(
-        `${apiUrl}/startups/draft/${id}`,
-        {
-          method: "GET",
-          credentials: "include",
-          headers: {
-            "Accept": "application/json",
-          },
+    const data = await response.json();
+
+    // === Restore all form fields first ===
+    setFormData((prev) => ({
+      ...prev,
+      companyName: data.companyName || "",
+      companyDescription: data.companyDescription || "",
+      foundedDate: data.foundedDate ? new Date(data.foundedDate) : null,
+      typeOfCompany: data.typeOfCompany || "",
+      numberOfEmployees: data.numberOfEmployees || "",
+      industry: data.industry || "",
+      phoneNumber: data.phoneNumber || "",
+      contactEmail: data.contactEmail || "",
+      website: data.website || "",
+      streetAddress: data.streetAddress || "",
+      region: data.region || "",
+      province: data.province || "",
+      city: data.city || "",
+      barangay: data.barangay || "",
+      postalCode: data.postalCode || "",
+      facebook: data.facebook || "",
+      twitter: data.twitter || "",
+      instagram: data.instagram || "",
+      linkedIn: data.linkedIn || "",
+      locationLat: data.locationLat || null,
+      locationLng: data.locationLng || null,
+      locationName: data.locationName || "",
+      fundingStage: data.fundingStage || "",
+      operatingHours: data.operatingHours || "",
+      businessActivity: data.businessActivity || "",
+      isGovernmentRegistered: data.isGovernmentRegistered || "",
+      registrationAgency: data.registrationAgency || "",
+      registrationNumber: data.registrationNumber || "",
+      registrationDate: data.registrationDate ? new Date(data.registrationDate) : null,
+      otherRegistrationAgency: data.otherRegistrationAgency || "",
+      businessLicenseNumber: data.businessLicenseNumber || "",
+      tin: data.tin || "",
+      registrationCertificate: null,
+      isDraft: true,
+    }));
+
+    setDraftId(data.id || data._id || id);
+    setStartupId(data.id || data._id || id);
+    toast.success("Draft loaded successfully!");
+
+    // === NEW: Smart address restoration that waits for regions to load ===
+    const restoreAddress = async () => {
+      if (!data.region) return;
+
+      // 1. Fetch regions if not already loaded
+      let currentRegions = regions;
+      if (currentRegions.length === 0) {
+        const res = await fetch("https://psgc.gitlab.io/api/regions/");
+        currentRegions = await res.json();
+        setRegions(currentRegions);
+      }
+
+      const regionObj = currentRegions.find(r => r.name === data.region);
+      if (!regionObj) return;
+
+      setSelectedRegion(regionObj);
+
+      // 2. Fetch provinces
+      const provRes = await fetch(`https://psgc.gitlab.io/api/regions/${regionObj.code}/provinces/`);
+      const provincesList = await provRes.json();
+      setProvinces(provincesList);
+
+      if (data.province) {
+        const provinceObj = provincesList.find(p => p.name === data.province);
+        if (provinceObj) {
+          setSelectedProvince(provinceObj);
+
+          // 3. Fetch cities
+          const cityRes = await fetch(`https://psgc.gitlab.io/api/provinces/${provinceObj.code}/cities-municipalities/`);
+          const citiesList = await cityRes.json();
+          setCities(citiesList);
+
+          if (data.city) {
+            const cityObj = citiesList.find(c => c.name === data.city);
+            if (cityObj) {
+              setSelectedCity(cityObj);
+
+              // 4. Fetch barangays
+              const brgyRes = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityObj.code}/barangays/`);
+              const barangaysList = await brgyRes.json();
+              setBarangays(barangaysList);
+
+              if (data.barangay) {
+                const barangayObj = barangaysList.find(b => b.name === data.barangay);
+                if (barangayObj) setSelectedBarangay(barangayObj);
+              }
+            }
+          }
         }
-      );
-
-      // Check if response is JSON
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const errorText = await response.text();
-        console.error("Response is not JSON:", errorText);
-        throw new Error("Server returned an invalid response. Please check if the API endpoint exists.");
       }
+    };
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to fetch draft data");
-      }
+    // Run restoration (async, no race condition)
+    restoreAddress();
 
-      const data = await response.json();
-      
-      // Populate form with draft data
-      setFormData({
-        companyName: data.companyName || "",
-        companyDescription: data.companyDescription || "",
-        foundedDate: data.foundedDate ? new Date(data.foundedDate) : null,
-        typeOfCompany: data.typeOfCompany || "",
-        numberOfEmployees: data.numberOfEmployees || "",
-        industry: data.industry || "",
-        phoneNumber: data.phoneNumber || "",
-        contactEmail: data.contactEmail || "",
-        website: data.website || "",
-        streetAddress: data.streetAddress || "",
-        city: data.city || "",
-        province: data.province || "",
-        region: data.region || "",
-        barangay: data.barangay || "",
-        postalCode: data.postalCode || "",
-        facebook: data.facebook || "",
-        twitter: data.twitter || "",
-        instagram: data.instagram || "",
-        linkedIn: data.linkedIn || "",
-        locationLat: data.locationLat || null,
-        locationLng: data.locationLng || null,
-        locationName: data.locationName || "",
-        fundingStage: data.fundingStage || "",
-        operatingHours: data.operatingHours || "",
-        businessActivity: data.businessActivity || "",
-        isGovernmentRegistered: data.isGovernmentRegistered || "",
-        registrationAgency: data.registrationAgency || "",
-        registrationNumber: data.registrationNumber || "",
-        registrationDate: data.registrationDate ? new Date(data.registrationDate) : null,
-        otherRegistrationAgency: data.otherRegistrationAgency || "",
-        businessLicenseNumber: data.businessLicenseNumber || "",
-        tin: data.tin || "",
-        registrationCertificate: null,
-        isDraft: true,
-      });
-
-      setDraftId(data.id || id);
-      setStartupId(data.id || id);
-      
-      toast.success("Draft loaded successfully! Continue where you left off.");
-    } catch (error) {
-      console.error("Error fetching draft:", error);
-      toast.error(error.message || "Failed to load draft. Please try again.");
-      
-      // Redirect back to dashboard if draft fetch fails
-      setTimeout(() => {
-        navigate("/startup-dashboard");
-      }, 2000);
-    } finally {
-      setIsLoadingDraft(false);
-    }
-  };
+  } catch (error) {
+    console.error("Error loading draft:", error);
+    toast.error(error.message || "Failed to load draft");
+    navigate("/startup-dashboard");
+  } finally {
+    setIsLoadingDraft(false);
+  }
+};
 
   useEffect(() => {
     // Only run when the map is ready AND we have saved coordinates
@@ -1852,10 +1887,13 @@ const handleSubmit = async () => {
                 className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={selectedRegion?.code || ""}
                 onChange={(e) => {
-                  const selectedRegionObj = regions.find(
-                    (r) => r.code === e.target.value
-                  );
+                  const code = e.target.value;
+                  const selectedRegionObj = regions.find((r) => r.code === code) || null;
                   setSelectedRegion(selectedRegionObj);
+                  setSelectedProvince(null);
+                  setSelectedCity(null);
+                  setSelectedBarangay(null);
+
                   setFormData((prev) => ({
                     ...prev,
                     region: selectedRegionObj?.name || "",
@@ -1881,10 +1919,12 @@ const handleSubmit = async () => {
                 className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={selectedProvince?.code || ""}
                 onChange={(e) => {
-                  const selectedProvinceObj = provinces.find(
-                    (p) => p.code === e.target.value
-                  );
+                  const code = e.target.value;
+                  const selectedProvinceObj = provinces.find((p) => p.code === code) || null;
                   setSelectedProvince(selectedProvinceObj);
+                  setSelectedCity(null);
+                  setSelectedBarangay(null);
+
                   setFormData((prev) => ({
                     ...prev,
                     province: selectedProvinceObj?.name || "",
@@ -1912,10 +1952,11 @@ const handleSubmit = async () => {
                 className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={selectedCity?.code || ""}
                 onChange={(e) => {
-                  const selectedCityObj = cities.find(
-                    (c) => c.code === e.target.value
-                  );
+                  const code = e.target.value;
+                  const selectedCityObj = cities.find((c) => c.code === code) || null;
                   setSelectedCity(selectedCityObj);
+                  setSelectedBarangay(null);
+
                   setFormData((prev) => ({
                     ...prev,
                     city: selectedCityObj?.name || "",
@@ -1940,10 +1981,10 @@ const handleSubmit = async () => {
                 className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 value={selectedBarangay?.code || ""}
                 onChange={(e) => {
-                  const selectedBarangayObj = barangays.find(
-                    (b) => b.code === e.target.value
-                  );
+                  const code = e.target.value;
+                  const selectedBarangayObj = barangays.find((b) => b.code === code) || null;
                   setSelectedBarangay(selectedBarangayObj);
+
                   setFormData((prev) => ({
                     ...prev,
                     barangay: selectedBarangayObj?.name || "",
