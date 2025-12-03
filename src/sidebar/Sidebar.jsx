@@ -284,6 +284,28 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
 
   useEffect(() => { }, []);
 
+  // Close all sidebar panels and the sidebar itself when navigating to a different page
+  useEffect(() => {
+    const wasViewingDetails = viewingStartup !== null || viewingStakeholder !== null;
+    
+    setShowSearchContainer(false);
+    setShowRecents(false);
+    setShowBookmarks(false);
+    setViewingStartup(null);
+    setViewingStakeholder(null);
+    setStartup(null);
+    setStakeholder(null);
+    setContainerMode(null);
+    setShowTooltip(false);
+    setNotificationTooltip(false);
+    
+    // If user was viewing startup/stakeholder details and navigated away, close the sidebar
+    if (wasViewingDetails) {
+      // You can add sidebar close logic here if needed
+      // For now, the panels are closed which effectively clears the view
+    }
+  }, [location.pathname]);
+
   const fetchNotifications = async () => {
     try {
       const response = await fetch(

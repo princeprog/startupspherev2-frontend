@@ -603,7 +603,27 @@ export default function StartupDetail() {
       // Continue with existing stakeholderFormData but using formatted data
       const { role, status, hasPhysicalLocation, ...stakeholderData } =
         formattedStakeholderData;
-      // ... existing code ...
+
+      if (!hasPhysicalLocation) {
+        delete stakeholderData.locationLat;
+        delete stakeholderData.locationLng;
+        delete stakeholderData.locationName;
+      }
+
+      // Update the stakeholder data
+      const stakeholderResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/stakeholders/${editingStakeholder.stakeholder.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify(stakeholderData),
+        }
+      );
+
+      const responseData = await stakeholderResponse.json();
 
       if (!stakeholderResponse.ok) {
         if (
@@ -621,7 +641,34 @@ export default function StartupDetail() {
         return;
       }
 
-      // ... rest of existing code ...
+      // Update the association (role and status)
+      const associationResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startup-stakeholders/${editingStakeholder.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            role: role,
+            status: status,
+          }),
+        }
+      );
+
+      if (!associationResponse.ok) {
+        const errorData = await associationResponse.json();
+        setFormError(errorData.message || "Error updating stakeholder association");
+        setIsSubmitting(false);
+        return;
+      }
+
+      await fetchStakeholders();
+      setShowStakeholderForm(false);
+      setEditingStakeholder(null);
+      resetStakeholderForm();
+      showNotification("Stakeholder updated successfully!", "success");
     } catch (error) {
       console.error("Error updating stakeholder:", error);
       setFormError(error.message || "An unexpected error occurred");
