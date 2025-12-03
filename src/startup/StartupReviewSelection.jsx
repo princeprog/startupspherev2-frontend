@@ -196,7 +196,7 @@ export default function EnhancedStartupReviewSection({
         ? `${import.meta.env.VITE_BACKEND_URL}/startups/submitted`
         : `${
             import.meta.env.VITE_BACKEND_URL
-          }/startups/review?${queryParams.toString()}`;
+          }/startups/review?${queryParams.toString()}`; 
 
       const response = await fetch(apiUrl, { credentials: "include" });
 
