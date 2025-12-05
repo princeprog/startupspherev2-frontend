@@ -169,6 +169,10 @@ export default function Startupadd() {
   const [verificationModal, setVerificationModal] = useState(false);
   const [error, setError] = useState("");
   const [uploadedImage, setUploadedImage] = useState(null);
+  const [draftLogoUrl, setDraftLogoUrl] = useState(null);
+  const [showLogoPreview, setShowLogoPreview] = useState(false);
+  const [draftCertificateUrl, setDraftCertificateUrl] = useState(null);
+  const [showCertificatePreview, setShowCertificatePreview] = useState(false);
   const tabs = [
     "Company Information",
     "Contact Information",
@@ -191,6 +195,11 @@ export default function Startupadd() {
   const [draftId, setDraftId] = useState(null);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isLoadingDraft, setIsLoadingDraft] = useState(false);
+  
+  // Operating hours state
+  const [openingTime, setOpeningTime] = useState("09:00");
+  const [closingTime, setClosingTime] = useState("17:00");
+  const [selectedDays, setSelectedDays] = useState(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]);
 
   const resetForm = () => {
     setFormData({
@@ -235,9 +244,76 @@ export default function Startupadd() {
         return;
       }
       setUploadedImage(file);
+      setDraftLogoUrl(null); // Clear the draft logo when new image is selected
+      setShowLogoPreview(true);
       toast.success("Image selected successfully!");
     } else {
       toast.error("No image selected.");
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setUploadedImage(null);
+    setDraftLogoUrl(null);
+    setShowLogoPreview(false);
+  };
+
+  const handleRemoveCertificate = () => {
+    setFormData(prev => ({
+      ...prev,
+      registrationCertificate: null
+    }));
+    setDraftCertificateUrl(null);
+    setShowCertificatePreview(false);
+  };
+
+  const fetchDraftLogo = async (id) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/photo`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const imageUrl = URL.createObjectURL(blob);
+        setDraftLogoUrl(imageUrl);
+        setShowLogoPreview(true);
+      } else {
+        console.log("No logo found for this draft");
+        setShowLogoPreview(false);
+      }
+    } catch (error) {
+      console.error("Error fetching draft logo:", error);
+      setShowLogoPreview(false);
+    }
+  };
+
+  const fetchDraftCertificate = async (id) => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/registration-certificate`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const fileUrl = URL.createObjectURL(blob);
+        setDraftCertificateUrl(fileUrl);
+        setShowCertificatePreview(true);
+      } else {
+        console.log("No certificate found for this draft");
+        setShowCertificatePreview(false);
+      }
+    } catch (error) {
+      console.error("Error fetching draft certificate:", error);
+      setShowCertificatePreview(false);
     }
   };
 
@@ -382,7 +458,7 @@ export default function Startupadd() {
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: "mapbox://styles/mapbox/streets-v11",
-      center: [120.9842, 14.5995],
+      center: [123.9022, 10.2926],
       zoom: 12,
     });
 
@@ -501,6 +577,13 @@ const fetchDraftData = async (id) => {
 
     setDraftId(data.id || data._id || id);
     setStartupId(data.id || data._id || id);
+    
+    // Fetch draft logo if exists
+    await fetchDraftLogo(data.id || data._id || id);
+    
+    // Fetch draft certificate if exists
+    await fetchDraftCertificate(data.id || data._id || id);
+    
     toast.success("Draft loaded successfully!");
 
     // === NEW: Smart address restoration that waits for regions to load ===
@@ -620,7 +703,7 @@ const fetchDraftData = async (id) => {
         map = new mapboxgl.Map({
           container: mapContainerRef.current,
           style: "mapbox://styles/mapbox/streets-v11",
-          center: [120.9842, 14.5995],
+          center: [123.9022, 10.2926], // Cebu City coordinates
           zoom: 12,
         });
 
@@ -834,6 +917,70 @@ const fetchDraftData = async (id) => {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Helper function to upload draft logo
+  const uploadDraftLogo = async (draftId) => {
+    try {
+      console.log("Uploading draft logo for ID:", draftId);
+      const imageFormData = new FormData();
+      imageFormData.append("photo", uploadedImage);
+      
+      const imageResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${draftId}/upload-photo`,
+        {
+          method: "PUT",
+          body: imageFormData,
+          credentials: "include",
+        }
+      );
+
+      if (!imageResponse.ok) {
+        const errorText = await imageResponse.text();
+        console.error("Failed to upload logo:", errorText);
+        toast.error("Failed to upload logo image");
+        return false;
+      }
+      
+      console.log("Logo uploaded successfully");
+      return true;
+    } catch (error) {
+      console.error("Error uploading draft logo:", error);
+      toast.error("Error uploading logo: " + error.message);
+      return false;
+    }
+  };
+
+  // Helper function to upload draft registration certificate
+  const uploadDraftCertificate = async (draftId) => {
+    try {
+      console.log("Uploading draft registration certificate for ID:", draftId);
+      const certFormData = new FormData();
+      certFormData.append("registrationCertificate", formData.registrationCertificate);
+      
+      const certResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${draftId}/upload-registration-certificate`,
+        {
+          method: "PUT",
+          body: certFormData,
+          credentials: "include",
+        }
+      );
+
+      if (!certResponse.ok) {
+        const errorText = await certResponse.text();
+        console.error("Failed to upload certificate:", errorText);
+        toast.error("Failed to upload registration certificate");
+        return false;
+      }
+      
+      console.log("Certificate uploaded successfully");
+      return true;
+    } catch (error) {
+      console.error("Error uploading draft certificate:", error);
+      toast.error("Error uploading certificate: " + error.message);
+      return false;
+    }
+  };
+
   const saveDraft = async () => {
     setIsSavingDraft(true);
     try {
@@ -911,9 +1058,22 @@ const fetchDraftData = async (id) => {
         
         const text = await response.text();
         const data = text ? JSON.parse(text) : {};
+        const savedDraftId = data._id || draftId;
+        
+        setDraftId(savedDraftId);
+        setStartupId(savedDraftId);
+        
+        // Upload logo if present
+        if (uploadedImage) {
+          await uploadDraftLogo(savedDraftId);
+        }
+        
+        // Upload registration certificate if present
+        if (formData.registrationCertificate) {
+          await uploadDraftCertificate(savedDraftId);
+        }
+        
         toast.success("Draft updated successfully!");
-        setDraftId(data._id || draftId);
-        setStartupId(data._id || draftId);
         
         // Navigate to dashboard after successful save
         setTimeout(() => {
@@ -947,9 +1107,22 @@ const fetchDraftData = async (id) => {
         
         const text = await response.text();
         const data = text ? JSON.parse(text) : {};
+        const savedDraftId = data._id;
+        
+        setDraftId(savedDraftId);
+        setStartupId(savedDraftId);
+        
+        // Upload logo if present
+        if (uploadedImage) {
+          await uploadDraftLogo(savedDraftId);
+        }
+        
+        // Upload registration certificate if present
+        if (formData.registrationCertificate) {
+          await uploadDraftCertificate(savedDraftId);
+        }
+        
         toast.success("Draft saved successfully!");
-        setDraftId(data._id);
-        setStartupId(data._id);
         
         // Navigate to dashboard after successful save
         setTimeout(() => {
@@ -1063,7 +1236,7 @@ const handleSubmit = async () => {
     // Upload registration certificate if present
     if (formData.registrationCertificate) {
         const certFormData = new FormData();
-        certFormData.append("file", formData.registrationCertificate);
+        certFormData.append("registrationCertificate", formData.registrationCertificate);
         try {
           const certResponse = await fetch(
             `${import.meta.env.VITE_BACKEND_URL}/startups/${startupId}/upload-registration-certificate`,
@@ -1702,39 +1875,188 @@ const handleSubmit = async () => {
             {/* Registration Certificate Upload */}
             {formData.isGovernmentRegistered && (
               <div className="col-span-2">
-                <label className="block mb-1 text-sm font-medium">
+                <label className="block mb-2 text-sm font-medium text-gray-700">
                   Registration Certificate <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="file"
-                  accept="application/pdf,image/*"
-                  onChange={e => {
-                    const file = e.target.files[0];
-                    setFormData(prev => ({
-                      ...prev,
-                      registrationCertificate: file || null,
-                    }));
-                  }}
-                  className="w-full border border-gray-300 rounded-md px-4 py-2"
-                />
-                {formData.registrationCertificate && (
-                  <span className="text-sm text-gray-600 mt-1 block">
-                    {formData.registrationCertificate.name}
-                  </span>
+                
+                {showCertificatePreview || formData.registrationCertificate ? (
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-center gap-4">
+                      {/* Certificate Preview */}
+                      <div className="relative">
+                        <div className="w-24 h-24 flex items-center justify-center bg-blue-50 rounded-lg border-2 border-blue-200 shadow-sm">
+                          <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-1">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      </div>
+                      
+                      {/* Certificate Actions */}
+                      <div className="flex-1 space-y-2">
+                        <p className="text-sm text-gray-600">
+                          {formData.registrationCertificate 
+                            ? formData.registrationCertificate.name 
+                            : 'Current registration certificate'}
+                        </p>
+                        <div className="flex gap-2">
+                          {draftCertificateUrl && !formData.registrationCertificate && (
+                            <a
+                              href={draftCertificateUrl}
+                              download="registration-certificate"
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-600 text-sm font-medium rounded-lg hover:bg-green-100 transition-all duration-200"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                              </svg>
+                              Download
+                            </a>
+                          )}
+                          <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            Change Certificate
+                            <input
+                              type="file"
+                              accept="application/pdf,image/*"
+                              onChange={e => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    registrationCertificate: file,
+                                  }));
+                                  setDraftCertificateUrl(null);
+                                  toast.success("Certificate selected successfully!");
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleRemoveCertificate}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-all duration-200"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all duration-200">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <svg className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p className="mb-2 text-sm text-gray-500">
+                        <span className="font-semibold">Click to upload</span> certificate
+                      </p>
+                      <p className="text-xs text-gray-500">PDF or Image (MAX. 10MB)</p>
+                    </div>
+                    <input
+                      type="file"
+                      accept="application/pdf,image/*"
+                      onChange={e => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          setFormData(prev => ({
+                            ...prev,
+                            registrationCertificate: file,
+                          }));
+                          setShowCertificatePreview(true);
+                          toast.success("Certificate selected successfully!");
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
                 )}
               </div>
             )}
 
             <div className="col-span-2">
-              <label className="block mb-1 text-sm font-medium">
+              <label className="block mb-2 text-sm font-medium text-gray-700">
                 Company Logo (Optional)
               </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-              />
+              
+              {showLogoPreview ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                  <div className="flex items-center gap-4">
+                    {/* Logo Preview */}
+                    <div className="relative">
+                      <img
+                        src={uploadedImage ? URL.createObjectURL(uploadedImage) : draftLogoUrl}
+                        alt="Company Logo"
+                        className="w-24 h-24 object-cover rounded-lg border-2 border-gray-200 shadow-sm"
+                      />
+                      <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    </div>
+                    
+                    {/* Logo Actions */}
+                    <div className="flex-1 space-y-2">
+                      <p className="text-sm text-gray-600">
+                        {uploadedImage ? 'New logo selected' : 'Current company logo'}
+                      </p>
+                      <div className="flex gap-2">
+                        <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                          </svg>
+                          Change Logo
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogo}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-all duration-200"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-all duration-200">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <svg className="w-10 h-10 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p className="mb-2 text-sm text-gray-500">
+                      <span className="font-semibold">Click to upload</span> or drag and drop
+                    </p>
+                    <p className="text-xs text-gray-500">PNG, JPG, or JPEG (MAX. 5MB)</p>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+              )}
             </div>
 
             <div className="col-span-2 flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
@@ -1774,19 +2096,25 @@ const handleSubmit = async () => {
         {selectedTab === "Contact Information" && (
           <form className="grid grid-cols-2 gap-6">
             <div>
-              <label className="block mb-1 text-sm font-medium">
-                Phone Number <span className="text-red-500"> *</span>
+              <label className="block mb-2 text-sm font-medium text-gray-700">
+                Phone Number <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
-                  +63
-                </span>
+              <div className="relative group">
+                {/* Country Code Badge */}
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                  <div className="flex items-center gap-2 bg-gray-100 px-2.5 py-1 rounded-md border border-gray-200">
+                    <span className="text-xl">🇵🇭</span>
+                    <span className="text-sm font-medium text-gray-700">+63</span>
+                  </div>
+                </div>
+                
+                {/* Phone Number Input */}
                 <input
-                  type="text"
+                  type="tel"
                   name="phoneNumber"
-                  placeholder="Enter 10-digit number (e.g., 123456789)"
-                  className="w-full border border-gray-300 rounded-md px-12 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  value={formData.phoneNumber.replace("+63", "")}
+                  placeholder="9XX XXX XXXX"
+                  className="w-full border-2 border-gray-300 rounded-lg pl-28 pr-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                  value={formData.phoneNumber.replace("+63 ", "").replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, "");
                     if (value.length <= 10) {
@@ -1796,11 +2124,35 @@ const handleSubmit = async () => {
                       }));
                     }
                   }}
+                  maxLength="12"
                 />
+                
+                {/* Input Icon */}
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                </div>
               </div>
-              <p className="text-sm text-gray-500 mt-1">
-                Format: +63 followed by 10 digits (e.g., +639123456789)
-              </p>
+              
+              {/* Helper Text with Validation */}
+              <div className="mt-2 flex items-start gap-2">
+                {formData.phoneNumber && formData.phoneNumber.replace("+63 ", "").replace(/\D/g, "").length === 10 ? (
+                  <div className="flex items-center gap-1.5 text-xs text-green-600">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium">Valid phone number</span>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-1.5 text-xs text-gray-500">
+                    <svg className="w-4 h-4 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    <span>Enter 10 digits starting with 9 (e.g., 917 123 4567)</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>
@@ -1879,164 +2231,291 @@ const handleSubmit = async () => {
           </form>
         )}
         {selectedTab === "Address Information" && (
-          <form className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block mb-1 text-sm font-medium">Region</label>
-              <select
-                name="region"
-                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={selectedRegion?.code || ""}
-                onChange={(e) => {
-                  const code = e.target.value;
-                  const selectedRegionObj = regions.find((r) => r.code === code) || null;
-                  setSelectedRegion(selectedRegionObj);
-                  setSelectedProvince(null);
-                  setSelectedCity(null);
-                  setSelectedBarangay(null);
-
-                  setFormData((prev) => ({
-                    ...prev,
-                    region: selectedRegionObj?.name || "",
-                    province: "",
-                    city: "",
-                    barangay: "",
-                  }));
-                }}
-              >
-                <option value="">Select Region</option>
-                {regions.map((region) => (
-                  <option key={region.code} value={region.code}>
-                    {region.name}
-                  </option>
-                ))}
-              </select>
+          <form className="space-y-6">
+            {/* Section Header */}
+            <div className="pb-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Business Location
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">Provide your complete business address details</p>
             </div>
 
-            <div>
-              <label className="block mb-1 text-sm font-medium">Province</label>
-              <select
-                name="province"
-                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={selectedProvince?.code || ""}
-                onChange={(e) => {
-                  const code = e.target.value;
-                  const selectedProvinceObj = provinces.find((p) => p.code === code) || null;
-                  setSelectedProvince(selectedProvinceObj);
-                  setSelectedCity(null);
-                  setSelectedBarangay(null);
-
-                  setFormData((prev) => ({
-                    ...prev,
-                    province: selectedProvinceObj?.name || "",
-                    city: "",
-                    barangay: "",
-                  }));
-                }}
-                disabled={!selectedRegion}
-              >
-                <option value="">Select Province <span className="text-red-500"> *</span> </option>
-                {provinces.map((province) => (
-                  <option key={province.code} value={province.code}>
-                    {province.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                City/Municipality <span className="text-red-500"> *</span>
-              </label>
-              <select
-                name="city"
-                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={selectedCity?.code || ""}
-                onChange={(e) => {
-                  const code = e.target.value;
-                  const selectedCityObj = cities.find((c) => c.code === code) || null;
-                  setSelectedCity(selectedCityObj);
-                  setSelectedBarangay(null);
-
-                  setFormData((prev) => ({
-                    ...prev,
-                    city: selectedCityObj?.name || "",
-                    barangay: "",
-                  }));
-                }}
-                disabled={!selectedProvince}
-              >
-                <option value="">Select City/Municipality</option>
-                {cities.map((city) => (
-                  <option key={city.code} value={city.code}>
-                    {city.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block mb-1 text-sm font-medium">Barangay</label>
-              <select
-                name="barangay"
-                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={selectedBarangay?.code || ""}
-                onChange={(e) => {
-                  const code = e.target.value;
-                  const selectedBarangayObj = barangays.find((b) => b.code === code) || null;
-                  setSelectedBarangay(selectedBarangayObj);
-
-                  setFormData((prev) => ({
-                    ...prev,
-                    barangay: selectedBarangayObj?.name || "",
-                  }));
-                }}
-                disabled={!selectedCity}
-              >
-                <option value="">Select Barangay</option>
-                {barangays.map((barangay) => (
-                  <option key={barangay.code} value={barangay.code}>
-                    {barangay.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block mb-1 text-sm font-medium">Street <span className="text-red-500"> *</span></label>
-                <input
-                  type="text"
-                  name="streetAddress"
-                  placeholder="Enter street"
-                  className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  value={formData.streetAddress}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div>
-                <label className="block mb-1 text-sm font-medium">
-                  Postal Code <span className="text-red-500"> *</span>
+            {/* Location Hierarchy */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Region */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-1">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  Region
+                  <span className="text-gray-400 text-xs">(Optional)</span>
                 </label>
-                <input
-                  type="text"
-                  name="postalCode"
-                  placeholder="Enter postal code"
-                  className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  value={formData.postalCode}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/\D/g, ""); // Allow only numbers
-                    if (value.length <= 4) {
+                <div className="relative group">
+                  <select
+                    name="region"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white group-hover:border-gray-400"
+                    value={selectedRegion?.code || ""}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      const selectedRegionObj = regions.find((r) => r.code === code) || null;
+                      setSelectedRegion(selectedRegionObj);
+                      setSelectedProvince(null);
+                      setSelectedCity(null);
+                      setSelectedBarangay(null);
+
                       setFormData((prev) => ({
                         ...prev,
-                        postalCode: value,
+                        region: selectedRegionObj?.name || "",
+                        province: "",
+                        city: "",
+                        barangay: "",
                       }));
-                    }
-                  }}
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Postal code must be a 4-digit number.
-                </p>
+                    }}
+                  >
+                    <option value="">Select region...</option>
+                    {regions.map((region) => (
+                      <option key={region.code} value={region.code}>
+                        {region.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Province */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-1">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+                  Province
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <select
+                    name="province"
+                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 ${
+                      !selectedRegion 
+                        ? 'bg-gray-50 border-gray-200 cursor-not-allowed text-gray-400' 
+                        : 'bg-white border-gray-300 group-hover:border-gray-400'
+                    }`}
+                    value={selectedProvince?.code || ""}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      const selectedProvinceObj = provinces.find((p) => p.code === code) || null;
+                      setSelectedProvince(selectedProvinceObj);
+                      setSelectedCity(null);
+                      setSelectedBarangay(null);
+
+                      setFormData((prev) => ({
+                        ...prev,
+                        province: selectedProvinceObj?.name || "",
+                        city: "",
+                        barangay: "",
+                      }));
+                    }}
+                    disabled={!selectedRegion}
+                  >
+                    <option value="">{!selectedRegion ? 'Select region first' : 'Select province...'}</option>
+                    {provinces.map((province) => (
+                      <option key={province.code} value={province.code}>
+                        {province.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* City */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-1">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  City/Municipality
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <select
+                    name="city"
+                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 ${
+                      !selectedProvince 
+                        ? 'bg-gray-50 border-gray-200 cursor-not-allowed text-gray-400' 
+                        : 'bg-white border-gray-300 group-hover:border-gray-400'
+                    }`}
+                    value={selectedCity?.code || ""}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      const selectedCityObj = cities.find((c) => c.code === code) || null;
+                      setSelectedCity(selectedCityObj);
+                      setSelectedBarangay(null);
+
+                      setFormData((prev) => ({
+                        ...prev,
+                        city: selectedCityObj?.name || "",
+                        barangay: "",
+                      }));
+                    }}
+                    disabled={!selectedProvince}
+                  >
+                    <option value="">{!selectedProvince ? 'Select province first' : 'Select city/municipality...'}</option>
+                    {cities.map((city) => (
+                      <option key={city.code} value={city.code}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Barangay */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-1">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Barangay
+                  <span className="text-gray-400 text-xs">(Optional)</span>
+                </label>
+                <div className="relative group">
+                  <select
+                    name="barangay"
+                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 ${
+                      !selectedCity 
+                        ? 'bg-gray-50 border-gray-200 cursor-not-allowed text-gray-400' 
+                        : 'bg-white border-gray-300 group-hover:border-gray-400'
+                    }`}
+                    value={selectedBarangay?.code || ""}
+                    onChange={(e) => {
+                      const code = e.target.value;
+                      const selectedBarangayObj = barangays.find((b) => b.code === code) || null;
+                      setSelectedBarangay(selectedBarangayObj);
+
+                      setFormData((prev) => ({
+                        ...prev,
+                        barangay: selectedBarangayObj?.name || "",
+                      }));
+                    }}
+                    disabled={!selectedCity}
+                  >
+                    <option value="">{!selectedCity ? 'Select city first' : 'Select barangay...'}</option>
+                    {barangays.map((barangay) => (
+                      <option key={barangay.code} value={barangay.code}>
+                        {barangay.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Street Address and Postal Code */}
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+              <h4 className="text-sm font-medium text-blue-900 mb-4 flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Additional Details
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Street Address */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-1">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Street Address
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="streetAddress"
+                      placeholder="e.g., 123 Main Street, Building 5"
+                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 hover:border-gray-400"
+                      value={formData.streetAddress}
+                      onChange={handleChange}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Postal Code */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-1">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Postal Code
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name="postalCode"
+                      placeholder="XXXX"
+                      maxLength="4"
+                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 hover:border-gray-400"
+                      value={formData.postalCode}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "");
+                        if (value.length <= 4) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            postalCode: value,
+                          }));
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      {formData.postalCode && formData.postalCode.length === 4 ? (
+                        <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                        </svg>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    Must be a 4-digit number
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -2085,57 +2564,204 @@ const handleSubmit = async () => {
           </form>
         )}
         {selectedTab === "Social Media Links" && (
-          <form className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block mb-1 text-sm font-medium">Facebook
-                    <span className="text-red-500"> *</span>
-              </label>
-              <input
-                type="url"
-                name="facebook"
-                placeholder="Enter Facebook URL"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.facebook}
-                onChange={handleChange}
-              />
+          <form className="space-y-6">
+            {/* Section Header */}
+            <div className="pb-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                </svg>
+                Social Media Presence
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">Connect your social media accounts to enhance your startup's visibility</p>
             </div>
 
-            <div>
-              <label className="block mb-1 text-sm font-medium">Twitter</label>
-              <input
-                type="url"
-                name="twitter"
-                placeholder="Enter Twitter URL"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.twitter}
-                onChange={handleChange}
-              />
+            {/* Info Card */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-100">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-blue-900">Why add social media links?</h4>
+                  <p className="text-xs text-blue-700 mt-1">Social media links help stakeholders and investors find and connect with your startup across platforms, building trust and credibility.</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Instagram
-              </label>
-              <input
-                type="url"
-                name="instagram"
-                placeholder="Enter Instagram URL"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.instagram}
-                onChange={handleChange}
-              />
+
+            {/* Social Media Links Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Facebook */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                  </div>
+                  Facebook
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  </div>
+                  <input
+                    type="url"
+                    name="facebook"
+                    placeholder="https://facebook.com/yourcompany"
+                    className="w-full border-2 border-gray-300 rounded-lg pl-12 pr-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                    value={formData.facebook}
+                    onChange={handleChange}
+                  />
+                  {formData.facebook && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* LinkedIn */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-blue-700" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                  </div>
+                  LinkedIn
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  </div>
+                  <input
+                    type="url"
+                    name="linkedIn"
+                    placeholder="https://linkedin.com/company/yourcompany"
+                    className="w-full border-2 border-gray-300 rounded-lg pl-12 pr-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                    value={formData.linkedIn}
+                    onChange={handleChange}
+                  />
+                  {formData.linkedIn && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Twitter */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-sky-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                    </svg>
+                  </div>
+                  Twitter / X
+                  <span className="text-gray-400 text-xs">(Optional)</span>
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  </div>
+                  <input
+                    type="url"
+                    name="twitter"
+                    placeholder="https://twitter.com/yourcompany"
+                    className="w-full border-2 border-gray-300 rounded-lg pl-12 pr-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                    value={formData.twitter}
+                    onChange={handleChange}
+                  />
+                  {formData.twitter && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Instagram */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-pink-600" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.76 6.162 6.162 6.162 3.405 0 6.162-2.76 6.162-6.162 0-3.405-2.76-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.646-1.44-1.44 0-.794.646-1.439 1.44-1.439.793-.001 1.44.645 1.44 1.439z"/>
+                    </svg>
+                  </div>
+                  Instagram
+                  <span className="text-gray-400 text-xs">(Optional)</span>
+                </label>
+                <div className="relative group">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                  </div>
+                  <input
+                    type="url"
+                    name="instagram"
+                    placeholder="https://instagram.com/yourcompany"
+                    className="w-full border-2 border-gray-300 rounded-lg pl-12 pr-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                    value={formData.instagram}
+                    onChange={handleChange}
+                  />
+                  {formData.instagram && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block mb-1 text-sm font-medium">LinkedIn
-                    <span className="text-red-500"> *</span>
-              </label>
-              <input
-                type="url"
-                name="linkedIn"
-                placeholder="Enter LinkedIn URL"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.linkedIn}
-                onChange={handleChange}
-              />
+
+            {/* Quick Tips */}
+            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                </svg>
+                Pro Tips
+              </h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Use your official business pages, not personal profiles</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Ensure your profile information is up-to-date and consistent across platforms</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span>Copy and paste the full URL from your browser's address bar</span>
+                </li>
+              </ul>
             </div>
             <div className="col-span-2 flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
               <button
@@ -2181,64 +2807,215 @@ const handleSubmit = async () => {
           </form>
         )}
         {selectedTab === "Additional Information" && (
-          <form className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Funding Stage <span className="text-red-500"> *</span>
-              </label>
-              <select
-                name="fundingStage"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.fundingStage}
-                onChange={handleChange}
-              >
-                <option value="">Select funding stage</option>
-                <option value="Angel Investment">Angel Investment</option>
-                <option value="Bank Loan">Bank Loan</option>
-                <option value="Crowdfunding">Crowdfunding</option>
-                <option value="DOST Funding">DOST Funding</option>
-                <option value="DTI Funding">DTI Funding</option>
-                <option value="Family & Friends">Family & Friends</option>
-                <option value="Government Grant">Government Grant</option>
-                <option value="IPO / Public Offering">IPO / Public Offering</option>
-                <option value="Microfinance">Microfinance</option>
-                <option value="Not Seeking Funding">Not Seeking Funding</option>
-                <option value="Pre-Seed">Pre-Seed</option>
-                <option value="Private Equity">Private Equity</option>
-                <option value="Seed Funding">Seed Funding</option>
-                <option value="Self-Funded / Bootstrapped">Self-Funded / Bootstrapped</option>
-                <option value="Series A">Series A</option>
-                <option value="Series B">Series B</option>
-                <option value="Series C">Series C</option>
-                <option value="Series D+">Series D+</option>
-                <option value="Venture Capital">Venture Capital</option>
-              </select>
+          <form className="space-y-6">
+            {/* Section Header */}
+            <div className="pb-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Business Operations
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">Provide additional details about your business operations and funding</p>
             </div>
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Operating Hours <span className="text-red-500"> *</span>
-              </label>
-              <input
-                type="text"
-                name="operatingHours"
-                placeholder="Operating hours"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.operatingHours}
-                onChange={handleChange}
-              />
+
+            {/* Funding Stage and Business Activity */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Funding Stage */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Funding Stage
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <select
+                    name="fundingStage"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white group-hover:border-gray-400"
+                    value={formData.fundingStage}
+                    onChange={handleChange}
+                  >
+                    <option value="">Select funding stage...</option>
+                    <option value="Angel Investment">Angel Investment</option>
+                    <option value="Bank Loan">Bank Loan</option>
+                    <option value="Crowdfunding">Crowdfunding</option>
+                    <option value="DOST Funding">DOST Funding</option>
+                    <option value="DTI Funding">DTI Funding</option>
+                    <option value="Family & Friends">Family & Friends</option>
+                    <option value="Government Grant">Government Grant</option>
+                    <option value="IPO / Public Offering">IPO / Public Offering</option>
+                    <option value="Microfinance">Microfinance</option>
+                    <option value="Not Seeking Funding">Not Seeking Funding</option>
+                    <option value="Pre-Seed">Pre-Seed</option>
+                    <option value="Private Equity">Private Equity</option>
+                    <option value="Seed Funding">Seed Funding</option>
+                    <option value="Self-Funded / Bootstrapped">Self-Funded / Bootstrapped</option>
+                    <option value="Series A">Series A</option>
+                    <option value="Series B">Series B</option>
+                    <option value="Series C">Series C</option>
+                    <option value="Series D+">Series D+</option>
+                    <option value="Venture Capital">Venture Capital</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Business Activity */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Business Activity
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    name="businessActivity"
+                    placeholder="e.g., Software Development, E-commerce, Consulting"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 hover:border-gray-400"
+                    value={formData.businessActivity}
+                    onChange={handleChange}
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    {formData.businessActivity ? (
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Business Activity <span className="text-red-500"> *</span>
-              </label>
-              <input
-                type="text"
-                name="businessActivity"
-                placeholder="Business activity"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.businessActivity}
-                onChange={handleChange}
-              />
+
+            {/* Operating Hours Section */}
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-100">
+              <div className="mb-4">
+                <h4 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Operating Hours
+                  <span className="text-red-500">*</span>
+                </h4>
+                <p className="text-sm text-gray-600 mt-1">Set your business hours and operating days</p>
+              </div>
+
+              {/* Time Selectors */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Opening Time */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-1">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Opening Time
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="time"
+                      value={openingTime}
+                      onChange={(e) => {
+                        setOpeningTime(e.target.value);
+                        const hours = `${e.target.value} - ${closingTime}`;
+                        const days = selectedDays.join(", ");
+                        setFormData(prev => ({ ...prev, operatingHours: `${days}: ${hours}` }));
+                      }}
+                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 hover:border-gray-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Closing Time */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-1">
+                    <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Closing Time
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="time"
+                      value={closingTime}
+                      onChange={(e) => {
+                        setClosingTime(e.target.value);
+                        const hours = `${openingTime} - ${e.target.value}`;
+                        const days = selectedDays.join(", ");
+                        setFormData(prev => ({ ...prev, operatingHours: `${days}: ${hours}` }));
+                      }}
+                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 hover:border-gray-400"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Operating Days */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-1">
+                  <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Operating Days
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        const newDays = selectedDays.includes(day)
+                          ? selectedDays.filter(d => d !== day)
+                          : [...selectedDays, day];
+                        setSelectedDays(newDays);
+                        const hours = `${openingTime} - ${closingTime}`;
+                        const daysStr = newDays.join(", ");
+                        setFormData(prev => ({ ...prev, operatingHours: `${daysStr}: ${hours}` }));
+                      }}
+                      className={`px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${
+                        selectedDays.includes(day)
+                          ? "bg-blue-600 text-white shadow-md hover:bg-blue-700"
+                          : "bg-white text-gray-700 border-2 border-gray-300 hover:border-blue-400 hover:bg-blue-50"
+                      }`}
+                    >
+                      {day.substring(0, 3)}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-600 mt-2 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  Click days to select/deselect operating days
+                </p>
+              </div>
+
+              {/* Preview */}
+              <div className="mt-4 bg-white rounded-lg p-4 border-2 border-blue-200">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Preview:</p>
+                    <p className="text-sm text-gray-900 font-mono mt-1">
+                      {formData.operatingHours || "Please select opening time, closing time, and operating days"}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="col-span-2 flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
               <button
