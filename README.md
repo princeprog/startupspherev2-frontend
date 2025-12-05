@@ -92,7 +92,7 @@ StartupSphere v2 is a comprehensive platform that enables users to explore start
 - **npm** v9.0.0 or higher (or **yarn** v1.22.0+)  
 - **Git** for version control  
 - **PostgreSQL** for backend database  
-- **Backend environment ready** (Node.js or Spring Boot)  
+- **Backend environment ready** (Spring Boot)  
 
 ## 🚀 Installation
 
@@ -169,44 +169,6 @@ Set environment variables in Vercel/Netlify:
 | VITE_MAPBOX_ACCESS_TOKEN | your_mapbox_token                                                  |
 | VITE_API_BASE_URL        | [https://your-backend-domain/api](https://your-backend-domain/api) |
 
-### Backend Deployment (Node.js / Spring Boot / PostgreSQL)
-
-**Node.js / Express Example**
-
-```bash
-npm install
-npm run build
-pm2 start dist/server.js
-```
-
-**Spring Boot Example**
-
-```bash
-./mvnw clean package
-java -jar target/app.jar
-```
-
-**PostgreSQL Setup Example**
-
-```sql
-CREATE DATABASE startupsphere;
-CREATE USER sphere_user WITH ENCRYPTED PASSWORD 'sphere_pass';
-GRANT ALL PRIVILEGES ON DATABASE startupsphere TO sphere_user;
-```
-
-**Backend environment variables**
-
-| Key        | Value             |
-| ---------- | ----------------- |
-| DB_HOST    | localhost         |
-| DB_PORT    | 5432              |
-| DB_NAME    | startupsphere     |
-| DB_USER    | sphere_user       |
-| DB_PASS    | sphere_pass       |
-| JWT_SECRET | strong-secret-key |
-| SMTP_USER  | your_email        |
-| SMTP_PASS  | email_password    |
-
 ## 📁 Project Structure
 
 ```
@@ -268,7 +230,7 @@ startupspherev2-frontend/
 
 | Field    | Value                                                     |
 | -------- | --------------------------------------------------------- |
-| Email    | [dummy@startupsphere.com](mailto:dummy@startupsphere.com) |
+| Email    | dummy@startupsphere.com
 | Password | dummy@123                                                 |
 
 ## 🤝 Contributing
