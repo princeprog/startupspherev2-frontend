@@ -153,7 +153,7 @@ export default function Startupadd() {
     locationLng: null,
     locationName: "",
     fundingStage: "",
-    operatingHours: "",
+    operatingHours: "Monday, Tuesday, Wednesday, Thursday, Friday: 09:00 - 17:00",
     businessActivity: "",
     isGovernmentRegistered: "",
     registrationAgency: "",
@@ -418,12 +418,6 @@ export default function Startupadd() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-     if (name === "numberOfEmployees") {
-          if (/\D/.test(value)) {
-            toast.error("Only Accepting Numeral inputs");
-            return;
-        }
-    }
     setFormData((prev) => ({
       ...prev,
       [name]: value,
@@ -1502,7 +1496,159 @@ const handleSubmit = async () => {
   };
 
   return (
-    <div className="bg-gray-100 min-h-screen text-gray-800 relative">
+    <>
+      <style>
+        {`
+          /* Modern DatePicker Styling */
+          .react-datepicker-wrapper {
+            width: 100%;
+          }
+          
+          .react-datepicker {
+            font-family: inherit;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+          }
+          
+          .react-datepicker__header {
+            background-color: #1D3557;
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            padding: 16px 0;
+          }
+          
+          .react-datepicker__current-month {
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 8px;
+          }
+          
+          .react-datepicker__day-name {
+            color: white;
+            font-weight: 500;
+            width: 2.5rem;
+            line-height: 2.5rem;
+          }
+          
+          .react-datepicker__day {
+            width: 2.5rem;
+            line-height: 2.5rem;
+            margin: 0.2rem;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            color: #374151;
+          }
+          
+          .react-datepicker__day:hover {
+            background-color: #dbeafe;
+            color: #1D3557;
+          }
+          
+          .react-datepicker__day--selected,
+          .react-datepicker__day--keyboard-selected {
+            background-color: #1D3557;
+            color: white;
+            font-weight: 600;
+          }
+          
+          .react-datepicker__day--today {
+            background-color: #fef3c7;
+            color: #92400e;
+            font-weight: 600;
+          }
+          
+          .react-datepicker__day--disabled {
+            color: #d1d5db;
+            cursor: not-allowed;
+          }
+          
+          .react-datepicker__day--disabled:hover {
+            background-color: transparent;
+          }
+          
+          .react-datepicker__month-dropdown,
+          .react-datepicker__year-dropdown {
+            background-color: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+          }
+          
+          .react-datepicker__month-option,
+          .react-datepicker__year-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+          }
+          
+          .react-datepicker__month-option:hover,
+          .react-datepicker__year-option:hover {
+            background-color: #dbeafe;
+            color: #1D3557;
+          }
+          
+          .react-datepicker__month-option--selected_month,
+          .react-datepicker__year-option--selected_year {
+            background-color: #1D3557;
+            color: white;
+            font-weight: 600;
+          }
+          
+          .react-datepicker__navigation {
+            top: 16px;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            transition: background-color 0.2s ease;
+          }
+          
+          .react-datepicker__navigation:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+          }
+          
+          .react-datepicker__navigation-icon::before {
+            border-color: white;
+            border-width: 2px 2px 0 0;
+            height: 8px;
+            width: 8px;
+          }
+          
+          .react-datepicker__month-dropdown-container,
+          .react-datepicker__year-dropdown-container {
+            margin: 0 4px;
+          }
+          
+          .react-datepicker__month-read-view,
+          .react-datepicker__year-read-view {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 6px 12px;
+            color: white;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+          }
+          
+          .react-datepicker__month-read-view:hover,
+          .react-datepicker__year-read-view:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+          }
+          
+          .react-datepicker__month-read-view--down-arrow,
+          .react-datepicker__year-read-view--down-arrow {
+            border-color: white;
+            border-width: 2px 2px 0 0;
+            height: 6px;
+            width: 6px;
+            margin-left: 8px;
+          }
+        `}
+      </style>
+      <div className="bg-gray-100 min-h-screen text-gray-800 relative">
       <div className="bg-white border-b border-gray-200 px-10 py-5">  
         <div className="flex items-center text-sm font-medium">
         {/*Back Arrow*/}
@@ -1558,74 +1704,171 @@ const handleSubmit = async () => {
         </div>
 
         {selectedTab === "Company Information" && (
-          <form className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Company Name <span className="text-red-500"> *</span>
-              </label>
-              <input
-                type="text"
-                name="companyName"
-                placeholder="Company name"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.companyName}
-                onChange={handleChange}
-              />
+          <form className="space-y-8">
+            {/* Section Header */}
+            <div className="pb-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                Basic Company Details
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">Tell us about your startup and help others discover what makes you unique</p>
             </div>
 
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Company Description <span className="text-red-500"> *</span>
-              </label>
-              <input
-                type="text"
-                name="companyDescription"
-                placeholder="Company description"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.companyDescription}
-                onChange={handleChange}
-              />
+            {/* Company Name & Description */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  Company Name
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <input
+                    type="text"
+                    name="companyName"
+                    placeholder="Enter your company name"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                    value={formData.companyName}
+                    onChange={handleChange}
+                  />
+                  {formData.companyName && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  Official registered name of your company
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Company Description
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <textarea
+                    name="companyDescription"
+                    placeholder="Brief description of what your company does..."
+                    rows="3"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400 resize-none"
+                    value={formData.companyDescription}
+                    onChange={handleChange}
+                  />
+                  <div className="absolute bottom-2 right-2 text-xs text-gray-400">
+                    {formData.companyDescription.length}/500
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  Describe your products, services, or mission
+                </p>
+              </div>
             </div>
 
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Founded Date <span className="text-red-500"> *</span>
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Founded Date
+                <span className="text-red-500">*</span>
               </label>
-              <DatePicker
-                selected={
-                  formData.foundedDate ? new Date(formData.foundedDate) : null
-                }
-                onChange={handleDateChange}
-                placeholderText="Select founded date"
-                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                maxDate={new Date()} // Restrict selection to today or earlier
-              />
+              <div className="relative group">
+                <DatePicker
+                  selected={
+                    formData.foundedDate ? new Date(formData.foundedDate) : null
+                  }
+                  onChange={handleDateChange}
+                  placeholderText="Select founded date"
+                  className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                  maxDate={new Date()}
+                  showYearDropdown
+                  showMonthDropdown
+                  dropdownMode="select"
+                  yearDropdownItemNumber={100}
+                  scrollableYearDropdown
+                  dateFormat="MMMM d, yyyy"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 flex items-center gap-1">
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                Select the month and year your company was founded
+              </p>
             </div>
 
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Number of Employees <span className="text-red-500"> *</span>
-              </label>
-              <input
-                type="text"
-                name="numberOfEmployees"
-                placeholder="Number of employees"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.numberOfEmployees}
-                onChange={handleChange}
-              />
-            </div>
+            {/* Company Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  Number of Employees
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <input
+                    type="text"
+                    name="numberOfEmployees"
+                    placeholder="e.g., 10, 25, 100"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                    value={formData.numberOfEmployees}
+                    onChange={handleChange}
+                  />
+                  {formData.numberOfEmployees && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1 a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  Current total number of employees
+                </p>
+              </div>
 
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Type of Company <span className="text-red-500"> *</span>
-              </label>
-              <select
-                name="typeOfCompany"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.typeOfCompany}
-                onChange={handleChange}
-              >
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  Type of Company
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <select
+                    name="typeOfCompany"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white group-hover:border-gray-400"
+                    value={formData.typeOfCompany}
+                    onChange={handleChange}
+                  >
                 <option value="">Select type of company</option>
                 <option value="Cooperative">Cooperative</option>
                 <option value="Corporation">Corporation</option>
@@ -1646,229 +1889,379 @@ const handleSubmit = async () => {
                 <option value="Social Enterprise">Social Enterprise</option>
                 <option value="Sole Proprietorship">Sole Proprietorship</option>
                 <option value="Stock Corporation">Stock Corporation</option>
-              </select>
-            </div>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  Legal structure of your business
+                </p>
+              </div>
 
-            <div>
-              <label className="block mb-1 text-sm font-medium">Industry
-                    <span className="text-red-500"> *</span>
-              </label>
-              <select
-                name="industry"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.industry}
-                onChange={handleChange}
-              >
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Industry
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <select
+                    name="industry"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white group-hover:border-gray-400"
+                    value={formData.industry}
+                    onChange={handleChange}
+                  >
                 <option value="">Select industry</option>
-                <option value="Accounting & Bookkeeping">Accounting & Bookkeeping</option>
-                <option value="Agriculture & Farming">Agriculture & Farming</option>
-                <option value="Aquaculture & Fisheries">Aquaculture & Fisheries</option>
-                <option value="Automotive & Repair">Automotive & Repair</option>
-                <option value="Beauty & Wellness">Beauty & Wellness</option>
-                <option value="BPO & Call Center">BPO & Call Center</option>
-                <option value="Cleaning Services">Cleaning Services</option>
-                <option value="Consulting Services">Consulting Services</option>
-                <option value="Construction & Engineering">Construction & Engineering</option>
-                <option value="Content Creation">Content Creation</option>
-                <option value="Courier Services">Courier Services</option>
-                <option value="Delivery Services">Delivery Services</option>
-                <option value="Dental Clinic">Dental Clinic</option>
-                <option value="Digital Marketing">Digital Marketing</option>
-                <option value="Education & Training">Education & Training</option>
-                <option value="Energy & Utilities">Energy & Utilities</option>
-                <option value="Entertainment & Media">Entertainment & Media</option>
-                <option value="Event Planning">Event Planning</option>
-                <option value="Financial Services">Financial Services</option>
-                <option value="Fitness & Gym">Fitness & Gym</option>
-                <option value="Food & Beverage">Food & Beverage</option>
-                <option value="Food Manufacturing">Food Manufacturing</option>
-                <option value="Freight & Cargo">Freight & Cargo</option>
-                <option value="Garments & Textiles">Garments & Textiles</option>
-                <option value="Graphic Design">Graphic Design</option>
-                <option value="Handicrafts & Crafts">Handicrafts & Crafts</option>
-                <option value="Healthcare & Medical Services">Healthcare & Medical Services</option>
-                <option value="Home Services & Repair">Home Services & Repair</option>
-                <option value="Hospitality & Tourism">Hospitality & Tourism</option>
-                <option value="Hotel & Resort">Hotel & Resort</option>
-                <option value="Insurance">Insurance</option>
-                <option value="IT Solutions & Consulting">IT Solutions & Consulting</option>
-                <option value="Laundry & Dry Cleaning">Laundry & Dry Cleaning</option>
-                <option value="Legal Services">Legal Services</option>
-                <option value="Manufacturing & Production">Manufacturing & Production</option>
-                <option value="Mobile App Development">Mobile App Development</option>
-                <option value="Online Tutoring">Online Tutoring</option>
-                <option value="Other Services">Other Services</option>
-                <option value="Pet Care Services">Pet Care Services</option>
-                <option value="Pharmacy & Drugstore">Pharmacy & Drugstore</option>
-                <option value="Photography & Videography">Photography & Videography</option>
-                <option value="Printing & Publishing">Printing & Publishing</option>
-                <option value="Real Estate & Property">Real Estate & Property</option>
-                <option value="Renewable Energy">Renewable Energy</option>
-                <option value="Restaurant & Catering">Restaurant & Catering</option>
-                <option value="Retail & E-commerce">Retail & E-commerce</option>
-                <option value="Salon & Barbershop">Salon & Barbershop</option>
-                <option value="Sari-Sari Store">Sari-Sari Store</option>
-                <option value="Security Services">Security Services</option>
-                <option value="Skills Training Center">Skills Training Center</option>
-                <option value="Social Media Management">Social Media Management</option>
-                <option value="Software Development">Software Development</option>
-                <option value="Spa & Massage">Spa & Massage</option>
-                <option value="Technology & IT Services">Technology & IT Services</option>
-                <option value="Telecommunications">Telecommunications</option>
-                <option value="Transportation & Logistics">Transportation & Logistics</option>
-                <option value="Travel Agency">Travel Agency</option>
-                <option value="Web Development">Web Development</option>
-                <option value="Wholesale Trade">Wholesale Trade</option>
-              </select>
+                
+                {/* Agriculture & Food */}
+                <optgroup label="🌾 Agriculture & Food">
+                  <option value="Agriculture & Farming">Agriculture & Farming</option>
+                  <option value="Aquaculture & Fisheries">Aquaculture & Fisheries</option>
+                  <option value="Food & Beverage">Food & Beverage</option>
+                  <option value="Food Manufacturing">Food Manufacturing</option>
+                  <option value="Restaurant & Catering">Restaurant & Catering</option>
+                  <option value="Sari-Sari Store">Sari-Sari Store</option>
+                </optgroup>
+
+                {/* Technology & IT */}
+                <optgroup label="💻 Technology & IT">
+                  <option value="IT Solutions & Consulting">IT Solutions & Consulting</option>
+                  <option value="Mobile App Development">Mobile App Development</option>
+                  <option value="Software Development">Software Development</option>
+                  <option value="Technology & IT Services">Technology & IT Services</option>
+                  <option value="Telecommunications">Telecommunications</option>
+                  <option value="Web Development">Web Development</option>
+                </optgroup>
+
+                {/* Healthcare & Wellness */}
+                <optgroup label="⚕️ Healthcare & Wellness">
+                  <option value="Beauty & Wellness">Beauty & Wellness</option>
+                  <option value="Dental Clinic">Dental Clinic</option>
+                  <option value="Fitness & Gym">Fitness & Gym</option>
+                  <option value="Healthcare & Medical Services">Healthcare & Medical Services</option>
+                  <option value="Pharmacy & Drugstore">Pharmacy & Drugstore</option>
+                  <option value="Salon & Barbershop">Salon & Barbershop</option>
+                  <option value="Spa & Massage">Spa & Massage</option>
+                </optgroup>
+
+                {/* Business Services */}
+                <optgroup label="💼 Business Services">
+                  <option value="Accounting & Bookkeeping">Accounting & Bookkeeping</option>
+                  <option value="BPO & Call Center">BPO & Call Center</option>
+                  <option value="Consulting Services">Consulting Services</option>
+                  <option value="Legal Services">Legal Services</option>
+                </optgroup>
+
+                {/* Creative & Marketing */}
+                <optgroup label="🎨 Creative & Marketing">
+                  <option value="Content Creation">Content Creation</option>
+                  <option value="Digital Marketing">Digital Marketing</option>
+                  <option value="Graphic Design">Graphic Design</option>
+                  <option value="Photography & Videography">Photography & Videography</option>
+                  <option value="Printing & Publishing">Printing & Publishing</option>
+                  <option value="Social Media Management">Social Media Management</option>
+                </optgroup>
+
+                {/* Retail & E-commerce */}
+                <optgroup label="🛒 Retail & E-commerce">
+                  <option value="Retail & E-commerce">Retail & E-commerce</option>
+                  <option value="Wholesale Trade">Wholesale Trade</option>
+                </optgroup>
+
+                {/* Education & Training */}
+                <optgroup label="📚 Education & Training">
+                  <option value="Education & Training">Education & Training</option>
+                  <option value="Online Tutoring">Online Tutoring</option>
+                  <option value="Skills Training Center">Skills Training Center</option>
+                </optgroup>
+
+                {/* Construction & Manufacturing */}
+                <optgroup label="🏗️ Construction & Manufacturing">
+                  <option value="Construction & Engineering">Construction & Engineering</option>
+                  <option value="Garments & Textiles">Garments & Textiles</option>
+                  <option value="Handicrafts & Crafts">Handicrafts & Crafts</option>
+                  <option value="Manufacturing & Production">Manufacturing & Production</option>
+                </optgroup>
+
+                {/* Transportation & Logistics */}
+                <optgroup label="🚚 Transportation & Logistics">
+                  <option value="Courier Services">Courier Services</option>
+                  <option value="Delivery Services">Delivery Services</option>
+                  <option value="Freight & Cargo">Freight & Cargo</option>
+                  <option value="Transportation & Logistics">Transportation & Logistics</option>
+                </optgroup>
+
+                {/* Hospitality & Tourism */}
+                <optgroup label="🏨 Hospitality & Tourism">
+                  <option value="Event Planning">Event Planning</option>
+                  <option value="Hospitality & Tourism">Hospitality & Tourism</option>
+                  <option value="Hotel & Resort">Hotel & Resort</option>
+                  <option value="Travel Agency">Travel Agency</option>
+                </optgroup>
+
+                {/* Real Estate & Property */}
+                <optgroup label="🏠 Real Estate & Property">
+                  <option value="Real Estate & Property">Real Estate & Property</option>
+                </optgroup>
+
+                {/* Energy & Utilities */}
+                <optgroup label="⚡ Energy & Utilities">
+                  <option value="Energy & Utilities">Energy & Utilities</option>
+                  <option value="Renewable Energy">Renewable Energy</option>
+                </optgroup>
+
+                {/* Financial Services */}
+                <optgroup label="💰 Financial Services">
+                  <option value="Financial Services">Financial Services</option>
+                  <option value="Insurance">Insurance</option>
+                </optgroup>
+
+                {/* Entertainment & Media */}
+                <optgroup label="🎬 Entertainment & Media">
+                  <option value="Entertainment & Media">Entertainment & Media</option>
+                </optgroup>
+
+                {/* Other Services */}
+                <optgroup label="🔧 Other Services">
+                  <option value="Automotive & Repair">Automotive & Repair</option>
+                  <option value="Cleaning Services">Cleaning Services</option>
+                  <option value="Home Services & Repair">Home Services & Repair</option>
+                  <option value="Laundry & Dry Cleaning">Laundry & Dry Cleaning</option>
+                  <option value="Pet Care Services">Pet Care Services</option>
+                  <option value="Security Services">Security Services</option>
+                  <option value="Other Services">Other Services</option>
+                </optgroup>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 flex items-center gap-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  Primary business sector or category
+                </p>
+              </div>
             </div>
 
             {/* Government Registration Section */}
-            <div>
-              <label className="block mb-1 text-sm font-medium">
-                Is your startup registered with a government agency? <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="isGovernmentRegistered"
-                className="w-full border border-gray-300 rounded-md px-4 py-2"
-                value={formData.isGovernmentRegistered}
-                onChange={e => {
-                  const value = e.target.value === "true" ? true : e.target.value === "false" ? false : "";
-                  setFormData(prev => ({
-                    ...prev,
-                    isGovernmentRegistered: value,
-                    registrationAgency: "",
-                    otherRegistrationAgency: "",
-                    registrationNumber: "",
-                    registrationDate: null,
-                    businessLicenseNumber: "",
-                    tin: "",
-                    registrationCertificate: null,
-                  }));
-                }}
-              >
-                <option value="">Select an option</option>
-                <option value={true}>Yes</option>
-                <option value={false}>No</option>
-              </select>
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-100">
+              <div className="mb-4">
+                <h4 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Government Registration
+                </h4>
+                <p className="text-sm text-gray-600 mt-1">Provide your official registration details for verification purposes</p>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Is your startup registered with a government agency?
+                  <span className="text-red-500">*</span>
+                </label>
+                <div className="relative group">
+                  <select
+                    name="isGovernmentRegistered"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white group-hover:border-gray-400"
+                    value={formData.isGovernmentRegistered}
+                    onChange={e => {
+                      const value = e.target.value === "true" ? true : e.target.value === "false" ? false : "";
+                      setFormData(prev => ({
+                        ...prev,
+                        isGovernmentRegistered: value,
+                        registrationAgency: "",
+                        otherRegistrationAgency: "",
+                        registrationNumber: "",
+                        registrationDate: null,
+                        businessLicenseNumber: "",
+                        tin: "",
+                        registrationCertificate: null,
+                      }));
+                    }}
+                  >
+                    <option value="">Select an option</option>
+                    <option value={true}>Yes, my startup is registered</option>
+                    <option value={false}>No, not yet registered</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Registration Agency (conditional) */}
             {formData.isGovernmentRegistered && (
-              <div>
-                <label className="block mb-1 text-sm font-medium">
-                  Registration Agency <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="registrationAgency"
-                  className="w-full border border-gray-300 rounded-md px-4 py-2"
-                  value={formData.registrationAgency}
-                  onChange={e =>
-                    setFormData(prev => ({
-                      ...prev,
-                      registrationAgency: e.target.value,
-                      otherRegistrationAgency: "",
-                    }))
-                  }
-                >
-                  <option value="">Select agency</option>
-                  <option value="DICT">DICT (Department of Information and Communications Technology)</option>
-                  <option value="DOST">DOST (Department of Science and Technology)</option>
-                  <option value="DTI">DTI (Department of Trade and Industry)</option>
-                </select>
-              </div>
-            )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    Registration Agency
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <select
+                      name="registrationAgency"
+                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white group-hover:border-gray-400"
+                      value={formData.registrationAgency}
+                      onChange={e =>
+                        setFormData(prev => ({
+                          ...prev,
+                          registrationAgency: e.target.value,
+                          otherRegistrationAgency: "",
+                        }))
+                      }
+                    >
+                      <option value="">Select agency</option>
+                      <option value="DICT">DICT (Department of Information and Communications Technology)</option>
+                      <option value="DOST">DOST (Department of Science and Technology)</option>
+                      <option value="DTI">DTI (Department of Trade and Industry)</option>
+                    </select>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Other Registration Agency (conditional) */}
-            {formData.isGovernmentRegistered &&
-              formData.registrationAgency === "other" && (
-                <div>
-                  <label className="block mb-1 text-sm font-medium">
-                    Please specify the agency <span className="text-red-500">*</span>
+                {/* Other Registration Agency (conditional) */}
+                {formData.registrationAgency === "other" && (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                      Please specify the agency
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="otherRegistrationAgency"
+                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+                      placeholder="Enter agency name"
+                      value={formData.otherRegistrationAgency}
+                      onChange={handleChange}
+                    />
+                  </div>
+                )}
+
+                {/* Registration Number */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                    </svg>
+                    Registration Number
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    name="otherRegistrationAgency"
-                    className="w-full border border-gray-300 rounded-md px-4 py-2"
-                    placeholder="Enter agency name"
-                    value={formData.otherRegistrationAgency}
+                    name="registrationNumber"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+                    placeholder="Enter registration/certificate number"
+                    value={formData.registrationNumber}
                     onChange={handleChange}
                   />
                 </div>
-              )}
 
-            {/* Registration Number */}
-            {formData.isGovernmentRegistered && (
-              <div>
-                <label className="block mb-1 text-sm font-medium">
-                  Registration Number <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="registrationNumber"
-                  className="w-full border border-gray-300 rounded-md px-4 py-2"
-                  placeholder="Enter registration/certificate number"
-                  value={formData.registrationNumber}
-                  onChange={handleChange}
-                />
-              </div>
-            )}
+                {/* Registration Date */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    Registration Date
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative group">
+                    <DatePicker
+                      selected={
+                        formData.registrationDate
+                          ? new Date(formData.registrationDate)
+                          : null
+                      }
+                      onChange={date =>
+                        setFormData(prev => ({
+                          ...prev,
+                          registrationDate: date ? date.toISOString().split("T")[0] : null,
+                        }))
+                      }
+                      placeholderText="Select registration date"
+                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                      maxDate={new Date()}
+                      showYearDropdown
+                      showMonthDropdown
+                      dropdownMode="select"
+                      yearDropdownItemNumber={50}
+                      scrollableYearDropdown
+                      dateFormat="MMMM d, yyyy"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
 
-            {/* Registration Date */}
-            {formData.isGovernmentRegistered && (
-              <div>
-                <label className="block mb-1 text-sm font-medium">
-                  Registration Date <span className="text-red-500">*</span>
-                </label>
-                <DatePicker
-                  selected={
-                    formData.registrationDate
-                      ? new Date(formData.registrationDate)
-                      : null
-                  }
-                  onChange={date =>
-                    setFormData(prev => ({
-                      ...prev,
-                      registrationDate: date ? date.toISOString().split("T")[0] : null,
-                    }))
-                  }
-                  placeholderText="Select registration date"
-                  className="w-full border border-gray-300 rounded-md px-4 py-2"
-                  maxDate={new Date()}
-                />
-              </div>
-            )}
+                {/* Business License Number */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Business License Number
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="businessLicenseNumber"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+                    placeholder="Enter business license number"
+                    value={formData.businessLicenseNumber}
+                    onChange={handleChange}
+                  />
+                </div>
 
-            {/* Business License Number */}
-            {formData.isGovernmentRegistered && (
-              <div>
-                <label className="block mb-1 text-sm font-medium">
-                  Business License Number <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="businessLicenseNumber"
-                  className="w-full border border-gray-300 rounded-md px-4 py-2"
-                  placeholder="Enter business license number"
-                  value={formData.businessLicenseNumber}
-                  onChange={handleChange}
-                />
-              </div>
-            )}
-
-            {/* TIN */}
-            {formData.isGovernmentRegistered && (
-              <div>
-                <label className="block mb-1 text-sm font-medium">
-                  TIN <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="tin"
-                  className="w-full border border-gray-300 rounded-md px-4 py-2"
-                  placeholder="Enter TIN"
-                  value={formData.tin}
-                  onChange={handleChange}
-                />
+                {/* TIN */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                    </svg>
+                    TIN (Tax Identification Number)
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="tin"
+                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+                    placeholder="Enter TIN"
+                    value={formData.tin}
+                    onChange={handleChange}
+                  />
+                </div>
               </div>
             )}
 
@@ -3395,5 +3788,6 @@ const handleSubmit = async () => {
       <DraftLoadingModal />
       <ToastContainer />
     </div>
+    </>
   );
 }
