@@ -252,3 +252,5 @@ For questions or support, contact the development team.
 ---
 
 **Built with ❤️ by the StartupSphere Team**
+
+```
