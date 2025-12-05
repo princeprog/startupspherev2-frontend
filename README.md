@@ -92,7 +92,7 @@ StartupSphere v2 is a comprehensive platform that enables users to explore start
 - **npm** v9.0.0 or higher (or **yarn** v1.22.0+)  
 - **Git** for version control  
 - **PostgreSQL** for backend database  
-- **Backend environment ready** (Node.js or Spring Boot)  
+- **Backend environment ready** (Spring Boot)  
 
 ## 🚀 Installation
 
@@ -230,7 +230,7 @@ startupspherev2-frontend/
 
 | Field    | Value                                                     |
 | -------- | --------------------------------------------------------- |
-| Email    | [dummy@startupsphere.com](mailto:dummy@startupsphere.com) |
+| Email    | dummy@startupsphere.com
 | Password | dummy@123                                                 |
 
 ## 🤝 Contributing
