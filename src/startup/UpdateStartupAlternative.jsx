@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import {
   ArrowLeft,
   Save,
@@ -29,6 +31,8 @@ export default function UpdateStartup() {
   const location = useLocation();
   const mapInstanceRef = useRef(null);
   const fileInputRef = useRef(null);
+  const logoInputRef = useRef(null);
+  const certificateInputRef = useRef(null);
 
   const initialStartupData = location.state?.startup || {};
 
@@ -48,12 +52,24 @@ export default function UpdateStartup() {
     linkedIn: "",
     streetAddress: "",
     country: "",
+    region: "",
+    barangay: "",
     city: "",
     province: "",
     postalCode: "",
     locationLat: null,
     locationLng: null,
     locationName: "",
+    fundingStage: "",
+    operatingHours: "",
+    businessActivity: "",
+    isGovernmentRegistered: "",
+    registrationAgency: "",
+    registrationNumber: "",
+    registrationDate: null,
+    otherRegistrationAgency: "",
+    businessLicenseNumber: "",
+    tin: "",
     ...initialStartupData,
   });
 
@@ -70,6 +86,27 @@ export default function UpdateStartup() {
   const [uploadMode, setUploadMode] = useState("replace"); // replace or skip
   const [showUploadConfirmation, setShowUploadConfirmation] = useState(false);
   const [csvPreviewData, setCsvPreviewData] = useState(null);
+  const [uploadedLogo, setUploadedLogo] = useState(null);
+  const [logoUrl, setLogoUrl] = useState(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState(null);
+  const [logoLoading, setLogoLoading] = useState(false);
+  const [uploadedCertificate, setUploadedCertificate] = useState(null);
+  const [certificateUrl, setCertificateUrl] = useState(null);
+  const [certificatePreviewUrl, setCertificatePreviewUrl] = useState(null);
+  const [certificateLoading, setCertificateLoading] = useState(false);
+  const [certificateUploading, setCertificateUploading] = useState(false);
+  const [openingTime, setOpeningTime] = useState("09:00");
+  const [closingTime, setClosingTime] = useState("17:00");
+  const [selectedDays, setSelectedDays] = useState(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]);
+  const [regions, setRegions] = useState([]);
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [barangays, setBarangays] = useState([]);
+  const [selectedRegion, setSelectedRegion] = useState(null);
+  const [selectedProvince, setSelectedProvince] = useState(null);
+  const [selectedCity, setSelectedCity] = useState(null);
+  const [selectedBarangay, setSelectedBarangay] = useState(null);
+  const [showRemoveLogoModal, setShowRemoveLogoModal] = useState(false);
 
   useEffect(() => {
     if (formData.foundedDate) {
@@ -93,6 +130,84 @@ export default function UpdateStartup() {
       fetchStartupData();
     }
   }, [id, initialStartupData.id]);
+
+  // Fetch current logo whenever id is available
+  useEffect(() => {
+    if (id) {
+      console.log("[useEffect] Component mounted/id changed, fetching logo for ID:", id);
+      fetchCurrentLogo();
+    }
+  }, [id]);
+
+  // Fetch current certificate whenever id is available
+  useEffect(() => {
+    if (id) {
+      console.log("[useEffect] Component mounted/id changed, fetching certificate for ID:", id);
+      fetchCurrentCertificate();
+    }
+  }, [id]);
+
+  // Fetch regions from PSGC API
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const response = await fetch("https://psgc.gitlab.io/api/regions/");
+        const data = await response.json();
+        setRegions(data);
+      } catch (error) {
+        console.error("Error fetching regions:", error);
+      }
+    };
+    fetchRegions();
+  }, []);
+
+  // Fetch provinces when region is selected
+  useEffect(() => {
+    if (selectedRegion) {
+      const fetchProvinces = async () => {
+        try {
+          const response = await fetch(`https://psgc.gitlab.io/api/regions/${selectedRegion.code}/provinces/`);
+          const data = await response.json();
+          setProvinces(data);
+        } catch (error) {
+          console.error("Error fetching provinces:", error);
+        }
+      };
+      fetchProvinces();
+    }
+  }, [selectedRegion]);
+
+  // Fetch cities when province is selected
+  useEffect(() => {
+    if (selectedProvince) {
+      const fetchCities = async () => {
+        try {
+          const response = await fetch(`https://psgc.gitlab.io/api/provinces/${selectedProvince.code}/cities-municipalities/`);
+          const data = await response.json();
+          setCities(data);
+        } catch (error) {
+          console.error("Error fetching cities:", error);
+        }
+      };
+      fetchCities();
+    }
+  }, [selectedProvince]);
+
+  // Fetch barangays when city is selected
+  useEffect(() => {
+    if (selectedCity) {
+      const fetchBarangays = async () => {
+        try {
+          const response = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${selectedCity.code}/barangays/`);
+          const data = await response.json();
+          setBarangays(data);
+        } catch (error) {
+          console.error("Error fetching barangays:", error);
+        }
+      };
+      fetchBarangays();
+    }
+  }, [selectedCity]);
 
   const fetchStartupData = async () => {
     setLoading(true);
@@ -122,12 +237,174 @@ export default function UpdateStartup() {
         }
       }
 
+      // Parse operating hours
+      if (data.operatingHours) {
+        const match = data.operatingHours.match(/^(.*?): (\d{2}:\d{2}) - (\d{2}:\d{2})$/);
+        if (match) {
+          const [_, days, opening, closing] = match;
+          setSelectedDays(days.split(", "));
+          setOpeningTime(opening);
+          setClosingTime(closing);
+        }
+      }
+
       setFormData(formattedData);
+      
+      // Logo will be fetched by the dedicated useEffect hook
     } catch (error) {
       console.error("Error fetching startup data:", error);
       setError("Failed to load startup details. Please try again later.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCurrentLogo = async () => {
+    console.log("[fetchCurrentLogo] Starting logo fetch for startup ID:", id);
+    setLogoLoading(true);
+    try {
+      const url = `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/photo`;
+      console.log("[fetchCurrentLogo] Fetching from URL:", url);
+      
+      const response = await fetch(url, {
+        credentials: "include",
+      });
+
+      console.log("[fetchCurrentLogo] Response status:", response.status);
+      console.log("[fetchCurrentLogo] Response ok:", response.ok);
+
+      if (response.ok) {
+        const blob = await response.blob();
+        console.log("[fetchCurrentLogo] Blob received, size:", blob.size, "bytes, type:", blob.type);
+        
+        // Clean up old URL if exists
+        if (logoUrl) {
+          console.log("[fetchCurrentLogo] Cleaning up old URL");
+          URL.revokeObjectURL(logoUrl);
+        }
+        const objectUrl = URL.createObjectURL(blob);
+        console.log("[fetchCurrentLogo] Created object URL:", objectUrl);
+        setLogoUrl(objectUrl);
+        console.log("[fetchCurrentLogo] Logo URL state updated successfully");
+      } else {
+        console.warn("[fetchCurrentLogo] Response not OK. Status:", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error("[fetchCurrentLogo] Error fetching logo:", error);
+    } finally {
+      setLogoLoading(false);
+    }
+  };
+
+  const fetchCurrentCertificate = async () => {
+    console.log("[fetchCurrentCertificate] Starting certificate fetch for startup ID:", id);
+    setCertificateLoading(true);
+    try {
+      const url = `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/registration-certificate`;
+      console.log("[fetchCurrentCertificate] Fetching from URL:", url);
+      
+      const response = await fetch(url, {
+        credentials: "include",
+      });
+
+      console.log("[fetchCurrentCertificate] Response status:", response.status);
+      console.log("[fetchCurrentCertificate] Response ok:", response.ok);
+
+      if (response.ok) {
+        const blob = await response.blob();
+        console.log("[fetchCurrentCertificate] Blob received, size:", blob.size, "bytes, type:", blob.type);
+        
+        // Clean up old URL if exists
+        if (certificateUrl) {
+          console.log("[fetchCurrentCertificate] Cleaning up old URL");
+          URL.revokeObjectURL(certificateUrl);
+        }
+        const objectUrl = URL.createObjectURL(blob);
+        console.log("[fetchCurrentCertificate] Created object URL:", objectUrl);
+        setCertificateUrl(objectUrl);
+        console.log("[fetchCurrentCertificate] Certificate URL state updated successfully");
+      } else {
+        console.warn("[fetchCurrentCertificate] Response not OK. Status:", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error("[fetchCurrentCertificate] Error fetching certificate:", error);
+    } finally {
+      setCertificateLoading(false);
+    }
+  };
+
+  const handleLogoUpload = async (file) => {
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("photo", file);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/upload-photo`,
+        {
+          method: "PUT",
+          body: formData,
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to upload logo");
+      }
+
+      // Clean up preview URL
+      if (logoPreviewUrl) {
+        URL.revokeObjectURL(logoPreviewUrl);
+        setLogoPreviewUrl(null);
+      }
+      
+      // Refresh logo
+      await fetchCurrentLogo();
+      setUploadedLogo(null);
+      setSuccess("Logo updated successfully!");
+    } catch (error) {
+      console.error("Error uploading logo:", error);
+      setError("Failed to upload logo. Please try again.");
+    }
+  };
+
+  const handleCertificateUpload = async (file) => {
+    if (!file) return;
+
+    setCertificateUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("registrationCertificate", file);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/upload-registration-certificate`,
+        {
+          method: "PUT",
+          body: formData,
+          credentials: "include",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to upload certificate");
+      }
+
+      // Clean up preview URL
+      if (certificatePreviewUrl) {
+        URL.revokeObjectURL(certificatePreviewUrl);
+        setCertificatePreviewUrl(null);
+      }
+      
+      // Refresh certificate
+      await fetchCurrentCertificate();
+      setUploadedCertificate(null);
+      setSuccess("Certificate updated successfully!");
+    } catch (error) {
+      console.error("Error uploading certificate:", error);
+      setError("Failed to upload certificate. Please try again.");
+    } finally {
+      setCertificateUploading(false);
     }
   };
 
@@ -594,6 +871,170 @@ export default function UpdateStartup() {
                   </div>
                 </div>
               </div>
+
+              {/* Company Logo Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Logo
+                </label>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files[0]) {
+                      const file = e.target.files[0];
+                      setUploadedLogo(file);
+                      const tempUrl = URL.createObjectURL(file);
+                      setLogoPreviewUrl(tempUrl);
+                    }
+                  }}
+                  className="hidden"
+                />
+                <div className="border-2 border-gray-200 rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-white">
+                  {logoLoading ? (
+                    <div className="p-8">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="relative w-20 h-20 mb-4">
+                          <div className="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
+                          <div className="absolute inset-0 border-4 border-t-blue-600 rounded-full animate-spin"></div>
+                        </div>
+                        <h4 className="text-base font-semibold text-gray-700 mb-2">Loading logo...</h4>
+                        <p className="text-sm text-gray-500">Please wait while we fetch your company logo</p>
+                      </div>
+                    </div>
+                  ) : (logoUrl || logoPreviewUrl) ? (
+                    <div className="p-6">
+                      <div className="flex items-start gap-6">
+                        {/* Logo Preview */}
+                        <div className="relative group">
+                          <div className="w-32 h-32 rounded-xl overflow-hidden border-2 border-gray-200 shadow-lg bg-white">
+                            <img 
+                              src={logoPreviewUrl || logoUrl} 
+                              alt="Company logo" 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          {uploadedLogo && (
+                            <div className="absolute -top-2 -right-2 bg-yellow-500 text-white rounded-full p-1.5 shadow-lg">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Actions */}
+                        <div className="flex-1">
+                          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4">
+                            <div className="flex items-start gap-2">
+                              <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <div>
+                                <p className="text-sm font-medium text-blue-900">
+                                  {uploadedLogo ? "New logo ready to upload" : "Current company logo"}
+                                </p>
+                                <p className="text-xs text-blue-700 mt-1">
+                                  {uploadedLogo 
+                                    ? "Click 'Upload Logo' to save changes" 
+                                    : "This is your current logo. Click 'Change Logo' to update it."}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {uploadedLogo ? (
+                            <div className="space-y-3">
+                              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                                <p className="text-sm font-medium text-gray-700">Selected file:</p>
+                                <p className="text-xs text-gray-500 mt-1 truncate">{uploadedLogo.name}</p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {(uploadedLogo.size / 1024).toFixed(2)} KB
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    await handleLogoUpload(uploadedLogo);
+                                  }}
+                                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm font-medium"
+                                >
+                                  <Upload size={18} />
+                                  Upload Logo
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    // Clean up preview URL
+                                    if (logoPreviewUrl) {
+                                      URL.revokeObjectURL(logoPreviewUrl);
+                                      setLogoPreviewUrl(null);
+                                    }
+                                    setUploadedLogo(null);
+                                    if (logoInputRef.current) {
+                                      logoInputRef.current.value = "";
+                                    }
+                                  }}
+                                  className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all font-medium"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => logoInputRef.current?.click()}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white text-blue-600 border-2 border-blue-600 rounded-lg hover:bg-blue-50 transition-all font-medium"
+                              >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                Change Logo
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setShowRemoveLogoModal(true)}
+                                className="px-4 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-all font-medium"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-8">
+                      <div className="text-center">
+                        <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mb-4">
+                          <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <h4 className="text-base font-semibold text-gray-700 mb-2">No logo uploaded</h4>
+                        <p className="text-sm text-gray-500 mb-6">
+                          Upload a company logo to make your profile stand out
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => logoInputRef.current?.click()}
+                          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm font-medium"
+                        >
+                          <Upload size={20} />
+                          Upload Logo
+                        </button>
+                        <p className="text-xs text-gray-400 mt-4">
+                          PNG, JPG or WEBP (max. 5MB)
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -905,6 +1346,517 @@ export default function UpdateStartup() {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        );
+
+      case "additional":
+        return (
+          <div>
+            <h2 className="text-2xl font-semibold mb-6 text-gray-800">Additional Information</h2>
+            <div className="space-y-6">
+              {/* Funding Stage */}
+              <div>
+                <label htmlFor="fundingStage" className="block text-sm font-medium text-gray-700 mb-1">
+                  Funding Stage*
+                </label>
+                <select
+                  id="fundingStage"
+                  name="fundingStage"
+                  value={formData.fundingStage || ""}
+                  onChange={handleInputChange}
+                  required
+                  className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                >
+                  <option value="">Select funding stage...</option>
+                  <option value="Angel Investment">Angel Investment</option>
+                  <option value="Bank Loan">Bank Loan</option>
+                  <option value="Crowdfunding">Crowdfunding</option>
+                  <option value="DOST Funding">DOST Funding</option>
+                  <option value="DTI Funding">DTI Funding</option>
+                  <option value="Family & Friends">Family & Friends</option>
+                  <option value="Government Grant">Government Grant</option>
+                  <option value="IPO / Public Offering">IPO / Public Offering</option>
+                  <option value="Microfinance">Microfinance</option>
+                  <option value="Not Seeking Funding">Not Seeking Funding</option>
+                  <option value="Pre-Seed">Pre-Seed</option>
+                  <option value="Private Equity">Private Equity</option>
+                  <option value="Seed Funding">Seed Funding</option>
+                  <option value="Self-Funded / Bootstrapped">Self-Funded / Bootstrapped</option>
+                  <option value="Series A">Series A</option>
+                  <option value="Series B">Series B</option>
+                  <option value="Series C">Series C</option>
+                  <option value="Series D+">Series D+</option>
+                  <option value="Venture Capital">Venture Capital</option>
+                </select>
+              </div>
+
+              {/* Business Activity */}
+              <div>
+                <label htmlFor="businessActivity" className="block text-sm font-medium text-gray-700 mb-1">
+                  Business Activity*
+                </label>
+                <input
+                  type="text"
+                  id="businessActivity"
+                  name="businessActivity"
+                  value={formData.businessActivity || ""}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="e.g., Software Development, E-commerce, Consulting"
+                  className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Operating Hours */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-100">
+                <h3 className="text-base font-semibold text-gray-900 mb-4">Operating Hours*</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  {/* Opening Time */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Opening Time
+                    </label>
+                    <input
+                      type="time"
+                      value={openingTime}
+                      onChange={(e) => {
+                        setOpeningTime(e.target.value);
+                        const hours = `${e.target.value} - ${closingTime}`;
+                        const days = selectedDays.join(", ");
+                        setFormData(prev => ({ ...prev, operatingHours: `${days}: ${hours}` }));
+                      }}
+                      className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+
+                  {/* Closing Time */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Closing Time
+                    </label>
+                    <input
+                      type="time"
+                      value={closingTime}
+                      onChange={(e) => {
+                        setClosingTime(e.target.value);
+                        const hours = `${openingTime} - ${e.target.value}`;
+                        const days = selectedDays.join(", ");
+                        setFormData(prev => ({ ...prev, operatingHours: `${days}: ${hours}` }));
+                      }}
+                      className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Operating Days */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Operating Days
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map((day) => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => {
+                          const newDays = selectedDays.includes(day)
+                            ? selectedDays.filter(d => d !== day)
+                            : [...selectedDays, day];
+                          setSelectedDays(newDays);
+                          const hours = `${openingTime} - ${closingTime}`;
+                          const daysStr = newDays.join(", ");
+                          setFormData(prev => ({ ...prev, operatingHours: `${daysStr}: ${hours}` }));
+                        }}
+                        className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                          selectedDays.includes(day)
+                            ? "bg-blue-600 text-white shadow-md"
+                            : "bg-white text-gray-700 border-2 border-gray-300"
+                        }`}
+                      >
+                        {day.substring(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preview */}
+                <div className="bg-white rounded-lg p-4 border-2 border-blue-200">
+                  <p className="text-sm font-medium text-gray-700">Preview:</p>
+                  <p className="text-sm text-gray-900 font-mono mt-1">
+                    {formData.operatingHours || "Please select opening time, closing time, and operating days"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case "government":
+        return (
+          <div>
+            <h2 className="text-2xl font-semibold mb-6 text-gray-800">Government Registration</h2>
+            <div className="space-y-6">
+              {/* Is Government Registered */}
+              <div>
+                <label htmlFor="isGovernmentRegistered" className="block text-sm font-medium text-gray-700 mb-1">
+                  Is your startup registered with a government agency?*
+                </label>
+                <select
+                  id="isGovernmentRegistered"
+                  name="isGovernmentRegistered"
+                  value={formData.isGovernmentRegistered}
+                  onChange={(e) => {
+                    const value = e.target.value === "true" ? true : e.target.value === "false" ? false : "";
+                    setFormData(prev => ({
+                      ...prev,
+                      isGovernmentRegistered: value,
+                      registrationAgency: "",
+                      otherRegistrationAgency: "",
+                      registrationNumber: "",
+                      registrationDate: null,
+                      businessLicenseNumber: "",
+                      tin: "",
+                    }));
+                  }}
+                  className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                >
+                  <option value="">Select an option</option>
+                  <option value="true">Yes</option>
+                  <option value="false">No</option>
+                </select>
+              </div>
+
+              {/* Registration Agency */}
+              {formData.isGovernmentRegistered && (
+                <>
+                  <div>
+                    <label htmlFor="registrationAgency" className="block text-sm font-medium text-gray-700 mb-1">
+                      Registration Agency*
+                    </label>
+                    <select
+                      id="registrationAgency"
+                      name="registrationAgency"
+                      value={formData.registrationAgency || ""}
+                      onChange={(e) =>
+                        setFormData(prev => ({
+                          ...prev,
+                          registrationAgency: e.target.value,
+                          otherRegistrationAgency: "",
+                        }))
+                      }
+                      className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    >
+                      <option value="">Select agency</option>
+                      <option value="DICT">DICT (Department of Information and Communications Technology)</option>
+                      <option value="DOST">DOST (Department of Science and Technology)</option>
+                      <option value="DTI">DTI (Department of Trade and Industry)</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  {/* Other Registration Agency */}
+                  {formData.registrationAgency === "other" && (
+                    <div>
+                      <label htmlFor="otherRegistrationAgency" className="block text-sm font-medium text-gray-700 mb-1">
+                        Please specify the agency*
+                      </label>
+                      <input
+                        type="text"
+                        id="otherRegistrationAgency"
+                        name="otherRegistrationAgency"
+                        value={formData.otherRegistrationAgency || ""}
+                        onChange={handleInputChange}
+                        placeholder="Enter agency name"
+                        className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  )}
+
+                  {/* Registration Number */}
+                  <div>
+                    <label htmlFor="registrationNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                      Registration Number*
+                    </label>
+                    <input
+                      type="text"
+                      id="registrationNumber"
+                      name="registrationNumber"
+                      value={formData.registrationNumber || ""}
+                      onChange={handleInputChange}
+                      placeholder="Enter registration/certificate number"
+                      className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  {/* Registration Date */}
+                  <div>
+                    <label htmlFor="registrationDate" className="block text-sm font-medium text-gray-700 mb-1">
+                      Registration Date*
+                    </label>
+                    <DatePicker
+                      selected={formData.registrationDate ? new Date(formData.registrationDate) : null}
+                      onChange={(date) =>
+                        setFormData(prev => ({
+                          ...prev,
+                          registrationDate: date ? date.toISOString().split("T")[0] : null,
+                        }))
+                      }
+                      placeholderText="Select registration date"
+                      className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      maxDate={new Date()}
+                    />
+                  </div>
+
+                  {/* Business License Number */}
+                  <div>
+                    <label htmlFor="businessLicenseNumber" className="block text-sm font-medium text-gray-700 mb-1">
+                      Business License Number*
+                    </label>
+                    <input
+                      type="text"
+                      id="businessLicenseNumber"
+                      name="businessLicenseNumber"
+                      value={formData.businessLicenseNumber || ""}
+                      onChange={handleInputChange}
+                      placeholder="Enter business license number"
+                      className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  {/* TIN */}
+                  <div>
+                    <label htmlFor="tin" className="block text-sm font-medium text-gray-700 mb-1">
+                      TIN*
+                    </label>
+                    <input
+                      type="text"
+                      id="tin"
+                      name="tin"
+                      value={formData.tin || ""}
+                      onChange={handleInputChange}
+                      placeholder="Enter TIN"
+                      className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  {/* Registration Certificate Upload */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Registration Certificate</span>
+                    </label>
+                    <input
+                      ref={certificateInputRef}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={(e) => {
+                        if (e.target.files[0]) {
+                          const file = e.target.files[0];
+                          setUploadedCertificate(file);
+                          const tempUrl = URL.createObjectURL(file);
+                          setCertificatePreviewUrl(tempUrl);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <div className="border-2 border-gray-200 rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-white">
+                      {certificateLoading ? (
+                        <div className="p-8">
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="relative w-20 h-20 mb-4">
+                              <div className="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
+                              <div className="absolute inset-0 border-4 border-t-blue-600 rounded-full animate-spin"></div>
+                            </div>
+                            <h4 className="text-base font-semibold text-gray-700 mb-2">Loading certificate...</h4>
+                            <p className="text-sm text-gray-500">Please wait while we fetch your registration certificate</p>
+                          </div>
+                        </div>
+                      ) : certificateUploading ? (
+                        <div className="p-8">
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="relative w-20 h-20 mb-4">
+                              <div className="absolute inset-0 border-4 border-blue-200 rounded-full"></div>
+                              <div className="absolute inset-0 border-4 border-t-blue-600 rounded-full animate-spin"></div>
+                            </div>
+                            <h4 className="text-base font-semibold text-gray-700 mb-2">Uploading certificate...</h4>
+                            <p className="text-sm text-gray-500 text-center">Please wait while we process your registration certificate</p>
+                            <div className="mt-4 flex items-center gap-2 text-xs text-blue-600">
+                              <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                              <span className="font-medium">Processing</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (certificateUrl || certificatePreviewUrl) ? (
+                        <div className="p-6">
+                          <div className="flex items-start gap-4">
+                            {/* Certificate Preview */}
+                            <div className="relative">
+                              <div className="w-24 h-24 flex items-center justify-center bg-blue-50 rounded-lg border-2 border-blue-200 shadow-sm">
+                                <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              </div>
+                              {uploadedCertificate && (
+                                <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full p-1">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Certificate Actions */}
+                            <div className="flex-1 space-y-2">
+                              <p className="text-sm text-gray-600 font-medium">
+                                {uploadedCertificate 
+                                  ? uploadedCertificate.name
+                                  : 'Current registration certificate'}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {uploadedCertificate 
+                                  ? `${(uploadedCertificate.size / 1024).toFixed(2)} KB - Ready to upload` 
+                                  : 'Click "Change Certificate" to update'}
+                              </p>
+
+                              {uploadedCertificate ? (
+                                <div className="flex gap-2 pt-2">
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      await handleCertificateUpload(uploadedCertificate);
+                                    }}
+                                    disabled={certificateUploading}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    {certificateUploading ? (
+                                      <>
+                                        <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        Uploading...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                        Upload Certificate
+                                      </>
+                                    )}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (certificatePreviewUrl) {
+                                        URL.revokeObjectURL(certificatePreviewUrl);
+                                        setCertificatePreviewUrl(null);
+                                      }
+                                      setUploadedCertificate(null);
+                                      if (certificateInputRef.current) {
+                                        certificateInputRef.current.value = "";
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-all duration-200"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-2 pt-2">
+                                  {certificateUrl && (
+                                    <a
+                                      href={certificateUrl}
+                                      download="registration-certificate"
+                                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-600 text-sm font-medium rounded-lg hover:bg-green-100 transition-all duration-200"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                      </svg>
+                                      Download
+                                    </a>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => certificateInputRef.current?.click()}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all duration-200 shadow-sm"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                    </svg>
+                                    Change Certificate
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      try {
+                                        const response = await fetch(
+                                          `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/registration-certificate`,
+                                          {
+                                            method: "DELETE",
+                                            credentials: "include",
+                                          }
+                                        );
+                                        
+                                        if (response.ok) {
+                                          if (certificateUrl) {
+                                            URL.revokeObjectURL(certificateUrl);
+                                          }
+                                          setCertificateUrl(null);
+                                          setSuccess("Certificate removed successfully!");
+                                        } else {
+                                          throw new Error("Failed to remove certificate");
+                                        }
+                                      } catch (error) {
+                                        console.error("Error removing certificate:", error);
+                                        setError("Failed to remove certificate. Please try again.");
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-all duration-200"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    Remove
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-8">
+                          <div className="text-center">
+                            <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center mb-4">
+                              <svg className="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                            </div>
+                            <h4 className="text-base font-semibold text-gray-700 mb-2">No certificate uploaded</h4>
+                            <p className="text-sm text-gray-500 mb-6">
+                              Upload your government registration certificate
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => certificateInputRef.current?.click()}
+                              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-sm font-medium"
+                            >
+                              <Upload size={20} />
+                              Upload Certificate
+                            </button>
+                            <p className="text-xs text-gray-400 mt-4">
+                              PDF, PNG, JPG or JPEG (max. 10MB)
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         );
@@ -1382,6 +2334,8 @@ export default function UpdateStartup() {
                   { id: "basic", label: "Basic Information", icon: <Building size={18} /> },
                   { id: "contact", label: "Contact Information", icon: <Mail size={18} /> },
                   { id: "location", label: "Location", icon: <MapPin size={18} /> },
+                  { id: "additional", label: "Additional Information", icon: <Briefcase size={18} /> },
+                  { id: "government", label: "Government Registration", icon: <CheckCircle2 size={18} /> },
                   { id: "upload", label: "Upload Data", icon: <Upload size={18} /> },
                 ].map((section) => (
                   <button
@@ -1404,12 +2358,12 @@ export default function UpdateStartup() {
               <div className="p-4 bg-gray-50 border-t border-gray-200">
                 <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                   <span>Completion</span>
-                  <span>Step {["basic", "contact", "location", "upload"].indexOf(activeSection) + 1} of 4</span>
+                  <span>Step {["basic", "contact", "location", "additional", "government", "upload"].indexOf(activeSection) + 1} of 6</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-1.5">
                   <div
                     className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                    style={{ width: `${(["basic", "contact", "location", "upload"].indexOf(activeSection) + 1) * 25}%` }}
+                    style={{ width: `${(["basic", "contact", "location", "additional", "government", "upload"].indexOf(activeSection) + 1) * 16.67}%` }}
                   ></div>
                 </div>
               </div>
@@ -1426,6 +2380,73 @@ export default function UpdateStartup() {
           </div>
         </div>
       </div>
+
+      {/* Remove Logo Confirmation Modal */}
+      {showRemoveLogoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full transform transition-all">
+            <div className="p-6">
+              <div className="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                <AlertCircle className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
+                Remove Company Logo?
+              </h3>
+              <p className="text-sm text-gray-600 text-center mb-6">
+                Are you sure you want to remove the current company logo? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowRemoveLogoModal(false)}
+                  className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all font-medium"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      // Call API to delete logo if needed
+                      const response = await fetch(
+                        `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/photo`,
+                        {
+                          method: "DELETE",
+                          credentials: "include",
+                        }
+                      );
+                      
+                      if (response.ok) {
+                        // Clean up URLs
+                        if (logoUrl) {
+                          URL.revokeObjectURL(logoUrl);
+                        }
+                        if (logoPreviewUrl) {
+                          URL.revokeObjectURL(logoPreviewUrl);
+                        }
+                        setLogoUrl(null);
+                        setLogoPreviewUrl(null);
+                        setUploadedLogo(null);
+                        setSuccess("Logo removed successfully!");
+                      } else {
+                        throw new Error("Failed to remove logo");
+                      }
+                    } catch (error) {
+                      console.error("Error removing logo:", error);
+                      setError("Failed to remove logo. Please try again.");
+                    } finally {
+                      setShowRemoveLogoModal(false);
+                    }
+                  }}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all font-medium shadow-sm"
+                >
+                  Remove Logo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

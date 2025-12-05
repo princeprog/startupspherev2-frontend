@@ -47,6 +47,10 @@ export default function EnhancedStartupReviewSection({
   const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
   const [rejectionComment, setRejectionComment] = useState("");
   const [pendingRejectionId, setPendingRejectionId] = useState(null);
+  const [certificateUrl, setCertificateUrl] = useState(null);
+  const [loadingCertificate, setLoadingCertificate] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState(null);
+  const [loadingPhoto, setLoadingPhoto] = useState(false);
   const [commonRejectionReasons, setCommonRejectionReasons] = useState([
     "Incomplete company information",
     "Business description is too vague or unclear",
@@ -152,11 +156,30 @@ export default function EnhancedStartupReviewSection({
       if (targetStartup) {
         setSelectedStartup(targetStartup);
         setIsPreviewOpen(true);
+        fetchRegistrationCertificate(targetStartup.id);
         // Highlight that we're reviewing this specific startup
         toast.info(`Reviewing startup: ${targetStartup.companyName}`);
       }
     }
   }, [startupId, startups]);
+
+  // Fetch certificate and photo when preview opens
+  useEffect(() => {
+    if (isPreviewOpen && selectedStartup) {
+      fetchRegistrationCertificate(selectedStartup.id);
+      fetchStartupPhoto(selectedStartup.id);
+    } else {
+      // Cleanup URLs when modal closes
+      if (certificateUrl) {
+        URL.revokeObjectURL(certificateUrl);
+        setCertificateUrl(null);
+      }
+      if (photoUrl) {
+        URL.revokeObjectURL(photoUrl);
+        setPhotoUrl(null);
+      }
+    }
+  }, [isPreviewOpen, selectedStartup]);
 
   // API call to fetch startups
   const fetchStartups = async () => {
@@ -251,6 +274,75 @@ export default function EnhancedStartupReviewSection({
   const handleApplyFilters = () => {
     setCurrentPage(1); // Reset to first page when filters change
     fetchStartups();
+  };
+
+  // Fetch registration certificate
+  const fetchRegistrationCertificate = async (id) => {
+    try {
+      setLoadingCertificate(true);
+
+      // Revoke previously created URL to avoid memory leaks
+      if (certificateUrl) {
+        try {
+          URL.revokeObjectURL(certificateUrl);
+        } catch (e) {
+          // ignore revoke errors
+        }
+        setCertificateUrl(null);
+      }
+
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/registration-certificate`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        setCertificateUrl(url);
+      } else {
+        // Clear any existing URL and notify user
+        setCertificateUrl(null);
+        toast.error("Failed to load registration certificate");
+      }
+    } catch (error) {
+      console.error("Error fetching certificate:", error);
+      setCertificateUrl(null);
+      toast.error("Error loading certificate");
+    } finally {
+      setLoadingCertificate(false);
+    }
+  };
+
+  // Fetch startup photo
+  const fetchStartupPhoto = async (id) => {
+    try {
+      setLoadingPhoto(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/photo`,
+        {
+          method: "GET",
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        setPhotoUrl(url);
+      } else {
+        console.log("No photo available");
+        setPhotoUrl(null);
+      }
+    } catch (error) {
+      console.error("Error fetching photo:", error);
+      setPhotoUrl(null);
+    } finally {
+      setLoadingPhoto(false);
+    }
   };
 
   // Handler for approving a startup
@@ -872,6 +964,9 @@ export default function EnhancedStartupReviewSection({
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-100 text-gray-700">
+                <th className="p-3 text-left text-sm font-medium border-b w-16">
+                  Photo
+                </th>
                 <th
                   className="p-3 text-left text-sm font-medium border-b"
                   onClick={() => handleSort("companyName")}
@@ -966,6 +1061,22 @@ export default function EnhancedStartupReviewSection({
                   key={startup.id}
                   className="hover:bg-blue-50 border-b text-gray-500 transition-colors"
                 >
+                  <td className="p-3">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                      <img
+                        src={`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id}/photo`}
+                        alt={startup.companyName}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div style={{display: 'none'}} className="w-full h-full flex items-center justify-center">
+                        <Building size={20} className="text-gray-400" />
+                      </div>
+                    </div>
+                  </td>
                   <td className="p-3">
                     <div className="font-medium text-gray-900">
                       {startup.companyName || "Unnamed Startup"}
@@ -1209,6 +1320,39 @@ export default function EnhancedStartupReviewSection({
             </div>
 
             <div className="overflow-y-auto p-6 flex-grow">
+              {/* Company Photo Banner */}
+              {(photoUrl || loadingPhoto) && (
+                <div className="mb-6 bg-gradient-to-r from-indigo-50 to-blue-50 p-4 rounded-lg border border-indigo-200">
+                  <div className="flex items-center gap-4">
+                    <div className="w-24 h-24 rounded-lg overflow-hidden bg-white shadow-md flex-shrink-0">
+                      {loadingPhoto ? (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Loader className="animate-spin text-indigo-600" size={24} />
+                        </div>
+                      ) : photoUrl ? (
+                        <img
+                          src={photoUrl}
+                          alt={selectedStartup.companyName}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                          <Building size={32} className="text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-lg font-semibold text-indigo-900">
+                        {selectedStartup.companyName}
+                      </h4>
+                      <p className="text-sm text-indigo-700 mt-1">
+                        {selectedStartup.industry || "No industry specified"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Status Banner */}
               <div className="flex items-center justify-between mb-6 bg-blue-50 p-3 rounded-lg border border-blue-100">
                 <div className="flex items-center">
@@ -1393,6 +1537,129 @@ export default function EnhancedStartupReviewSection({
                             : "N/A"}
                         </p>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Government Registration & Documents */}
+                  <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-5 rounded-lg border border-purple-200 shadow-sm">
+                    <h3 className="text-lg font-medium text-purple-900 border-b border-purple-200 pb-2 mb-4 flex items-center">
+                      <Award size={18} className="mr-2" />
+                      Government Registration & Documents
+                    </h3>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="bg-white p-3 rounded-lg">
+                          <p className="text-sm font-medium text-gray-500 flex items-center mb-1">
+                            <Hash size={14} className="mr-1 text-purple-600" />
+                            Registered
+                          </p>
+                          <p className="text-gray-800 font-semibold">
+                            {selectedStartup.isGovernmentRegistered ? (
+                              <span className="text-green-600 flex items-center">
+                                <Check size={16} className="mr-1" />
+                                Yes
+                              </span>
+                            ) : (
+                              <span className="text-gray-500">No</span>
+                            )}
+                          </p>
+                        </div>
+
+                        {selectedStartup.isGovernmentRegistered && (
+                          <>
+                            <div className="bg-white p-3 rounded-lg">
+                              <p className="text-sm font-medium text-gray-500 mb-1">Agency</p>
+                              <p className="text-gray-800 font-medium">
+                                {selectedStartup.registrationAgency || "N/A"}
+                              </p>
+                            </div>
+
+                            <div className="bg-white p-3 rounded-lg">
+                              <p className="text-sm font-medium text-gray-500 mb-1">Registration Number</p>
+                              <p className="text-gray-800 font-mono text-sm">
+                                {selectedStartup.registrationNumber || "N/A"}
+                              </p>
+                            </div>
+
+                            <div className="bg-white p-3 rounded-lg">
+                              <p className="text-sm font-medium text-gray-500 mb-1">Registration Date</p>
+                              <p className="text-gray-800">
+                                {formatDate(selectedStartup.registrationDate)}
+                              </p>
+                            </div>
+
+                            <div className="bg-white p-3 rounded-lg">
+                              <p className="text-sm font-medium text-gray-500 mb-1">Business License</p>
+                              <p className="text-gray-800 font-mono text-sm">
+                                {selectedStartup.businessLicenseNumber || "N/A"}
+                              </p>
+                            </div>
+
+                            <div className="bg-white p-3 rounded-lg">
+                              <p className="text-sm font-medium text-gray-500 mb-1">TIN</p>
+                              <p className="text-gray-800 font-mono text-sm">
+                                {selectedStartup.tin || "N/A"}
+                              </p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Registration Certificate */}
+                      {selectedStartup.isGovernmentRegistered && (
+                        <div className="mt-4 bg-white p-4 rounded-lg border-2 border-dashed border-purple-300">
+                          <h4 className="text-sm font-semibold text-purple-900 mb-3 flex items-center">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Registration Certificate
+                          </h4>
+                          
+                          {loadingCertificate ? (
+                            <div className="flex items-center justify-center py-8">
+                              <Loader className="animate-spin text-purple-600 mr-2" size={20} />
+                              <span className="text-gray-600">Loading certificate...</span>
+                            </div>
+                          ) : certificateUrl ? (
+                            <div className="space-y-3">
+                              <div className="bg-purple-50 p-3 rounded-md border border-purple-200">
+                                <p className="text-sm text-purple-800 flex items-center">
+                                  <Check size={16} className="mr-2 text-green-600" />
+                                  Certificate document available
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <a
+                                  href={certificateUrl}
+                                  download={`registration-certificate-${selectedStartup.companyName}.pdf`}
+                                  className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors flex items-center justify-center text-sm font-medium"
+                                >
+                                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
+                                  Download Certificate
+                                </a>
+                                <a
+                                  href={certificateUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center justify-center text-sm font-medium"
+                                >
+                                  <Eye size={16} className="mr-2" />
+                                  View Certificate
+                                </a>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-center">
+                              <svg className="w-12 h-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <p className="text-sm text-gray-600">No certificate document uploaded</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
