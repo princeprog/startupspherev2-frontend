@@ -10,9 +10,12 @@ A modern, interactive web application for discovering, managing, and visualizing
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Development](#development)
+- [Deployment](#deployment)
 - [Project Structure](#project-structure)
+- [Dummy Users](#dummy-users)
 - [Contributing](#contributing)
 - [License](#license)
+- [Contact](#contact)
 
 ## 🌟 Overview
 
@@ -93,51 +96,77 @@ Before you begin, ensure you have the following installed:
 ## 🚀 Installation
 
 1. **Clone the repository**
-   ```bash
-   git clone https://github.com/princeprog/startupspherev2-frontend.git
-   cd startupspherev2-frontend
-   ```
+```bash
+git clone https://github.com/princeprog/startupspherev2-frontend.git
+cd startupspherev2-frontend
+````
 
 2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+
+```bash
+npm install
+```
 
 3. **Set up environment variables**
-   Create a `.env` file in the root directory with necessary API keys:
-   ```env
-   VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_token
-   VITE_API_BASE_URL=your_backend_api_url
-   ```
+   Create a `.env` file in the root:
+
+```env
+VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_token
+VITE_API_BASE_URL=your_backend_api_url
+```
 
 4. **SSL Certificates (for HTTPS development)**
-   Ensure you have the following certificate files in the root directory:
-   - `cert.key` - SSL private key
-   - `cert.crt` - SSL certificate
-   - `ca.crt` - Certificate authority
+   Place the following files in the root:
+
+* `cert.key`
+* `cert.crt`
+* `ca.crt`
 
 ## 💻 Development
 
 ### Start Development Server
+
 ```bash
 npm run dev
 ```
-The application will run on `https://localhost:5173` with HTTPS enabled.
 
-### Build for Production
+App runs on `https://localhost:5173`.
+
+### Build Production
+
 ```bash
 npm run build
 ```
 
 ### Preview Production Build
+
 ```bash
 npm run preview
 ```
 
 ### Lint Code
+
 ```bash
 npm run lint
 ```
+
+## 🌐 Deployment
+
+### Frontend Deployment (Vercel / Netlify)
+
+```bash
+npm run build
+npm i -g vercel
+vercel login
+vercel --prod
+```
+
+Set environment variables in Vercel/Netlify:
+
+| Key                      | Value                                                              |
+| ------------------------ | ------------------------------------------------------------------ |
+| VITE_MAPBOX_ACCESS_TOKEN | your_mapbox_token                                                  |
+| VITE_API_BASE_URL        | [https://your-backend-domain/api](https://your-backend-domain/api) |
 
 ## 📁 Project Structure
 
@@ -194,9 +223,16 @@ startupspherev2-frontend/
 └── README.md                    # Project documentation
 ```
 
-## 🤝 Contributing
+## 👤 Dummy Users
 
-Contributions are welcome! Please follow these steps:
+**Public Dummy User**
+
+| Field    | Value                                                     |
+| -------- | --------------------------------------------------------- |
+| Email    | dummy@startupsphere.com
+| Password | dummy@123                                                 |
+
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
@@ -206,12 +242,14 @@ Contributions are welcome! Please follow these steps:
 
 ## 📄 License
 
-This project is private and proprietary. All rights reserved.
+Private & proprietary. All rights reserved.
 
 ## 📧 Contact
 
-For questions or support, please contact the development team.
+For questions or support, contact the development team.
 
 ---
 
 **Built with ❤️ by the StartupSphere Team**
+
+```
