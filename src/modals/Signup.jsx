@@ -10,14 +10,77 @@ export default function Signup({ closeModal, openLogin }) {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [emailError, setEmailError] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({
+    score: 0,
+    label: "",
+    percentage: 0,
+    color: "",
+    checks: {
+      minLength: false,
+      hasUpperCase: false,
+      hasLowerCase: false,
+      hasNumber: false,
+      hasSpecialChar: false,
+    }
+  });
+
+  // Password strength calculator
+  const calculatePasswordStrength = (pass) => {
+    const checks = {
+      minLength: pass.length >= 8,
+      hasUpperCase: /[A-Z]/.test(pass),
+      hasLowerCase: /[a-z]/.test(pass),
+      hasNumber: /[0-9]/.test(pass),
+      hasSpecialChar: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pass),
+    };
+
+    const score = Object.values(checks).filter(Boolean).length;
+    let label = "";
+    let percentage = 0;
+    let color = "";
+
+    if (score === 0) {
+      label = "";
+      percentage = 0;
+      color = "";
+    } else if (score <= 2) {
+      label = "Weak";
+      percentage = 25;
+      color = "bg-error";
+    } else if (score === 3) {
+      label = "Average";
+      percentage = 50;
+      color = "bg-warning";
+    } else if (score === 4) {
+      label = "Strong";
+      percentage = 75;
+      color = "bg-success";
+    } else {
+      label = "Very Strong";
+      percentage = 100;
+      color = "bg-success";
+    }
+
+    return { score, label, percentage, color, checks };
+  };
 
   const handleSignup = async (e) => {
     e.preventDefault();
     setError(null);
+    setEmailError(false);
 
     // Validate passwords match
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      return;
+    }
+
+    // Validate password strength
+    if (passwordStrength.score < 4) {
+      setError("Password must meet all security requirements (at least Strong)");
       return;
     }
 
@@ -39,8 +102,24 @@ export default function Signup({ closeModal, openLogin }) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to register");
+        let errorData;
+        try {
+          errorData = await response.json();
+          console.log("Error response:", errorData);
+        } catch (parseError) {
+          console.log("Failed to parse error response:", parseError);
+          throw new Error("We're unable to complete your registration at this time. Please try again later.");
+        }
+        // Check for duplicate email error
+        if (errorData.error) {
+          if (errorData.error.toLowerCase().includes("email")) {
+            setEmailError(true);
+          }
+          throw new Error(errorData.error);
+        }
+        
+        // Handle other errors with a formal message
+        throw new Error(errorData.message || "We're unable to complete your registration at this time. Please try again later.");
       }
 
       const data = await response.json();
@@ -61,7 +140,7 @@ export default function Signup({ closeModal, openLogin }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm transition-opacity p-4 md:p-0 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity p-4 md:p-0 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -210,11 +289,18 @@ export default function Signup({ closeModal, openLogin }) {
                 </div>
                 <input
                   id="email"
-                  className="block w-full px-3 py-2.5 sm:py-3 pl-11 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base"
+                  className={`block w-full px-3 py-2.5 sm:py-3 pl-11 text-gray-900 placeholder-gray-400 bg-white border ${
+                    emailError
+                      ? 'border-4 border-red-500 focus:border-red-800 focus:ring-red-800'
+                      : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500/50'
+                  } rounded-lg focus:ring-2 transition-all duration-200 text-sm sm:text-base`}
                   type="email"
                   placeholder="Enter your email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError(false);
+                  }}
                   required
                 />
               </div>
@@ -243,14 +329,163 @@ export default function Signup({ closeModal, openLogin }) {
                 </div>
                 <input
                   id="password"
-                  className="block w-full px-3 py-2.5 sm:py-3 pl-11 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base"
-                  type="password"
+                  className="block w-full px-3 py-2.5 sm:py-3 pl-11 pr-11 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base"
+                  type={showPassword ? "text" : "password"}
                   placeholder="Create a password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setPasswordStrength(calculatePasswordStrength(e.target.value));
+                  }}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-0 cursor-pointer"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <svg
+                      className="w-5 h-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="w-5 h-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
+                    </svg>
+                  )}
+                </button>
               </div>
+
+              {/* Password Strength Indicator */}
+              {password && (
+                <div className="mt-3 space-y-2">
+                  {/* Progress Bar */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full ${passwordStrength.color} transition-all duration-300`}
+                        style={{ width: `${passwordStrength.percentage}%` }}
+                      ></div>
+                    </div>
+                    {passwordStrength.label && (
+                      <span
+                        className={`text-xs font-semibold ${
+                          passwordStrength.label === "Weak"
+                            ? "text-red-600"
+                            : passwordStrength.label === "Average"
+                            ? "text-orange-500"
+                            : "text-green-600"
+                        }`}
+                      >
+                        {passwordStrength.label}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Password Requirements Checklist */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                    <div className="flex items-center gap-1.5">
+                      {passwordStrength.checks.minLength ? (
+                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      <span className={passwordStrength.checks.minLength ? "text-green-700" : "text-gray-500"}>
+                        At least 8 characters
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {passwordStrength.checks.hasUpperCase ? (
+                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      <span className={passwordStrength.checks.hasUpperCase ? "text-green-700" : "text-gray-500"}>
+                        Uppercase letter
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {passwordStrength.checks.hasLowerCase ? (
+                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      <span className={passwordStrength.checks.hasLowerCase ? "text-green-700" : "text-gray-500"}>
+                        Lowercase letter
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {passwordStrength.checks.hasNumber ? (
+                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      <span className={passwordStrength.checks.hasNumber ? "text-green-700" : "text-gray-500"}>
+                        Number
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 sm:col-span-2">
+                      {passwordStrength.checks.hasSpecialChar ? (
+                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      )}
+                      <span className={passwordStrength.checks.hasSpecialChar ? "text-green-700" : "text-gray-500"}>
+                        Special character (!@#$%^&*...)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -276,17 +511,61 @@ export default function Signup({ closeModal, openLogin }) {
                 </div>
                 <input
                   id="confirmPassword"
-                  className={`block w-full px-3 py-2.5 sm:py-3 pl-11 text-gray-900 placeholder-gray-400 bg-white border ${
+                  className={`block w-full px-3 py-2.5 sm:py-3 pl-11 pr-11 text-gray-900 placeholder-gray-400 bg-white border ${
                     confirmPassword && password !== confirmPassword
                       ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
                       : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500/50'
                   } rounded-lg focus:ring-2 transition-all duration-200 text-sm sm:text-base`}
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors bg-transparent border-0 cursor-pointer"
+                  aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? (
+                    <svg
+                      className="w-5 h-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="w-5 h-5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
+                    </svg>
+                  )}
+                </button>
                 {confirmPassword && password !== confirmPassword && (
                   <p className="mt-1 text-xs text-red-600 ml-0.5">
                     Passwords do not match
@@ -359,7 +638,7 @@ export default function Signup({ closeModal, openLogin }) {
 
             <button
               type="submit"
-              disabled={loading || (confirmPassword && password !== confirmPassword) || !acceptedTerms}
+              disabled={loading || (confirmPassword && password !== confirmPassword) || !acceptedTerms || (password && passwordStrength.score < 4)}
               className="w-full py-2.5 sm:py-3 px-4 cursor-pointer text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-medium rounded-lg transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm border-0 flex items-center justify-center mt-3 text-sm sm:text-base"
             >
               {loading ? (

@@ -23,76 +23,75 @@ StartupSphere v2 is a comprehensive platform that enables users to explore start
 
 ## ✨ Features
 
-- **Interactive 3D Map**: Explore startups on an immersive 3D map powered by Mapbox GL  
-- **Startup Management**: Add, update, and manage startup profiles with detailed information  
-- **Stakeholder Browser**: Connect and manage relationships with stakeholders  
-- **Dashboard Analytics**: Visualize startup metrics with interactive charts  
-- **CSV Import**: Bulk upload startup data via CSV files  
-- **Location-Based Search**: Advanced geocoding and location picking capabilities  
-- **Notifications System**: Real-time notifications for important updates  
-- **Bookmarks**: Save and organize favorite startups  
-- **Authentication & Security**: Protected routes with email verification  
-- **Responsive Design**: Modern UI with Tailwind CSS and Material Tailwind  
-- **PDF Export**: Generate reports using jsPDF  
+- **Interactive 3D Map**: Explore startups on an immersive 3D map powered by Mapbox GL
+- **Startup Management**: Add, update, and manage startup profiles with detailed information
+- **Stakeholder Browser**: Connect and manage relationships with stakeholders
+- **Dashboard Analytics**: Visualize startup metrics with interactive charts
+- **CSV Import**: Bulk upload startup data via CSV files
+- **Location-Based Search**: Advanced geocoding and location picking capabilities
+- **Notifications System**: Real-time notifications for important updates
+- **Bookmarks**: Save and organize favorite startups
+- **Authentication & Security**: Protected routes with email verification
+- **Responsive Design**: Modern UI with Tailwind CSS and Material Tailwind
+- **PDF Export**: Generate reports using jsPDF
 
 ## 🛠️ Tech Stack
 
 ### Core Framework
-- **React** `^19.0.0`  
-- **React DOM** `^19.0.0`  
-- **Vite** `^6.3.3`  
+- **React** `^19.0.0` - UI library for building component-based interfaces
+- **React DOM** `^19.0.0` - React rendering for web applications
+- **Vite** `^6.3.3` - Next-generation frontend build tool
 
 ### Routing & State Management
-- **React Router DOM** `^7.5.2`  
-- **Context API** (built-in)  
+- **React Router DOM** `^7.5.2` - Declarative routing for React applications
+- **Context API** - Built-in state management solution
 
 ### UI & Styling
-- **Tailwind CSS** `^4.1.4`  
-- **@tailwindcss/vite** `^4.1.4`  
-- **Material Tailwind** `^2.1.10`  
-- **Flowbite** `^3.1.2`  
-- **Flowbite React** `^0.11.7`  
-- **DaisyUI** `^5.0.28`  
-- **Lucide React** `^0.507.0`  
-- **React Icons** `^5.5.0`  
+- **Tailwind CSS** `^4.1.4` - Utility-first CSS framework
+- **@tailwindcss/vite** `^4.1.4` - Tailwind CSS integration for Vite
+- **Material Tailwind** `^2.1.10` - Material Design components for React
+- **Flowbite** `^3.1.2` - Component library built on Tailwind CSS
+- **Flowbite React** `^0.11.7` - React components for Flowbite
+- **DaisyUI** `^5.0.28` - Component library for Tailwind CSS
+- **Lucide React** `^0.507.0` - Beautiful & consistent icon toolkit
+- **React Icons** `^5.5.0` - Popular icon library for React
 
 ### Maps & Geolocation
-- **Mapbox GL** `^3.11.1`  
-- **@mapbox/mapbox-gl-geocoder** `^5.0.3`  
+- **Mapbox GL** `^3.11.1` - Interactive, customizable maps
+- **@mapbox/mapbox-gl-geocoder** `^5.0.3` - Location search and geocoding
 
 ### Data Visualization
-- **Chart.js** `^4.4.9`  
-- **React Chart.js 2** `^5.3.0`  
-- **Recharts** `^2.15.3`  
+- **Chart.js** `^4.4.9` - Simple yet flexible JavaScript charting
+- **React Chart.js 2** `^5.3.0` - React wrapper for Chart.js
+- **Recharts** `^2.15.3` - Composable charting library for React
 
 ### UI Components & Utilities
-- **React Toastify** `^11.0.5`  
-- **React Datepicker** `^8.3.0`  
-- **Pikaday** `^1.8.2`  
-- **Cally** `^0.8.0`  
-- **Date-fns** `^4.1.0`  
+- **React Toastify** `^11.0.5` - Toast notifications for React
+- **React Datepicker** `^8.3.0` - Date picker component
+- **Pikaday** `^1.8.2` - Lightweight date picker
+- **Cally** `^0.8.0` - Calendar component
+- **Date-fns** `^4.1.0` - Modern JavaScript date utility library
 
 ### PDF Generation
-- **jsPDF** `^3.0.1`  
-- **jsPDF AutoTable** `^5.0.2`  
+- **jsPDF** `^3.0.1` - Client-side PDF generation
+- **jsPDF AutoTable** `^5.0.2` - Table plugin for jsPDF
 
 ### Development Tools
-- **ESLint** `^9.22.0`  
-- **@eslint/js** `^9.22.0`  
-- **eslint-plugin-react-hooks** `^5.2.0`  
-- **eslint-plugin-react-refresh** `^0.4.19`  
-- **@vitejs/plugin-react** `^4.3.4`  
-- **globals** `^16.0.0`  
-- **@types/react** `^19.0.10`  
-- **@types/react-dom** `^19.0.4`  
+- **ESLint** `^9.22.0` - JavaScript linting utility
+- **@eslint/js** `^9.22.0` - ESLint JavaScript configurations
+- **eslint-plugin-react-hooks** `^5.2.0` - ESLint rules for React Hooks
+- **eslint-plugin-react-refresh** `^0.4.19` - ESLint plugin for React Fast Refresh
+- **@vitejs/plugin-react** `^4.3.4` - Official Vite plugin for React
+- **globals** `^16.0.0` - Global identifiers for JavaScript environments
+- **@types/react** `^19.0.10` - TypeScript definitions for React
+- **@types/react-dom** `^19.0.4` - TypeScript definitions for React DOM
 
 ## 📦 Prerequisites
 
-- **Node.js** v18.0.0 or higher  
-- **npm** v9.0.0 or higher (or **yarn** v1.22.0+)  
-- **Git** for version control  
-- **PostgreSQL** for backend database  
-- **Backend environment ready** (Spring Boot)  
+Before you begin, ensure you have the following installed:
+- **Node.js** (v18.0.0 or higher recommended)
+- **npm** (v9.0.0 or higher) or **yarn** (v1.22.0 or higher)
+- **Git** for version control
 
 ## 🚀 Installation
 

@@ -195,6 +195,13 @@ export default function Startupadd() {
   const [draftId, setDraftId] = useState(null);
   const [isSavingDraft, setIsSavingDraft] = useState(false);
   const [isLoadingDraft, setIsLoadingDraft] = useState(false);
+  const [isSubmittingStartup, setIsSubmittingStartup] = useState(false);
+  const [submissionProgress, setSubmissionProgress] = useState(0);
+  const [submissionStatus, setSubmissionStatus] = useState("");
+  const [completedTabs, setCompletedTabs] = useState([]);
+  const [furthestTabReached, setFurthestTabReached] = useState(0);
+  const [emailError, setEmailError] = useState("");
+  const [displayPercentage, setDisplayPercentage] = useState(0);
   
   // Operating hours state
   const [openingTime, setOpeningTime] = useState("09:00");
@@ -422,6 +429,51 @@ export default function Startupadd() {
       ...prev,
       [name]: value,
     }));
+    
+    // Validate email in real-time
+    if (name === "contactEmail") {
+      validateEmail(value);
+    }
+  };
+  
+  const validateEmail = (email) => {
+    if (!email) {
+      setEmailError("");
+      return false;
+    }
+    
+    // Email regex pattern
+    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    
+    if (!emailRegex.test(email)) {
+      setEmailError("Please enter a valid email address");
+      return false;
+    }
+    
+    // Additional checks
+    if (email.includes("..") || email.startsWith(".") || email.endsWith(".")) {
+      setEmailError("Invalid email format");
+      return false;
+    }
+    
+    if (email.split("@").length !== 2) {
+      setEmailError("Email must contain exactly one @ symbol");
+      return false;
+    }
+    
+    const [localPart, domain] = email.split("@");
+    if (localPart.length === 0 || domain.length < 3) {
+      setEmailError("Invalid email format");
+      return false;
+    }
+    
+    if (!domain.includes(".")) {
+      setEmailError("Email domain must contain a period");
+      return false;
+    }
+    
+    setEmailError("");
+    return true;
   };
 
   const handleDateChange = (date) => {
@@ -684,6 +736,33 @@ const fetchDraftData = async (id) => {
       .then((data) => setRegions(data))
       .catch((error) => console.error("Error fetching regions:", error));
   }, []);
+  
+  // Animate percentage counting
+  useEffect(() => {
+    const targetPercentage = Math.round((completedTabs.length / tabs.length) * 100);
+    
+    if (displayPercentage === targetPercentage) return;
+    
+    const increment = displayPercentage < targetPercentage ? 1 : -1;
+    const duration = 30; // milliseconds per increment
+    
+    const timer = setInterval(() => {
+      setDisplayPercentage(prev => {
+        const next = prev + increment;
+        
+        // Stop when we reach the target
+        if ((increment > 0 && next >= targetPercentage) || 
+            (increment < 0 && next <= targetPercentage)) {
+          clearInterval(timer);
+          return targetPercentage;
+        }
+        
+        return next;
+      });
+    }, duration);
+    
+    return () => clearInterval(timer);
+  }, [completedTabs.length, tabs.length]);
 
   useEffect(() => {
     let map = null;
@@ -831,16 +910,16 @@ const fetchDraftData = async (id) => {
   const validateContactInformation = () => {
     if (!formData.phoneNumber) return toast.error("Phone Number is required.");
     const digits = formData.phoneNumber.replace("+63 ", "").replace(/\D/g, "");
-        if (digits.length !== 10) {
-            return toast.error("Phone number must contain exactly 10 digits (excluding +63 prefix).");
-         }
+        if (digits.length !== 10) {
+            return toast.error("Phone number must contain exactly 10 digits (excluding +63 prefix).");
+         }
     if (!formData.contactEmail)
       return toast.error("Contact Email is required.");
+    if (!validateEmail(formData.contactEmail))
+      return toast.error("Please enter a valid email address");
     if (!formData.website) return toast.error("Website is required.");
     return "";
-  };
-
-  const validateAddressInformation = () => {
+  };  const validateAddressInformation = () => {
     if (!formData.streetAddress)
       return toast.error("Street Address is required.");
     if (!formData.city) return toast.error("City is required.");
@@ -895,9 +974,20 @@ const fetchDraftData = async (id) => {
       return;
     }
     setError("");
+    
+    // Mark current tab as completed
+    if (!completedTabs.includes(selectedTab)) {
+      setCompletedTabs([...completedTabs, selectedTab]);
+    }
+    
     const currentIndex = tabs.indexOf(selectedTab);
     if (currentIndex < tabs.length - 1) {
-      setSelectedTab(tabs[currentIndex + 1]);
+      const nextIndex = currentIndex + 1;
+      setSelectedTab(tabs[nextIndex]);
+      // Update furthest tab reached
+      if (nextIndex > furthestTabReached) {
+        setFurthestTabReached(nextIndex);
+      }
     }
   };
 
@@ -1133,6 +1223,9 @@ const fetchDraftData = async (id) => {
 
 const handleSubmit = async () => {
   setIsSubmitting(true);
+  setIsSubmittingStartup(true);
+  setSubmissionProgress(0);
+  setSubmissionStatus("Validating startup information...");
   
   // Set isDraft to false for final submission
   setFormData(prev => ({ ...prev, isDraft: false }));
@@ -1141,38 +1234,58 @@ const handleSubmit = async () => {
   if (errorMessage) {
     setError(errorMessage);
     setIsSubmitting(false);
+    setIsSubmittingStartup(false);
     return;
   }
   errorMessage = validateContactInformation();
   if (errorMessage) {
     setError(errorMessage);
     setIsSubmitting(false);
+    setIsSubmittingStartup(false);
     return;
   }
   errorMessage = validateAddressInformation();
   if (errorMessage) {
     setError(errorMessage);
     setIsSubmitting(false);
+    setIsSubmittingStartup(false);
     return;
   }
   errorMessage = validateSocialMediaLinks();
   if (errorMessage) {
     setError(errorMessage);
     setIsSubmitting(false);
+    setIsSubmittingStartup(false);
     return;
   }
   errorMessage = validateAdditionalInformation();
   if (errorMessage) {
     setError(errorMessage);
     setIsSubmitting(false);
+    setIsSubmittingStartup(false);
     return;
   }
   errorMessage = validateLocationInfo();
   if (errorMessage) {
     setError(errorMessage);
     setIsSubmitting(false);
+    setIsSubmittingStartup(false);
     return;
   }
+
+  // Mark Location Info as completed since validation passed
+  if (!completedTabs.includes("Location Info")) {
+    setCompletedTabs(prev => [...prev, "Location Info"]);
+  }
+  
+  // Update furthest tab reached to include Upload Data (next tab after Location Info)
+  const locationIndex = tabs.indexOf("Location Info");
+  if (locationIndex + 1 > furthestTabReached) {
+    setFurthestTabReached(locationIndex + 1);
+  }
+
+  setSubmissionProgress(15);
+  setSubmissionStatus("Validation complete. Preparing submission...");
 
   try {
     let response;
@@ -1180,6 +1293,9 @@ const handleSubmit = async () => {
     
     // If updating an existing draft, use submit endpoint
     if (draftId) {
+      setSubmissionProgress(25);
+      setSubmissionStatus("Submitting your startup from draft...");
+      
       response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/startups/draft/${draftId}/submit`,
         {
@@ -1198,10 +1314,16 @@ const handleSubmit = async () => {
       startupId = data.id || data._id;
       setStartupId(startupId);
       
+      setSubmissionProgress(40);
+      setSubmissionStatus("Startup submitted successfully!");
+      
       // Clear draft state
       setDraftId(null);
     } else {
       // Create new startup submission
+      setSubmissionProgress(25);
+      setSubmissionStatus("Creating your startup profile...");
+      
       const { registrationCertificate, ...startupData } = formData;
 
       response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups`, {
@@ -1222,6 +1344,9 @@ const handleSubmit = async () => {
       console.log("Startup added successfully: ", data);
       startupId = data.id || data._id;
       setStartupId(startupId);
+      
+      setSubmissionProgress(40);
+      setSubmissionStatus("Startup profile created successfully!");
     }
 
     // Continue with file uploads using the startupId
@@ -1229,6 +1354,9 @@ const handleSubmit = async () => {
 
     // Upload registration certificate if present
     if (formData.registrationCertificate) {
+        setSubmissionProgress(50);
+        setSubmissionStatus("Uploading registration certificate...");
+        
         const certFormData = new FormData();
         certFormData.append("registrationCertificate", formData.registrationCertificate);
         try {
@@ -1247,15 +1375,21 @@ const handleSubmit = async () => {
                 "Failed to upload registration certificate."
             );
           } else {
-            toast.success("Registration certificate uploaded successfully!");
+            setSubmissionProgress(60);
+            setSubmissionStatus("Certificate uploaded successfully!");
           }
         } catch (err) {
           toast.error("Error uploading registration certificate.");
         }
+      } else {
+        setSubmissionProgress(60);
       }
 
       // Upload company logo if present
       if (uploadedImage) {
+        setSubmissionProgress(65);
+        setSubmissionStatus("Uploading company logo...");
+        
         const imageFormData = new FormData();
         imageFormData.append("photo", uploadedImage);
         try {
@@ -1280,18 +1414,21 @@ const handleSubmit = async () => {
             }
             toast.error(imageErrorMessage);
           } else {
-            const imageSuccessData = await imageResponse.json();
-            toast.success(
-              imageSuccessData.message || "Image uploaded successfully!"
-            );
+            setSubmissionProgress(75);
+            setSubmissionStatus("Logo uploaded successfully!");
           }
         } catch (imageError) {
           console.error("Error uploading image:", imageError);
           toast.error("An error occurred while uploading the image.");
         }
+      } else {
+        setSubmissionProgress(75);
       }
 
       // Send verification email
+      setSubmissionProgress(85);
+      setSubmissionStatus("Sending verification email...");
+      
       const emailResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/startups/send-verification-email`,
         {
@@ -1319,6 +1456,9 @@ const handleSubmit = async () => {
       }
 
       if (emailResponse.ok) {
+        setSubmissionProgress(95);
+        setSubmissionStatus("Finalizing submission...");
+        
         toast.success("Startup added successfully! Verification email sent.");
 
         try {
@@ -1331,7 +1471,14 @@ const handleSubmit = async () => {
           console.warn("Failed to clear draft:", err);
         }
 
-        setVerificationModal(true);
+        setSubmissionProgress(100);
+        setSubmissionStatus("Submission complete!");
+        
+        // Delay closing the modal to show 100%
+        setTimeout(() => {
+          setVerificationModal(true);
+          setIsSubmittingStartup(false);
+        }, 500);
       } else {
         toast.error(
           `Failed to send verification email: ${
@@ -1343,6 +1490,7 @@ const handleSubmit = async () => {
   } catch (error) {
     console.error("Error:", error);
     toast.error("An error occurred while adding the startup.");
+    setIsSubmittingStartup(false);
   } finally {
     setIsSubmitting(false);
   }
@@ -1469,6 +1617,106 @@ const handleSubmit = async () => {
     );
   };
 
+  const SubmissionProgressModal = () => {
+    if (!isSubmittingStartup) return null;
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md bg-gradient-to-br from-blue-50/95 to-indigo-100/95">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg w-full mx-4 border border-blue-200">
+          <div className="text-center">
+            {/* Animated Icon */}
+            <div className="mb-6 relative">
+              <div className="w-24 h-24 mx-auto relative">
+                <div className="absolute inset-0 border-4 border-blue-100 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-t-blue-600 border-r-blue-500 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <svg className="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            {/* Title and Status */}
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              Submitting Your Startup
+            </h2>
+            <p className="text-gray-600 mb-6 min-h-[24px]">
+              {submissionStatus}
+            </p>
+
+            {/* Progress Bar */}
+            <div className="mb-6">
+              <div className="w-full bg-gray-200 rounded-full h-3 mb-2 overflow-hidden shadow-inner">
+                <div 
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-500 ease-out relative overflow-hidden"
+                  style={{ width: `${submissionProgress}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/30 animate-pulse"></div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">Progress</span>
+                <span className="font-semibold text-blue-600">{submissionProgress}%</span>
+              </div>
+            </div>
+
+            {/* Progress Steps */}
+            <div className="grid grid-cols-5 gap-2 mb-6">
+              <div className={`flex flex-col items-center ${submissionProgress >= 15 ? 'opacity-100' : 'opacity-30'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-colors ${submissionProgress >= 15 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <span className="text-xs text-gray-600">Validate</span>
+              </div>
+              <div className={`flex flex-col items-center ${submissionProgress >= 40 ? 'opacity-100' : 'opacity-30'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-colors ${submissionProgress >= 40 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                  </svg>
+                </div>
+                <span className="text-xs text-gray-600">Submit</span>
+              </div>
+              <div className={`flex flex-col items-center ${submissionProgress >= 60 ? 'opacity-100' : 'opacity-30'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-colors ${submissionProgress >= 60 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <span className="text-xs text-gray-600">Files</span>
+              </div>
+              <div className={`flex flex-col items-center ${submissionProgress >= 85 ? 'opacity-100' : 'opacity-30'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-colors ${submissionProgress >= 85 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <span className="text-xs text-gray-600">Email</span>
+              </div>
+              <div className={`flex flex-col items-center ${submissionProgress >= 100 ? 'opacity-100' : 'opacity-30'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1 transition-colors ${submissionProgress >= 100 ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-400'}`}>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <span className="text-xs text-gray-600">Done</span>
+              </div>
+            </div>
+
+            {/* Info Message */}
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+              <p className="text-sm text-blue-800">
+                <span className="font-semibold">Please wait...</span> We're processing your startup information and uploading your files securely.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const handleSkip = () => {
     setIsLoading(true);
     setLoadingProgress(0);
@@ -1499,6 +1747,59 @@ const handleSubmit = async () => {
     <>
       <style>
         {`
+          /* Progress Bar Animations */
+          @keyframes countUp {
+            from {
+              transform: scale(0.8);
+              opacity: 0;
+            }
+            to {
+              transform: scale(1);
+              opacity: 1;
+            }
+          }
+          
+          @keyframes pulse-scale {
+            0%, 100% {
+              transform: scale(1);
+            }
+            50% {
+              transform: scale(1.1);
+            }
+          }
+          
+          @keyframes slideIn {
+            from {
+              transform: translateX(-10px);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          
+          .percentage-animate {
+            animation: countUp 0.5s ease-out, pulse-scale 0.3s ease-in-out;
+          }
+          
+          .step-complete-animate {
+            animation: slideIn 0.4s ease-out;
+          }
+          
+          @keyframes progressGlow {
+            0%, 100% {
+              box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+            }
+            50% {
+              box-shadow: 0 0 20px rgba(59, 130, 246, 0.8), 0 0 30px rgba(59, 130, 246, 0.4);
+            }
+          }
+          
+          .progress-line-animate {
+            animation: progressGlow 1.5s ease-in-out;
+          }
+          
           /* Modern DatePicker Styling */
           .react-datepicker-wrapper {
             width: 100%;
@@ -1687,20 +1988,158 @@ const handleSubmit = async () => {
       </div>
 
       <div className="bg-white shadow-md rounded-md p-8 w-4/5 mx-auto mt-8">
-        <div className="flex border-b mb-8">
-          {tabs.map((tab) => (
-            <div
-              key={tab}
-              onClick={() => setSelectedTab(tab)}
-              className={`w-1/5 text-center py-2 cursor-pointer text-sm font-medium transition-colors
-                ${selectedTab === tab
-                  ? "text-[#1D3557] border-b-2 border-[#1D3557]"
-                  : "text-gray-500 hover:text-gray-700"
-                }`}
-            >
-              {tab}
+        {/* Professional Steps Progress Bar */}
+        <div className="mb-8">
+          {/* Progress Percentage Header */}
+          <div className="flex justify-between items-center mb-4 px-4">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm font-semibold text-gray-700">Form Progress</span>
+              </div>
+              <div className="h-5 w-px bg-gray-300"></div>
+              <span 
+                key={`steps-${completedTabs.length}`}
+                className="text-xs text-gray-500 step-complete-animate"
+              >
+                {completedTabs.length} of {tabs.length} steps completed
+              </span>
             </div>
-          ))}
+            
+            {/* Percentage Badge */}
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-blue-100 rounded-full border border-blue-200 transition-all duration-300">
+                  <svg className="w-4 h-4 text-blue-600 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                  <span 
+                    key={completedTabs.length}
+                    className="text-lg font-bold text-blue-600 percentage-animate"
+                  >
+                    {displayPercentage}%
+                  </span>
+                </div>
+                {completedTabs.length === tabs.length && (
+                  <div className="absolute -top-1 -right-1">
+                    <div className="relative">
+                      <div className="w-3 h-3 bg-green-500 rounded-full animate-ping absolute"></div>
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="relative px-4">
+            {/* Background Progress Line */}
+            <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-300"></div>
+            
+            {/* Active Progress Line */}
+            <div 
+              key={`progress-${completedTabs.length}`}
+              className="absolute top-5 left-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 transition-all duration-700 ease-in-out shadow-md progress-line-animate"
+              style={{ width: `${(completedTabs.length / (tabs.length - 1)) * 100}%` }}
+            >
+              {/* Glowing effect at the end of progress line */}
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-600 rounded-full shadow-lg shadow-blue-400 animate-pulse"></div>
+            </div>
+            
+            {/* Steps */}
+            <div className="flex justify-between items-start">
+              {tabs.map((tab, index) => {
+                const isActive = selectedTab === tab;
+                const isCompleted = completedTabs.includes(tab);
+                const stepNumber = index + 1;
+                // Allow access to completed tabs, current tab, or any tab up to the furthest reached
+                const isAccessible = isCompleted || isActive || index <= furthestTabReached;
+                
+                return (
+                  <div 
+                    key={tab}
+                    className={`flex flex-col items-center relative ${isAccessible ? 'cursor-pointer' : 'cursor-not-allowed'} group`}
+                    style={{ width: `${100 / tabs.length}%` }}
+                    onClick={() => {
+                      if (isAccessible) {
+                        setSelectedTab(tab);
+                      }
+                    }}
+                  >
+                    {/* Step Circle */}
+                    <div className={`
+                      relative flex items-center justify-center w-10 h-10 rounded-full border-2 
+                      transition-all duration-300 mb-2 z-10
+                      ${isActive 
+                        ? 'bg-blue-600 border-blue-600 shadow-lg shadow-blue-300 scale-110' 
+                        : isCompleted 
+                        ? 'bg-blue-600 border-blue-600' 
+                        : isAccessible
+                        ? 'bg-white border-gray-300 group-hover:border-blue-400'
+                        : 'bg-gray-100 border-gray-300 opacity-50'
+                      }
+                    `}>
+                      {isCompleted ? (
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <span className={`
+                          font-semibold text-sm
+                          ${isActive ? 'text-white' : isAccessible ? 'text-gray-500 group-hover:text-blue-600' : 'text-gray-400'}
+                        `}>
+                          {stepNumber}
+                        </span>
+                      )}
+                      
+                      {/* Active Step Ring */}
+                      {isActive && (
+                        <div className="absolute inset-0 rounded-full border-2 border-blue-400 animate-ping opacity-75"></div>
+                      )}
+                      
+                      {/* Lock Icon for Inaccessible Steps */}
+                      {!isAccessible && (
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-gray-400 rounded-full flex items-center justify-center">
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Step Label */}
+                    <div className="text-center">
+                      <p className={`
+                        text-xs font-medium transition-colors duration-200
+                        ${isActive 
+                          ? 'text-blue-600' 
+                          : isCompleted 
+                          ? 'text-gray-700' 
+                          : isAccessible
+                          ? 'text-gray-500 group-hover:text-blue-600'
+                          : 'text-gray-400'
+                        }
+                      `}>
+                        {tab}
+                      </p>
+                      {isActive && (
+                        <div className="mt-1 px-2 py-0.5 bg-blue-100 rounded-full">
+                          <span className="text-[10px] text-blue-600 font-semibold">Current</span>
+                        </div>
+                      )}
+                      {!isAccessible && (
+                        <div className="mt-1 px-2 py-0.5 bg-gray-100 rounded-full">
+                          <span className="text-[10px] text-gray-500 font-semibold">Locked</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {selectedTab === "Company Information" && (
@@ -2552,20 +2991,61 @@ const handleSubmit = async () => {
               <label className="block mb-1 text-sm font-medium">
                 Contact Email <span className="text-red-500"> *</span>
               </label>
-              <input
-                type="email"
-                name="contactEmail"
-                placeholder="Contact email"
-                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={formData.contactEmail}
-                onChange={handleChange}
-              />
-              <p className="text-sm text-blue-600 mt-1 flex items-start gap-1">
-                <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-                <span>Please ensure this email is active for verification purposes</span>
-              </p>
+              <div className="relative">
+                <input
+                  type="email"
+                  name="contactEmail"
+                  placeholder="example@domain.com"
+                  className={`w-full border-2 rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:outline-none transition-all duration-200 ${
+                    emailError && formData.contactEmail
+                      ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                      : formData.contactEmail && !emailError
+                      ? "border-green-300 focus:border-green-500 focus:ring-green-500"
+                      : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  }`}
+                  value={formData.contactEmail}
+                  onChange={handleChange}
+                />
+                {formData.contactEmail && (
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    {emailError ? (
+                      <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Validation Messages */}
+              <div className="mt-2 flex items-start gap-2">
+                {emailError && formData.contactEmail ? (
+                  <div className="flex items-center gap-1.5 text-xs text-red-600">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium">{emailError}</span>
+                  </div>
+                ) : formData.contactEmail && !emailError ? (
+                  <div className="flex items-center gap-1.5 text-xs text-green-600">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium">Valid email address</span>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-1.5 text-xs text-blue-600">
+                    <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                    <span>Please ensure this email is active for verification purposes</span>
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <label className="block mb-1 text-sm font-medium">Website
@@ -3489,52 +3969,68 @@ const handleSubmit = async () => {
                   Back
                 </button>
                 <div className="flex gap-3">
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-                    onClick={saveDraft}
-                    disabled={isSavingDraft}
-                  >
-                    {isSavingDraft ? (
-                      <>
-                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Saving...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                        </svg>
-                        <span>Save as Draft</span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 bg-[#1D3557] text-white px-6 py-2.5 rounded-lg hover:bg-[#16324f] transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span>Submitting...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>Submit</span>
-                      </>
-                    )}
-                  </button>
+                  {/* Only show Save as Draft button if startup hasn't been submitted */}
+                  {!startupId && !completedTabs.includes("Location Info") && (
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 px-5 py-2.5 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                      onClick={saveDraft}
+                      disabled={isSavingDraft}
+                    >
+                      {isSavingDraft ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Saving...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                          </svg>
+                          <span>Save as Draft</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                  {startupId || completedTabs.includes("Location Info") ? (
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 bg-[#1D3557] text-white px-6 py-2.5 rounded-lg hover:bg-[#16324f] transition-all duration-200 shadow-sm"
+                      onClick={handleNext}
+                    >
+                      <span>Next</span>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 bg-[#1D3557] text-white px-6 py-2.5 rounded-lg hover:bg-[#16324f] transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span>Submitting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Submit</span>
+                        </>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -3786,6 +4282,7 @@ const handleSubmit = async () => {
 
       <LoadingModal />
       <DraftLoadingModal />
+      <SubmissionProgressModal />
       <ToastContainer />
     </div>
     </>

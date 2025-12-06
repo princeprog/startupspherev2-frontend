@@ -2,7 +2,15 @@ import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { FaEye } from "react-icons/fa";
 import { BiLike } from "react-icons/bi";
 import { FaBookBookmark } from "react-icons/fa6";
-import { ArrowLeft, Edit, Trash2, Save, X, ExternalLink, PlayCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  Save,
+  X,
+  ExternalLink,
+  PlayCircle,
+} from "lucide-react";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -19,6 +27,7 @@ import CardContent from "../components/CardContent";
 import { useNavigate } from "react-router-dom";
 import Verification from "../modals/DashboardVerification";
 import { toast } from "react-toastify";
+import Alert from "@mui/material/Alert";
 
 ChartJS.register(
   ArcElement,
@@ -49,11 +58,11 @@ export default function StartupDashboard({ openAddMethodModal }) {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const [isAddMethodModalOpen, setIsAddMethodModalOpen] = useState(false); 
+  const [isAddMethodModalOpen, setIsAddMethodModalOpen] = useState(false);
 
   const handleAddStartupClick = () => {
-    setIsAddMethodModalOpen(true);
-  };
+    setIsAddMethodModalOpen(true);
+  };
 
   // State for editing
   const [editingId, setEditingId] = useState(null);
@@ -152,9 +161,12 @@ export default function StartupDashboard({ openAddMethodModal }) {
 
   const fetchDrafts = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/startups/my-drafts`, {
-        credentials: "include",
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/my-drafts`,
+        {
+          credentials: "include",
+        }
+      );
 
       // If no draft → 204 or error
       if (res.status === 204 || !res.ok) {
@@ -170,9 +182,10 @@ export default function StartupDashboard({ openAddMethodModal }) {
       if (rawDraft.formData) {
         // Old format: { formData: "...", selectedTab: "..." }
         try {
-          draftData = typeof rawDraft.formData === "string" 
-            ? JSON.parse(rawDraft.formData) 
-            : rawDraft.formData;
+          draftData =
+            typeof rawDraft.formData === "string"
+              ? JSON.parse(rawDraft.formData)
+              : rawDraft.formData;
 
           if (typeof draftData === "string") {
             draftData = JSON.parse(draftData);
@@ -197,14 +210,18 @@ export default function StartupDashboard({ openAddMethodModal }) {
         isDraft: true,
       };
 
-      console.log('Draft fetched from backend:', draftObject);
+      console.log("Draft fetched from backend:", draftObject);
 
       // Only add draft if it has a valid ID
-      if (draftObject.id && draftObject.id !== 'undefined' && draftObject.id !== 'null') {
+      if (
+        draftObject.id &&
+        draftObject.id !== "undefined" &&
+        draftObject.id !== "null"
+      ) {
         // CURRENT: Only one draft allowed → replace array
         setDrafts([draftObject]);
       } else {
-        console.warn('Draft has no valid ID, skipping:', draftObject);
+        console.warn("Draft has no valid ID, skipping:", draftObject);
         setDrafts([]);
       }
 
@@ -217,8 +234,8 @@ export default function StartupDashboard({ openAddMethodModal }) {
   };
 
   const displayList = useMemo(() => {
-    const filteredStartups = startups.filter(s =>
-      [s.companyName, s.industry, s.locationName].some(field =>
+    const filteredStartups = startups.filter((s) =>
+      [s.companyName, s.industry, s.locationName].some((field) =>
         field?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     );
@@ -262,7 +279,12 @@ export default function StartupDashboard({ openAddMethodModal }) {
   };
 
   const handleDeleteDraftClick = (draftId, draftName) => {
-    console.log('Attempting to delete draft with ID:', draftId, 'Name:', draftName);
+    console.log(
+      "Attempting to delete draft with ID:",
+      draftId,
+      "Name:",
+      draftName
+    );
     setDeleteDraftModal({
       isOpen: true,
       draftId: draftId,
@@ -291,10 +313,12 @@ export default function StartupDashboard({ openAddMethodModal }) {
       }
 
       toast.success("Draft deleted successfully!");
-      
+
       // Remove the draft from the state - using String() to ensure type consistency
-      setDrafts(prevDrafts => prevDrafts.filter(draft => String(draft.id) !== String(draftId)));
-      
+      setDrafts((prevDrafts) =>
+        prevDrafts.filter((draft) => String(draft.id) !== String(draftId))
+      );
+
       // Close modal
       setDeleteDraftModal({
         isOpen: false,
@@ -303,7 +327,6 @@ export default function StartupDashboard({ openAddMethodModal }) {
         isDeleting: false,
         error: null,
       });
-
     } catch (error) {
       console.error("Error deleting draft:", error);
       setDeleteDraftModal({
@@ -642,9 +665,11 @@ export default function StartupDashboard({ openAddMethodModal }) {
       }
 
       const startupsData = await fetchStartups();
-      
+
       // Fetch all logos in parallel for faster loading
-      const logoPromises = startupsData.map((startup) => fetchCompanyLogo(startup.id));
+      const logoPromises = startupsData.map((startup) =>
+        fetchCompanyLogo(startup.id)
+      );
       Promise.all(logoPromises).catch((err) => {
         console.error("Error fetching some logos:", err);
       });
@@ -1059,7 +1084,6 @@ export default function StartupDashboard({ openAddMethodModal }) {
     }
   };
 
-
   const handleFilterClick = (filter) => {
     setActiveFilter(filter);
 
@@ -1145,36 +1169,38 @@ export default function StartupDashboard({ openAddMethodModal }) {
     },
   };
 
-const handleVerifyNow = (id, email) => {
-  if (!id || !email) {
-    toast.error("Cannot verify: Missing startup ID or email.");
-    return;
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    toast.error("Cannot verify: Invalid email format.");
-    return;
-  }
-  setSelectedStartupId(id);
-  setSelectedContactEmail(email);
-  setVerificationModal(true);
-};
+  const handleVerifyNow = (id, email) => {
+    if (!id || !email) {
+      toast.error("Cannot verify: Missing startup ID or email.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error("Cannot verify: Invalid email format.");
+      return;
+    }
+    setSelectedStartupId(id);
+    setSelectedContactEmail(email);
+    setVerificationModal(true);
+  };
 
   const handleVerifySuccess = (verifiedStartupId) => {
-  // Update the startups array to set emailVerified to true for the verified startup
-  const updatedStartups = startups.map((startup) =>
-    startup.id === verifiedStartupId ? { ...startup, emailVerified: true } : startup
-  );
-  setStartups(updatedStartups);
+    // Update the startups array to set emailVerified to true for the verified startup
+    const updatedStartups = startups.map((startup) =>
+      startup.id === verifiedStartupId
+        ? { ...startup, emailVerified: true }
+        : startup
+    );
+    setStartups(updatedStartups);
 
-  // Show success notification
-  setActionSuccess("Email verified successfully");
-  setTimeout(() => setActionSuccess(null), 3000);
+    // Show success notification
+    setActionSuccess("Email verified successfully");
+    setTimeout(() => setActionSuccess(null), 3000);
 
-  // Recalculate metrics if necessary (similar to delete functionality)
-  if (selectedStartup === "all" || selectedStartup === verifiedStartupId) {
-    recalculateAllMetrics(startupIds, updatedStartups);
-  }
-};
+    // Recalculate metrics if necessary (similar to delete functionality)
+    if (selectedStartup === "all" || selectedStartup === verifiedStartupId) {
+      recalculateAllMetrics(startupIds, updatedStartups);
+    }
+  };
 
   const handleSendCode = async (id, email) => {
     try {
@@ -1203,17 +1229,19 @@ const handleVerifyNow = (id, email) => {
         const [ids, startupsData] = await Promise.all([
           fetchStartupIds(),
           fetchStartups(),
-          fetchDrafts(),   // ← This loads your draft
+          fetchDrafts(), // ← This loads your draft
         ]);
 
         // After startups are loaded, fetch all logos in parallel for faster loading
         if (startupsData && startupsData.length > 0) {
-          const logoPromises = startupsData.map((startup) => fetchCompanyLogo(startup.id));
+          const logoPromises = startupsData.map((startup) =>
+            fetchCompanyLogo(startup.id)
+          );
           Promise.all(logoPromises).catch((err) => {
             console.error("Error fetching some logos:", err);
           });
         }
-        
+
         // Fetch metrics
         if (ids && ids.length > 0) {
           await fetchTotalMetrics(ids);
@@ -1232,17 +1260,15 @@ const handleVerifyNow = (id, email) => {
     // Cleanup function to revoke object URLs and prevent memory leaks
     return () => {
       Object.values(logoUrls).forEach((url) => {
-        if (url && typeof url === 'string' && url.startsWith('blob:')) {
+        if (url && typeof url === "string" && url.startsWith("blob:")) {
           URL.revokeObjectURL(url);
         }
       });
     };
   }, []); // ← Only runs once on mount
 
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Modern Clean Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-[1600px] mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -1258,7 +1284,9 @@ const handleVerifyNow = (id, email) => {
                 <h1 className="text-2xl font-bold text-gray-900">
                   Startup Dashboard
                 </h1>
-                <p className="text-sm text-gray-500 hidden lg:block">Manage your startup portfolio</p>
+                <p className="text-sm text-gray-500 hidden lg:block">
+                  Manage your startup portfolio
+                </p>
               </div>
             </div>
             <button
@@ -1266,8 +1294,18 @@ const handleVerifyNow = (id, email) => {
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-lg shadow-sm hover:shadow transition-all duration-200 disabled:opacity-50"
               disabled={loading}
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               <span className="hidden sm:inline">Add Startup</span>
               <span className="sm:hidden">Add</span>
@@ -1277,7 +1315,6 @@ const handleVerifyNow = (id, email) => {
       </div>
 
       <div className="max-w-[1600px] mx-auto px-6 lg:px-8 py-8">
-
         {/* Enhanced Alert Messages */}
         {error && (
           <div className="mb-6">
@@ -1302,7 +1339,7 @@ const handleVerifyNow = (id, email) => {
                 <p className="font-semibold text-red-900 text-sm">Error</p>
                 <p className="text-sm text-red-700 mt-1">{error}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setError(null)}
                 className="text-red-400 hover:text-red-600 transition-colors"
               >
@@ -1335,7 +1372,7 @@ const handleVerifyNow = (id, email) => {
                 <p className="font-semibold text-green-900 text-sm">Success</p>
                 <p className="text-sm text-green-700 mt-1">{actionSuccess}</p>
               </div>
-              <button 
+              <button
                 onClick={() => setActionSuccess(null)}
                 className="text-green-400 hover:text-green-600 transition-colors"
               >
@@ -1375,9 +1412,13 @@ const handleVerifyNow = (id, email) => {
                 <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
                   <FaEye className="h-6 w-6 text-amber-600" />
                 </div>
-                <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-semibold rounded-md border border-amber-200">VIEWS</span>
+                <span className="px-2.5 py-1 bg-amber-50 text-amber-700 text-xs font-semibold rounded-md border border-amber-200">
+                  VIEWS
+                </span>
               </div>
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Total Views</h3>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">
+                Total Views
+              </h3>
               <p className="text-3xl font-bold text-gray-900">
                 {loading ? (
                   <span className="inline-block w-24 h-8 bg-gray-200 rounded animate-pulse"></span>
@@ -1393,9 +1434,13 @@ const handleVerifyNow = (id, email) => {
                 <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
                   <FaBookBookmark className="h-6 w-6 text-emerald-600" />
                 </div>
-                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-md border border-emerald-200">SAVED</span>
+                <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-md border border-emerald-200">
+                  SAVED
+                </span>
               </div>
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Bookmarks</h3>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">
+                Bookmarks
+              </h3>
               <p className="text-3xl font-bold text-gray-900">
                 {loading ? (
                   <span className="inline-block w-24 h-8 bg-gray-200 rounded animate-pulse"></span>
@@ -1411,9 +1456,13 @@ const handleVerifyNow = (id, email) => {
                 <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <BiLike className="h-6 w-6 text-blue-600" />
                 </div>
-                <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md border border-blue-200">LIKES</span>
+                <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-md border border-blue-200">
+                  LIKES
+                </span>
               </div>
-              <h3 className="text-sm font-medium text-gray-600 mb-2">Total Likes</h3>
+              <h3 className="text-sm font-medium text-gray-600 mb-2">
+                Total Likes
+              </h3>
               <p className="text-3xl font-bold text-gray-900">
                 {loading ? (
                   <span className="inline-block w-24 h-8 bg-gray-200 rounded animate-pulse"></span>
@@ -1437,7 +1486,9 @@ const handleVerifyNow = (id, email) => {
                   </h3>
                   <div className="flex items-center gap-2 text-sm text-gray-500">
                     <span className="inline-flex items-center justify-center w-5 h-5 bg-indigo-100 rounded-full">
-                      <span className="text-xs font-semibold text-indigo-600">{startupIds.length}</span>
+                      <span className="text-xs font-semibold text-indigo-600">
+                        {startupIds.length}
+                      </span>
                     </span>
                     <span>Total Startups</span>
                   </div>
@@ -1465,8 +1516,18 @@ const handleVerifyNow = (id, email) => {
                       ))}
                     </select>
                     <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
                       </svg>
                     </div>
                   </div>
@@ -1484,24 +1545,33 @@ const handleVerifyNow = (id, email) => {
                 <>
                   <div className="grid grid-cols-3 gap-4 mb-6">
                     <div className="text-center p-4 bg-amber-50 rounded-lg border border-amber-100">
-                      <p className="text-xs font-semibold text-amber-700 mb-2 uppercase">Views</p>
+                      <p className="text-xs font-semibold text-amber-700 mb-2 uppercase">
+                        Views
+                      </p>
                       <p className="text-2xl font-bold text-amber-900 flex items-center justify-center gap-2">
-                        {metrics.views.toLocaleString()} 
+                        {metrics.views.toLocaleString()}
                         <FaEye className="text-amber-600" size={18} />
                       </p>
                     </div>
                     <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-100">
-                      <p className="text-xs font-semibold text-blue-700 mb-2 uppercase">Likes</p>
+                      <p className="text-xs font-semibold text-blue-700 mb-2 uppercase">
+                        Likes
+                      </p>
                       <p className="text-2xl font-bold text-blue-900 flex items-center justify-center gap-2">
-                        {metrics.likes.toLocaleString()} 
+                        {metrics.likes.toLocaleString()}
                         <BiLike className="text-blue-600" size={18} />
                       </p>
                     </div>
                     <div className="text-center p-4 bg-emerald-50 rounded-lg border border-emerald-100">
-                      <p className="text-xs font-semibold text-emerald-700 mb-2 uppercase">Bookmarks</p>
+                      <p className="text-xs font-semibold text-emerald-700 mb-2 uppercase">
+                        Bookmarks
+                      </p>
                       <p className="text-2xl font-bold text-emerald-900 flex items-center justify-center gap-2">
-                        {metrics.bookmarks.toLocaleString()} 
-                        <FaBookBookmark className="text-emerald-600" size={18} />
+                        {metrics.bookmarks.toLocaleString()}
+                        <FaBookBookmark
+                          className="text-emerald-600"
+                          size={18}
+                        />
                       </p>
                     </div>
                   </div>
@@ -1515,30 +1585,39 @@ const handleVerifyNow = (id, email) => {
                           },
                           tooltip: {
                             enabled: true,
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            backgroundColor: "rgba(0, 0, 0, 0.8)",
                             padding: 12,
                             cornerRadius: 8,
                             titleFont: {
                               size: 13,
-                              weight: 'bold'
+                              weight: "bold",
                             },
                             bodyFont: {
-                              size: 12
+                              size: 12,
                             },
                             callbacks: {
                               title: (tooltipItems) => {
-                                return donutData.labels[tooltipItems[0].dataIndex];
+                                return donutData.labels[
+                                  tooltipItems[0].dataIndex
+                                ];
                               },
                               label: (context) => {
-                                const label = donutData.labels[context.dataIndex];
+                                const label =
+                                  donutData.labels[context.dataIndex];
                                 const value =
                                   donutData.datasets[0].data[context.dataIndex];
 
                                 if (selectedStartup === "all") {
                                   return `${label}: ${value} likes`;
                                 } else {
-                                  const metrics = ["Likes", "Bookmarks", "Views"];
-                                  return `${metrics[context.dataIndex]}: ${value}`;
+                                  const metrics = [
+                                    "Likes",
+                                    "Bookmarks",
+                                    "Views",
+                                  ];
+                                  return `${
+                                    metrics[context.dataIndex]
+                                  }: ${value}`;
                                 }
                               },
                             },
@@ -1563,7 +1642,9 @@ const handleVerifyNow = (id, email) => {
                 <h2 className="text-lg font-bold text-gray-900 mb-1">
                   Engagement Over Time
                 </h2>
-                <p className="text-sm text-gray-600 font-medium">Monthly trends for views, likes, and bookmarks</p>
+                <p className="text-sm text-gray-600 font-medium">
+                  Monthly trends for views, likes, and bookmarks
+                </p>
               </div>
               {loading ? (
                 <div className="flex justify-center items-center h-64">
@@ -1587,23 +1668,23 @@ const handleVerifyNow = (id, email) => {
                             padding: 15,
                             font: {
                               size: 12,
-                              weight: '500'
-                            }
+                              weight: "500",
+                            },
                           },
                         },
                         tooltip: {
                           mode: "index",
                           intersect: false,
-                          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                          backgroundColor: "rgba(0, 0, 0, 0.8)",
                           padding: 12,
                           cornerRadius: 8,
                           titleFont: {
                             size: 13,
-                            weight: 'bold'
+                            weight: "bold",
                           },
                           bodyFont: {
-                            size: 12
-                          }
+                            size: 12,
+                          },
                         },
                       },
                       scales: {
@@ -1616,21 +1697,21 @@ const handleVerifyNow = (id, email) => {
                             text: "Months",
                             font: {
                               size: 12,
-                              weight: '600'
-                            }
+                              weight: "600",
+                            },
                           },
                         },
                         y: {
                           grid: {
-                            color: 'rgba(0, 0, 0, 0.05)',
+                            color: "rgba(0, 0, 0, 0.05)",
                           },
                           title: {
                             display: true,
                             text: "Engagement Count",
                             font: {
                               size: 12,
-                              weight: '600'
-                            }
+                              weight: "600",
+                            },
                           },
                           beginAtZero: true,
                         },
@@ -1653,19 +1734,35 @@ const handleVerifyNow = (id, email) => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
               <h2 className="text-lg font-bold text-gray-900">Your Startups</h2>
-              <p className="text-sm text-gray-500 mt-0.5">Manage and monitor all your startup listings</p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Manage and monitor all your startup listings
+              </p>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Startup Name</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Industry</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Founded Date</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Phone Number</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Startup Name
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Industry
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Founded Date
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Phone Number
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 bg-white">
@@ -1677,8 +1774,12 @@ const handleVerifyNow = (id, email) => {
                             <div className="absolute inset-0 border-4 border-gray-200 rounded-full"></div>
                             <div className="absolute inset-0 border-4 border-transparent border-t-indigo-600 rounded-full animate-spin"></div>
                           </div>
-                          <p className="text-gray-600 font-semibold text-sm">Loading startups...</p>
-                          <p className="text-gray-400 text-xs mt-1">Please wait</p>
+                          <p className="text-gray-600 font-semibold text-sm">
+                            Loading startups...
+                          </p>
+                          <p className="text-gray-400 text-xs mt-1">
+                            Please wait
+                          </p>
                         </div>
                       </td>
                     </tr>
@@ -1687,12 +1788,26 @@ const handleVerifyNow = (id, email) => {
                       <td colSpan={7} className="px-6 py-16 text-center">
                         <div className="flex flex-col items-center justify-center">
                           <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mb-4">
-                            <svg className="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                            <svg
+                              className="w-8 h-8 text-gray-400"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"
+                              />
                             </svg>
                           </div>
-                          <p className="text-gray-900 font-semibold text-base mb-1">No startups found</p>
-                          <p className="text-gray-500 text-sm mb-4">Start by adding your first startup</p>
+                          <p className="text-gray-900 font-semibold text-base mb-1">
+                            No startups found
+                          </p>
+                          <p className="text-gray-500 text-sm mb-4">
+                            Start by adding your first startup
+                          </p>
                           <button
                             onClick={openAddMethodModal}
                             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
@@ -1711,13 +1826,15 @@ const handleVerifyNow = (id, email) => {
 
                       return (
                         <tr
-                          key={`${isDraft ? 'draft' : 'startup'}-${item.id}`}
+                          key={`${isDraft ? "draft" : "startup"}-${item.id}`}
                           className={`${
-                            isDraft 
-                              ? "bg-amber-50" 
+                            isDraft
+                              ? "bg-amber-50"
                               : "hover:bg-gray-50 cursor-pointer"
                           } transition-colors duration-150`}
-                          onClick={() => !isDraft && navigate(`/startup/${item.id}`)}
+                          onClick={() =>
+                            !isDraft && navigate(`/startup/${item.id}`)
+                          }
                         >
                           {/* Startup Name + Logo + Location */}
                           <td className="px-6 py-4">
@@ -1735,13 +1852,24 @@ const handleVerifyNow = (id, email) => {
                                   ) : logoUrls[item.id] === null ? (
                                     <div className="w-full h-full bg-gradient-to-br from-gray-600 to-gray-700 flex bg-gray-600 items-center justify-center">
                                       <span className="text-lg font-bold text-white">
-                                        {(item.companyName || "?")[0].toUpperCase()}
+                                        {(item.companyName ||
+                                          "?")[0].toUpperCase()}
                                       </span>
                                     </div>
                                   ) : (
                                     <div className="w-full h-full bg-gray-200 flex items-center justify-center animate-pulse">
-                                      <svg className="w-6 h-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      <svg
+                                        className="w-6 h-6 text-gray-400"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                        />
                                       </svg>
                                     </div>
                                   )}
@@ -1753,13 +1881,30 @@ const handleVerifyNow = (id, email) => {
                                     {item.companyName || "Untitled Draft"}
                                   </p>
                                   {isDraft && (
-                                    <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded">Draft</span>
+                                    <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-semibold rounded">
+                                      Draft
+                                    </span>
                                   )}
                                 </div>
                                 <p className="text-xs text-gray-500 truncate flex items-center gap-1">
-                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <svg
+                                    className="w-3 h-3"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                    />
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                    />
                                   </svg>
                                   {item.locationName || "No location"}
                                 </p>
@@ -1775,17 +1920,24 @@ const handleVerifyNow = (id, email) => {
                           </td>
 
                           {/* Founded Date */}
-                          <td className="px-6 py-4 text-center text-sm text-gray-600">{formattedDate}</td>
+                          <td className="px-6 py-4 text-center text-sm text-gray-600">
+                            {formattedDate}
+                          </td>
 
                           {/* Email */}
                           <td className="px-6 py-4 text-center">
-                            <a href={`mailto:${item.contactEmail}`} className="text-sm text-indigo-600 hover:text-indigo-700 hover:underline">
+                            <a
+                              href={`mailto:${item.contactEmail}`}
+                              className="text-sm text-indigo-600 hover:text-indigo-700 hover:underline"
+                            >
                               {item.contactEmail || "N/A"}
                             </a>
                           </td>
 
                           {/* Phone Number */}
-                          <td className="px-6 py-4 text-center text-sm text-gray-600">{item.phoneNumber || "N/A"}</td>
+                          <td className="px-6 py-4 text-center text-sm text-gray-600">
+                            {item.phoneNumber || "N/A"}
+                          </td>
 
                           {/* Status */}
                           <td className="px-6 py-4 text-center">
@@ -1795,8 +1947,16 @@ const handleVerifyNow = (id, email) => {
                               </span>
                             ) : item.emailVerified ? (
                               <span className="inline-flex items-center px-2.5 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-md">
-                                <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                <svg
+                                  className="w-3 h-3 mr-1"
+                                  fill="currentColor"
+                                  viewBox="0 0 20 20"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                                    clipRule="evenodd"
+                                  />
                                 </svg>
                                 Verified
                               </span>
@@ -1814,19 +1974,31 @@ const handleVerifyNow = (id, email) => {
                           </td>
 
                           {/* Actions */}
-                          <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                          <td
+                            className="px-6 py-4"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <div className="flex justify-center gap-2">
                               {isDraft ? (
                                 <>
                                   <button
-                                    onClick={() => navigate(`/add-startup?draftId=${item.id}`)}
+                                    onClick={() =>
+                                      navigate(
+                                        `/add-startup?draftId=${item.id}`
+                                      )
+                                    }
                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
                                     title="Continue editing draft"
                                   >
                                     <PlayCircle size={14} /> Continue
                                   </button>
                                   <button
-                                    onClick={() => handleDeleteDraftClick(item.id, item.companyName)}
+                                    onClick={() =>
+                                      handleDeleteDraftClick(
+                                        item.id,
+                                        item.companyName
+                                      )
+                                    }
                                     className="inline-flex items-center justify-center w-8 h-8 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors"
                                     title="Delete draft"
                                   >
@@ -1918,7 +2090,8 @@ const handleVerifyNow = (id, email) => {
                           ?
                         </p>
                         <p className="text-sm text-gray-500 mt-1">
-                          This action cannot be undone and all data will be permanently removed.
+                          This action cannot be undone and all data will be
+                          permanently removed.
                         </p>
                       </div>
                     </div>
@@ -1952,7 +2125,9 @@ const handleVerifyNow = (id, email) => {
                   <button
                     type="button"
                     className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-                    onClick={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+                    onClick={() =>
+                      setDeleteModal({ ...deleteModal, isOpen: false })
+                    }
                     disabled={deleteModal.isDeleting}
                   >
                     Cancel
@@ -2029,7 +2204,10 @@ const handleVerifyNow = (id, email) => {
                         <button
                           onClick={() =>
                             !deleteDraftModal.isDeleting &&
-                            setDeleteDraftModal({ ...deleteDraftModal, isOpen: false })
+                            setDeleteDraftModal({
+                              ...deleteDraftModal,
+                              isOpen: false,
+                            })
                           }
                           className="text-gray-400 hover:text-gray-500 focus:outline-none"
                           disabled={deleteDraftModal.isDeleting}
@@ -2046,7 +2224,8 @@ const handleVerifyNow = (id, email) => {
                           ?
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                          This action cannot be undone and the draft will be permanently removed.
+                          This action cannot be undone and the draft will be
+                          permanently removed.
                         </p>
                       </div>
                     </div>
@@ -2149,7 +2328,12 @@ const handleVerifyNow = (id, email) => {
                   ? "opacity-50 cursor-not-allowed"
                   : "cursor-pointer"
               }`}
-                    onClick={() => setDeleteDraftModal({ ...deleteDraftModal, isOpen: false })}
+                    onClick={() =>
+                      setDeleteDraftModal({
+                        ...deleteDraftModal,
+                        isOpen: false,
+                      })
+                    }
                     disabled={deleteDraftModal.isDeleting}
                   >
                     Cancel
