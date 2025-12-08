@@ -2233,9 +2233,6 @@ const handleSubmit = async () => {
                     value={formData.companyDescription}
                     onChange={handleChange}
                   />
-                  <div className="absolute bottom-2 right-2 text-xs text-gray-400">
-                    {formData.companyDescription.length}/500
-                  </div>
                 </div>
                 <p className="text-xs text-gray-500 flex items-center gap-1">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
