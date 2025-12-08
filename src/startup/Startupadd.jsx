@@ -1295,11 +1295,91 @@ const handleSubmit = async () => {
     let response;
     let startupId;
     
-    // If updating an existing draft, use submit endpoint
+    // If updating an existing draft, update it first then submit
     if (draftId) {
-      setSubmissionProgress(25);
+      setSubmissionProgress(20);
+      setSubmissionStatus("Updating draft with latest changes...");
+      
+      // First, update the draft with all current form data
+      const draftData = {
+        companyName: formData.companyName,
+        companyDescription: formData.companyDescription,
+        foundedDate: formData.foundedDate,
+        typeOfCompany: formData.typeOfCompany,
+        numberOfEmployees: formData.numberOfEmployees,
+        phoneNumber: formData.phoneNumber,
+        contactEmail: formData.contactEmail,
+        streetAddress: formData.streetAddress,
+        city: formData.city,
+        province: formData.province,
+        region: formData.region,
+        barangay: formData.barangay,
+        postalCode: formData.postalCode,
+        industry: formData.industry,
+        website: formData.website,
+        facebook: formData.facebook,
+        twitter: formData.twitter,
+        instagram: formData.instagram,
+        linkedIn: formData.linkedIn,
+        locationLat: formData.locationLat,
+        locationLng: formData.locationLng,
+        locationName: formData.locationName,
+        fundingStage: formData.fundingStage,
+        businessActivity: formData.businessActivity,
+        operatingHours: formData.operatingHours,
+        isGovernmentRegistered: formData.isGovernmentRegistered,
+        registrationAgency: formData.registrationAgency,
+        registrationNumber: formData.registrationNumber,
+        registrationDate: formData.registrationDate,
+        otherRegistrationAgency: formData.otherRegistrationAgency,
+        businessLicenseNumber: formData.businessLicenseNumber,
+        tin: formData.tin,
+        isDraft: true,
+      };
+
+      // Remove empty/null values
+      Object.keys(draftData).forEach(key => {
+        if (draftData[key] === null || draftData[key] === undefined || draftData[key] === "") {
+          delete draftData[key];
+        }
+      });
+
+      // Update the draft with current form data
+      const updateResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/draft/${draftId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(draftData),
+          credentials: "include",
+        }
+      );
+
+      if (!updateResponse.ok) {
+        const errorData = await updateResponse.json();
+        throw new Error(errorData.message || "Failed to update draft before submission");
+      }
+
+      console.log("Draft updated with latest data");
+
+      // Upload logo if present
+      if (uploadedImage) {
+        setSubmissionStatus("Uploading company logo...");
+        await uploadDraftLogo(draftId);
+      }
+
+      // Upload registration certificate if present
+      if (formData.registrationCertificate) {
+        setSubmissionStatus("Uploading registration certificate...");
+        await uploadDraftCertificate(draftId);
+      }
+
+      setSubmissionProgress(30);
       setSubmissionStatus("Submitting your startup from draft...");
       
+      // Now submit the draft
       response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/startups/draft/${draftId}/submit`,
         {
