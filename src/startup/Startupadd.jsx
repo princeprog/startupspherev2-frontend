@@ -1142,18 +1142,23 @@ const fetchDraftData = async (id) => {
         
         const text = await response.text();
         const data = text ? JSON.parse(text) : {};
-        const savedDraftId = data._id || draftId;
         
+        // Use existing draftId if response doesn't include one
+        const savedDraftId = data._id || data.id || draftId;
+        
+        console.log("Draft updated with ID:", savedDraftId);
         setDraftId(savedDraftId);
         setStartupId(savedDraftId);
         
-        // Upload logo if present
-        if (uploadedImage) {
+        // Upload logo if present - only if we have a valid ID
+        if (uploadedImage && savedDraftId) {
+          console.log("Uploading logo for draft ID:", savedDraftId);
           await uploadDraftLogo(savedDraftId);
         }
         
-        // Upload registration certificate if present
-        if (formData.registrationCertificate) {
+        // Upload registration certificate if present - only if we have a valid ID
+        if (formData.registrationCertificate && savedDraftId) {
+          console.log("Uploading certificate for draft ID:", savedDraftId);
           await uploadDraftCertificate(savedDraftId);
         }
         
@@ -1191,18 +1196,28 @@ const fetchDraftData = async (id) => {
         
         const text = await response.text();
         const data = text ? JSON.parse(text) : {};
-        const savedDraftId = data._id;
         
+        // Extract draft ID from response - check multiple possible fields
+        const savedDraftId = data._id || data.id || data.draftId;
+        
+        if (!savedDraftId) {
+          console.error("No draft ID received from server. Response:", data);
+          throw new Error("Failed to retrieve draft ID from server");
+        }
+        
+        console.log("Draft saved with ID:", savedDraftId);
         setDraftId(savedDraftId);
         setStartupId(savedDraftId);
         
-        // Upload logo if present
-        if (uploadedImage) {
+        // Upload logo if present - only if we have a valid ID
+        if (uploadedImage && savedDraftId) {
+          console.log("Uploading logo for draft ID:", savedDraftId);
           await uploadDraftLogo(savedDraftId);
         }
         
-        // Upload registration certificate if present
-        if (formData.registrationCertificate) {
+        // Upload registration certificate if present - only if we have a valid ID
+        if (formData.registrationCertificate && savedDraftId) {
+          console.log("Uploading certificate for draft ID:", savedDraftId);
           await uploadDraftCertificate(savedDraftId);
         }
         
@@ -1273,17 +1288,6 @@ const handleSubmit = async () => {
     return;
   }
 
-  // Mark Location Info as completed since validation passed
-  if (!completedTabs.includes("Location Info")) {
-    setCompletedTabs(prev => [...prev, "Location Info"]);
-  }
-  
-  // Update furthest tab reached to include Upload Data (next tab after Location Info)
-  const locationIndex = tabs.indexOf("Location Info");
-  if (locationIndex + 1 > furthestTabReached) {
-    setFurthestTabReached(locationIndex + 1);
-  }
-
   setSubmissionProgress(15);
   setSubmissionStatus("Validation complete. Preparing submission...");
 
@@ -1313,6 +1317,17 @@ const handleSubmit = async () => {
       console.log("Draft submitted successfully: ", data);
       startupId = data.id || data._id;
       setStartupId(startupId);
+      
+      // Mark Location Info as completed after successful submission
+      if (!completedTabs.includes("Location Info")) {
+        setCompletedTabs(prev => [...prev, "Location Info"]);
+      }
+      
+      // Update furthest tab reached to include Upload Data (next tab after Location Info)
+      const locationIndex = tabs.indexOf("Location Info");
+      if (locationIndex + 1 > furthestTabReached) {
+        setFurthestTabReached(locationIndex + 1);
+      }
       
       setSubmissionProgress(40);
       setSubmissionStatus("Startup submitted successfully!");
@@ -1344,6 +1359,17 @@ const handleSubmit = async () => {
       console.log("Startup added successfully: ", data);
       startupId = data.id || data._id;
       setStartupId(startupId);
+      
+      // Mark Location Info as completed after successful submission
+      if (!completedTabs.includes("Location Info")) {
+        setCompletedTabs(prev => [...prev, "Location Info"]);
+      }
+      
+      // Update furthest tab reached to include Upload Data (next tab after Location Info)
+      const locationIndex = tabs.indexOf("Location Info");
+      if (locationIndex + 1 > furthestTabReached) {
+        setFurthestTabReached(locationIndex + 1);
+      }
       
       setSubmissionProgress(40);
       setSubmissionStatus("Startup profile created successfully!");
@@ -4001,7 +4027,8 @@ const handleSubmit = async () => {
                       )}
                     </button>
                   )}
-                  {startupId || completedTabs.includes("Location Info") ? (
+                  {/* Show Next button only if startup has been submitted (has startupId and Location Info is completed) */}
+                  {startupId && completedTabs.includes("Location Info") ? (
                     <button
                       type="button"
                       className="flex items-center gap-2 bg-[#1D3557] text-white px-6 py-2.5 rounded-lg hover:bg-[#16324f] transition-all duration-200 shadow-sm"
