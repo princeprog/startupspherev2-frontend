@@ -435,7 +435,18 @@ export default function CsvUploadPage() {
                 loadingProgress={loadingProgress} 
                 loadingStatus={loadingStatus} 
             />
-            <ToastContainer />
+            <ToastContainer
+              position="bottom-right"
+              autoClose={3000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="colored"
+            />
         </div>
     );
 }

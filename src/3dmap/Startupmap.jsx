@@ -42,6 +42,7 @@ export default function Startupmap({
   const markerRef = useRef(null);
   const geocoderContainerRef = useRef(null);
   const [is3DActive, setIs3DActive] = useState(true);
+  const [isSatelliteView, setIsSatelliteView] = useState(false);
   const [startupMarkers, setStartupMarkers] = useState([]);
   const [searchInput, setSearchInput] = useState("");
   const [filteredStartups, setFilteredStartups] = useState([]);
@@ -341,6 +342,7 @@ export default function Startupmap({
     const ensureIconAndLayers = () => {
       // Add symbol layer
       if (!map.getLayer(symbolLayerId)) {
+        console.log("Adding stakeholder symbol layer");
         map.addLayer({
           id: symbolLayerId,
           type: "symbol",
@@ -351,22 +353,34 @@ export default function Startupmap({
               "interpolate",
               ["linear"],
               ["zoom"],
-              3, 0.11,  // Slightly bigger at low zoom
-              8, 0.15,  // Medium size at medium zoom
-              12, 0.19, // Improved visibility at higher zoom
-              16, 0.24  // More noticeable at highest zoom
+              3, 0.15,  // Visible at low zoom
+              8, 0.20,  // Medium size
+              12, 0.25, // Good visibility
+              16, 0.30, // Clearly visible at high zoom
+              20, 0.35  // Maximum visibility when very zoomed in
             ],
             "icon-allow-overlap": true,
             "icon-ignore-placement": false,
             "icon-anchor": "center",
             "icon-pitch-alignment": "viewport",
             "icon-rotation-alignment": "viewport",
-            // Enhanced shadow for professional appearance
-            "icon-halo-width": 1.2,
-            "icon-halo-color": "rgba(0, 0, 0, 0.2)",
-            "icon-halo-blur": 1.0
+            "visibility": "visible"
           },
+          paint: {
+            "icon-opacity": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              3, 0.8,
+              8, 0.9,
+              12, 1.0
+            ],
+            "icon-halo-width": 2,
+            "icon-halo-color": "rgba(255, 255, 255, 0.8)",
+            "icon-halo-blur": 1
+          }
         });
+        console.log("Stakeholder symbol layer added");
       }
 
       // Add subtle highlight circle layer for active
@@ -494,48 +508,63 @@ export default function Startupmap({
     
     function loadIconFromURL() {
       const iconUrl = `${window.location.origin}/stakeholder-icon.png`;
+      console.log("Loading stakeholder icon from:", iconUrl);
+      
       map.loadImage(iconUrl, (err, img) => {
         if (err) {
-          console.error("Failed to load stakeholder icon:", err);
+          console.error("Failed to load stakeholder icon from URL, using fallback:", err);
           // Create a professional fallback icon using canvas
           const canvas = document.createElement('canvas');
           canvas.width = 64; canvas.height = 64;
           const ctx = canvas.getContext('2d');
           ctx.clearRect(0,0,64,64);
           
-          // Create circular background
-          ctx.fillStyle = '#8B5CF6';
+          // Create circular background with gradient
+          const gradient = ctx.createRadialGradient(32, 32, 0, 32, 32, 24);
+          gradient.addColorStop(0, '#9333EA');
+          gradient.addColorStop(1, '#7C3AED');
+          ctx.fillStyle = gradient;
           ctx.beginPath();
           ctx.arc(32, 32, 24, 0, Math.PI * 2);
           ctx.fill();
           
           // Add white border for professional look
           ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 4;
+          ctx.lineWidth = 3;
           ctx.beginPath();
           ctx.arc(32, 32, 22, 0, Math.PI * 2);
           ctx.stroke();
           
           // Add person silhouette
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
           // Head
           ctx.beginPath();
-          ctx.arc(32, 24, 8, 0, Math.PI * 2);
+          ctx.arc(32, 26, 7, 0, Math.PI * 2);
           ctx.fill();
-          // Body
+          // Body/shoulders
           ctx.beginPath();
-          ctx.moveTo(32, 32);
-          ctx.arc(32, 32, 12, Math.PI * 0.25, Math.PI * 0.75, false);
+          ctx.arc(32, 34, 11, 0, Math.PI, true);
           ctx.fill();
           
           try { 
-            map.addImage(iconName, { width: 64, height: 64, data: ctx.getImageData(0,0,64,64).data }, { pixelRatio: 2 }); 
-          } catch {}
+            const imageData = ctx.getImageData(0, 0, 64, 64);
+            map.addImage(iconName, { 
+              width: 64, 
+              height: 64, 
+              data: new Uint8Array(imageData.data) 
+            }, { pixelRatio: 2 }); 
+            console.log("Stakeholder fallback icon added successfully");
+          } catch (e) {
+            console.error("Failed to add fallback icon:", e);
+          }
           return ensureIconAndLayers();
         }
         try {
           map.addImage(iconName, img, { pixelRatio: 2 });
-        } catch {}
+          console.log("Stakeholder icon loaded successfully from URL");
+        } catch (e) {
+          console.error("Failed to add stakeholder icon to map:", e);
+        }
         ensureIconAndLayers();
       });
     }
@@ -1780,6 +1809,47 @@ export default function Startupmap({
     }
   };
 
+  // Toggle between standard and satellite map styles
+  const toggleMapStyle = () => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const newStyle = !isSatelliteView 
+      ? "mapbox://styles/mapbox/standard-satellite"
+      : "mapbox://styles/mapbox/standard";
+    
+    setIsSatelliteView(!isSatelliteView);
+    
+    // Store current center and zoom
+    const currentCenter = map.getCenter();
+    const currentZoom = map.getZoom();
+    const currentPitch = map.getPitch();
+    const currentBearing = map.getBearing();
+    
+    map.setStyle(newStyle);
+    
+    // Reload stakeholders and startups after style loads
+    map.once('style.load', () => {
+      // Restore camera position
+      map.jumpTo({
+        center: currentCenter,
+        zoom: currentZoom,
+        pitch: currentPitch,
+        bearing: currentBearing
+      });
+      
+      // Reload markers
+      console.log("Style changed, reloading stakeholders, startups, and connections...");
+      loadStakeholders(map);
+      loadStartupMarkers(map);
+      
+      // Reload connections if they were visible
+      if (showConnections && stakeholderConnections.length > 0) {
+        renderConnectionLines(map, stakeholderConnections);
+      }
+    });
+  };
+
   // Toggle between 3D and 2D view
   const toggle3DView = () => {
     const map = mapInstanceRef.current;
@@ -2866,8 +2936,10 @@ export default function Startupmap({
       // Ensure data refresh shortly after load
       setTimeout(() => loadStakeholders(map), 500);
 
-      // Load stakeholder connections (associations)
-      loadStakeholderConnections(map);
+      // Load stakeholder connections (associations) - with longer delay to ensure markers are ready
+      setTimeout(() => {
+        loadStakeholderConnections(map);
+      }, 1500);
     });
 
     return () => {
@@ -2893,14 +2965,16 @@ export default function Startupmap({
       }
 
       const connections = await response.json();
+      console.log("Loaded stakeholder connections:", connections.length);
       setStakeholderConnections(connections);
 
-      // We already rendered all stakeholders via loadStakeholders
-
-      // Then render connection lines (only for mutually connected)
+      // Render connection lines immediately (they're shown by default)
       setTimeout(() => {
-        renderConnectionLines(map, connections);
-      }, 500);
+        if (showConnections) {
+          console.log("Rendering connection lines on map load");
+          renderConnectionLines(map, connections);
+        }
+      }, 1000); // Increased delay to ensure markers are loaded first
 
       return connections;
     } catch (error) {
@@ -3119,7 +3193,7 @@ export default function Startupmap({
   };
 
   return (
-    <div className="relative w-full h-full overflow-hidden map-container-relative">
+    <div className="relative w-full h-full overflow-hidden map-container-relative" style={{ position: 'relative', width: '100%', height: '100%' }}>
       <div
         ref={mapContainerRef}
         className="fixed top-0 left-0 w-full h-full z-0 marker-container"
@@ -3130,8 +3204,8 @@ export default function Startupmap({
       {/* 3D Toggle Button */}
       <button
         onClick={toggle3DView}
-
-        className="absolute bottom-4 left-4 bg-white bg-opacity-90 backdrop-blur-sm px-3 py-2 rounded-md shadow-md z-10 flex items-center gap-1 text-sm font-medium text-gray-700 hover:bg-white transition duration-200"
+        style={{ position: 'fixed', bottom: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 10000 }}
+        className="bg-white bg-opacity-90 backdrop-blur-sm px-3 py-2 rounded-md shadow-md flex items-center gap-1 text-sm font-medium text-gray-700 hover:bg-white transition duration-200"
       >
         {is3DActive ? (
           <>
@@ -3175,7 +3249,8 @@ export default function Startupmap({
       {/* Connections Toggle Button */}
       <button
         onClick={toggleConnectionsVisibility}
-        className="absolute bottom-4 left-28 bg-white bg-opacity-90 backdrop-blur-sm px-3 py-2 rounded-md shadow-md z-10 flex items-center gap-1 text-sm font-medium text-gray-700 hover:bg-white transition duration-200"
+        style={{ position: 'fixed', bottom: '16px', left: '50%', transform: 'translateX(calc(-50% + 220px))', zIndex: 10000 }}
+        className="bg-white bg-opacity-90 backdrop-blur-sm px-3 py-2 rounded-md shadow-md flex items-center gap-1 text-sm font-medium text-gray-700 hover:bg-white transition duration-200"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -3192,6 +3267,52 @@ export default function Startupmap({
           />
         </svg>
         {showConnections ? "Hide Connections" : "Show Connections"}
+      </button>
+
+      {/* Map Style Toggle Button */}
+      <button
+        onClick={toggleMapStyle}
+        style={{ position: 'fixed', bottom: '16px', left: '50%', transform: 'translateX(calc(-50% - 220px))', zIndex: 10000 }}
+        className="bg-white bg-opacity-90 backdrop-blur-sm px-3 py-2 rounded-md shadow-md flex items-center gap-1 text-sm font-medium text-gray-700 hover:bg-white transition duration-200"
+        title={isSatelliteView ? "Switch to Standard Map" : "Switch to Satellite View"}
+      >
+        {isSatelliteView ? (
+          <>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+              />
+            </svg>
+            Map
+          </>
+        ) : (
+          <>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            Satellite
+          </>
+        )}
       </button>
 
       {openLogin && (

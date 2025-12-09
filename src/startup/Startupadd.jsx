@@ -5,8 +5,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import MapboxGeocoder from "@mapbox/mapbox-gl-geocoder";
 import "@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css";
-import { ToastContainer, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { useToast, ToastContainer } from "../components/Toast";
 import Verification from "../modals/Verification";
 import { useNavigate, useLocation } from "react-router-dom";
 
@@ -120,6 +119,7 @@ const PrivacyModal = ({ isOpen, onClose }) => {
 };
 
 export default function Startupadd() {
+  const { toast, toasts, removeToast } = useToast();
   const [selectedTab, setSelectedTab] = useState("Company Information");
   const [startupId, setStartupId] = useState(null);
   const [regions, setRegions] = useState([]);
@@ -202,6 +202,38 @@ export default function Startupadd() {
   const [furthestTabReached, setFurthestTabReached] = useState(0);
   const [emailError, setEmailError] = useState("");
   const [displayPercentage, setDisplayPercentage] = useState(0);
+  
+  // Field-specific error states
+  const [fieldErrors, setFieldErrors] = useState({
+    companyName: "",
+    companyDescription: "",
+    foundedDate: "",
+    numberOfEmployees: "",
+    typeOfCompany: "",
+    industry: "",
+    isGovernmentRegistered: "",
+    registrationAgency: "",
+    otherRegistrationAgency: "",
+    registrationNumber: "",
+    registrationDate: "",
+    businessLicenseNumber: "",
+    tin: "",
+    registrationCertificate: "",
+    phoneNumber: "",
+    contactEmail: "",
+    website: "",
+    streetAddress: "",
+    city: "",
+    province: "",
+    postalCode: "",
+    facebook: "",
+    linkedIn: "",
+    fundingStage: "",
+    operatingHours: "",
+    businessActivity: "",
+    locationLat: "",
+    locationLng: "",
+  });
   
   // Operating hours state
   const [openingTime, setOpeningTime] = useState("09:00");
@@ -430,6 +462,11 @@ export default function Startupadd() {
       [name]: value,
     }));
     
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({ ...prev, [name]: "" }));
+    }
+    
     // Validate email in real-time
     if (name === "contactEmail") {
       validateEmail(value);
@@ -481,6 +518,10 @@ export default function Startupadd() {
       ...prev,
       foundedDate: date ? date.toISOString().split("T")[0] : null,
     }));
+    // Clear error when date is selected
+    if (fieldErrors.foundedDate) {
+      setFieldErrors(prev => ({ ...prev, foundedDate: "" }));
+    }
   };
 
   const handleMapClick = (lat, lng, locationName) => {
@@ -490,6 +531,10 @@ export default function Startupadd() {
       locationLng: lng,
       locationName: locationName,
     }));
+    // Clear location errors when location is selected
+    if (fieldErrors.locationLat || fieldErrors.locationLng) {
+      setFieldErrors(prev => ({ ...prev, locationLat: "", locationLng: "" }));
+    }
   };
 
   const initializeMap = () => {
@@ -865,95 +910,176 @@ const fetchDraftData = async (id) => {
 
   // Update validation for Company Information
   const validateCompanyInformation = () => {
-    if (!formData.companyName) return toast.error("Company Name is required.");
-    if (!formData.companyDescription)
-      return toast.error("Company Description is required.");
-    if (!formData.foundedDate) return toast.error("Founded Date is required.");
-    if (!formData.numberOfEmployees)
-      return toast.error("Number of Employees is required.");
-    if (!formData.typeOfCompany)
-      return toast.error("Type of Company is required.");
-    if (!formData.industry) return toast.error("Industry is required.");
+    const errors = {};
+    
+    if (!formData.companyName) {
+      errors.companyName = "Company Name is required.";
+      toast.error("Company Name is required.");
+    }
+    if (!formData.companyDescription) {
+      errors.companyDescription = "Company Description is required.";
+      toast.error("Company Description is required.");
+    }
+    if (!formData.foundedDate) {
+      errors.foundedDate = "Founded Date is required.";
+      toast.error("Founded Date is required.");
+    }
+    if (!formData.numberOfEmployees) {
+      errors.numberOfEmployees = "Number of Employees is required.";
+      toast.error("Number of Employees is required.");
+    }
+    if (!formData.typeOfCompany) {
+      errors.typeOfCompany = "Type of Company is required.";
+      toast.error("Type of Company is required.");
+    }
+    if (!formData.industry) {
+      errors.industry = "Industry is required.";
+      toast.error("Industry is required.");
+    }
+    
     // Registration validation
     if (formData.isGovernmentRegistered === "") {
-      return toast.error("Please specify if your startup is registered with a government agency.");
+      errors.isGovernmentRegistered = "Please specify if your startup is registered.";
+      toast.error("Please specify if your startup is registered with a government agency.");
     }
     if (formData.isGovernmentRegistered === "yes") {
       if (!formData.registrationAgency) {
-        return toast.error("Please select the registration agency.");
+        errors.registrationAgency = "Please select the registration agency.";
+        toast.error("Please select the registration agency.");
       }
-      if (
-        formData.registrationAgency === "other" &&
-        !formData.otherRegistrationAgency
-      ) {
-        return toast.error("Please specify the other registration agency.");
+      if (formData.registrationAgency === "other" && !formData.otherRegistrationAgency) {
+        errors.otherRegistrationAgency = "Please specify the other registration agency.";
+        toast.error("Please specify the other registration agency.");
       }
       if (!formData.registrationNumber) {
-        return toast.error("Registration number is required.");
+        errors.registrationNumber = "Registration number is required.";
+        toast.error("Registration number is required.");
       }
       if (!formData.registrationDate) {
-        return toast.error("Registration date is required.");
+        errors.registrationDate = "Registration date is required.";
+        toast.error("Registration date is required.");
       }
       if (!formData.businessLicenseNumber) {
-        return toast.error("Business license number is required.");
+        errors.businessLicenseNumber = "Business license number is required.";
+        toast.error("Business license number is required.");
       }
       if (!formData.tin) {
-        return toast.error("TIN is required.");
+        errors.tin = "TIN is required.";
+        toast.error("TIN is required.");
       }
       if (!formData.registrationCertificate) {
-        return toast.error("Registration certificate file is required.");
+        errors.registrationCertificate = "Registration certificate file is required.";
+        toast.error("Registration certificate file is required.");
       }
     }
-    return "";
+    
+    setFieldErrors(prev => ({ ...prev, ...errors }));
+    return Object.keys(errors).length === 0 ? "" : "validation_failed";
   };
 
   const validateContactInformation = () => {
-    if (!formData.phoneNumber) return toast.error("Phone Number is required.");
-    const digits = formData.phoneNumber.replace("+63 ", "").replace(/\D/g, "");
-        if (digits.length !== 10) {
-            return toast.error("Phone number must contain exactly 10 digits (excluding +63 prefix).");
-         }
-    if (!formData.contactEmail)
-      return toast.error("Contact Email is required.");
-    if (!validateEmail(formData.contactEmail))
-      return toast.error("Please enter a valid email address");
-    if (!formData.website) return toast.error("Website is required.");
-    return "";
-  };  const validateAddressInformation = () => {
-    if (!formData.streetAddress)
-      return toast.error("Street Address is required.");
-    if (!formData.city) return toast.error("City is required.");
-    if (!formData.province) return toast.error("Province is required.");
-    if (!formData.postalCode) return toast.error("Postal Code is required.");
-    if (formData.postalCode.length !== 4) {
-      return toast.error("Postal Code Must be 4 digits");
-    }
-
-    return "";
+    const errors = {};
+    
+    if (!formData.phoneNumber) {
+      errors.phoneNumber = "Phone Number is required.";
+      toast.error("Phone Number is required.");
+    } else {
+      const digits = formData.phoneNumber.replace("+63 ", "").replace(/\D/g, "");
+      if (digits.length !== 10) {
+        errors.phoneNumber = "Phone number must contain exactly 10 digits.";
+        toast.error("Phone number must contain exactly 10 digits (excluding +63 prefix).");
+      }
+    }
+    
+    if (!formData.contactEmail) {
+      errors.contactEmail = "Contact Email is required.";
+      toast.error("Contact Email is required.");
+    } else if (!validateEmail(formData.contactEmail)) {
+      errors.contactEmail = "Please enter a valid email address.";
+      toast.error("Please enter a valid email address");
+    }
+    
+    if (!formData.website) {
+      errors.website = "Website is required.";
+      toast.error("Website is required.");
+    }
+    
+    setFieldErrors(prev => ({ ...prev, ...errors }));
+    return Object.keys(errors).length === 0 ? "" : "validation_failed";
   };
 
-  const validateSocialMediaLinks = () => {
-    if (!formData.facebook) return toast.error("Facebook URL is required.");
-    if (!formData.linkedIn) return toast.error("LinkedIn URL is required.");
-    return "";
+  const validateAddressInformation = () => {
+    const errors = {};
+    
+    if (!formData.streetAddress) {
+      errors.streetAddress = "Street Address is required.";
+      toast.error("Street Address is required.");
+    }
+    if (!formData.city) {
+      errors.city = "City is required.";
+      toast.error("City is required.");
+    }
+    if (!formData.province) {
+      errors.province = "Province is required.";
+      toast.error("Province is required.");
+    }
+    if (!formData.postalCode) {
+      errors.postalCode = "Postal Code is required.";
+      toast.error("Postal Code is required.");
+    } else if (formData.postalCode.length !== 4) {
+      errors.postalCode = "Postal Code must be 4 digits.";
+      toast.error("Postal Code Must be 4 digits");
+    }
+    
+    setFieldErrors(prev => ({ ...prev, ...errors }));
+    return Object.keys(errors).length === 0 ? "" : "validation_failed";
+  };  const validateSocialMediaLinks = () => {
+    const errors = {};
+    
+    if (!formData.facebook) {
+      errors.facebook = "Facebook URL is required.";
+      toast.error("Facebook URL is required.");
+    }
+    if (!formData.linkedIn) {
+      errors.linkedIn = "LinkedIn URL is required.";
+      toast.error("LinkedIn URL is required.");
+    }
+    
+    setFieldErrors(prev => ({ ...prev, ...errors }));
+    return Object.keys(errors).length === 0 ? "" : "validation_failed";
   };
 
   const validateAdditionalInformation = () => {
-    if (!formData.fundingStage)
-      return toast.error("Funding Stage is required.");
-    if (!formData.operatingHours)
-      return toast.error("Operating Hours is required.");
-    if (!formData.businessActivity)
-      return toast.error("Business Activity is required.");
-    return "";
+    const errors = {};
+    
+    if (!formData.fundingStage) {
+      errors.fundingStage = "Funding Stage is required.";
+      toast.error("Funding Stage is required.");
+    }
+    if (!formData.operatingHours) {
+      errors.operatingHours = "Operating Hours is required.";
+      toast.error("Operating Hours is required.");
+    }
+    if (!formData.businessActivity) {
+      errors.businessActivity = "Business Activity is required.";
+      toast.error("Business Activity is required.");
+    }
+    
+    setFieldErrors(prev => ({ ...prev, ...errors }));
+    return Object.keys(errors).length === 0 ? "" : "validation_failed";
   };
 
   const validateLocationInfo = () => {
-    if (!formData.locationLat || !formData.locationLng)
-      return toast.error("Please select a location on the map.");
-    if (!formData.locationName)
-      return toast.error("Location name is required.");
-    return "";
+    const errors = {};
+    
+    if (!formData.locationLat || !formData.locationLng) {
+      errors.locationLat = "Please select a location on the map.";
+      errors.locationLng = "Please select a location on the map.";
+      toast.error("Please select a location on the map.");
+    }
+    
+    setFieldErrors(prev => ({ ...prev, ...errors }));
+    return Object.keys(errors).length === 0 ? "" : "validation_failed";
   };
 
   const handleNext = () => {
@@ -2276,18 +2402,33 @@ const handleSubmit = async () => {
                     type="text"
                     name="companyName"
                     placeholder="Enter your company name"
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                    className={`w-full border-2 ${fieldErrors.companyName ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 pr-10 focus:ring-2 ${fieldErrors.companyName ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-blue-500 focus:border-blue-500'} outline-none transition-all duration-200 group-hover:border-gray-400`}
                     value={formData.companyName}
                     onChange={handleChange}
                   />
-                  {formData.companyName && (
+                  {formData.companyName && !fieldErrors.companyName && (
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                       <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                     </div>
                   )}
+                  {fieldErrors.companyName && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
+                {fieldErrors.companyName && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.companyName}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 flex items-center gap-1">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -2309,11 +2450,19 @@ const handleSubmit = async () => {
                     name="companyDescription"
                     placeholder="Brief description of what your company does..."
                     rows="3"
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400 resize-none"
+                    className={`w-full border-2 ${fieldErrors.companyDescription ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 ${fieldErrors.companyDescription ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-blue-500 focus:border-blue-500'} focus:ring-2 outline-none transition-all duration-200 group-hover:border-gray-400 resize-none`}
                     value={formData.companyDescription}
                     onChange={handleChange}
                   />
                 </div>
+                {fieldErrors.companyDescription && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.companyDescription}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 flex items-center gap-1">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -2338,7 +2487,7 @@ const handleSubmit = async () => {
                   }
                   onChange={handleDateChange}
                   placeholderText="Select founded date"
-                  className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                  className={`w-full border-2 ${fieldErrors.foundedDate ? 'border-red-500' : 'border-gray-300'} rounded-lg px-4 py-3 pr-10 ${fieldErrors.foundedDate ? 'focus:ring-red-500 focus:border-red-500' : 'focus:ring-blue-500 focus:border-blue-500'} focus:ring-2 outline-none transition-all duration-200 group-hover:border-gray-400`}
                   maxDate={new Date()}
                   showYearDropdown
                   showMonthDropdown
@@ -2353,6 +2502,14 @@ const handleSubmit = async () => {
                   </svg>
                 </div>
               </div>
+              {fieldErrors.foundedDate && (
+                <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {fieldErrors.foundedDate}
+                </p>
+              )}
               <p className="text-xs text-gray-500 flex items-center gap-1">
                 <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -2376,18 +2533,37 @@ const handleSubmit = async () => {
                     type="text"
                     name="numberOfEmployees"
                     placeholder="e.g., 10, 25, 100"
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 focus:ring-2 outline-none transition-all duration-200 group-hover:border-gray-400 ${
+                      fieldErrors.numberOfEmployees 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     value={formData.numberOfEmployees}
                     onChange={handleChange}
                   />
-                  {formData.numberOfEmployees && (
+                  {formData.numberOfEmployees && !fieldErrors.numberOfEmployees && (
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                       <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                     </div>
                   )}
+                  {fieldErrors.numberOfEmployees && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
+                {fieldErrors.numberOfEmployees && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.numberOfEmployees}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 flex items-center gap-1">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1 a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -2407,7 +2583,11 @@ const handleSubmit = async () => {
                 <div className="relative group">
                   <select
                     name="typeOfCompany"
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white group-hover:border-gray-400"
+                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 outline-none transition-all duration-200 bg-white group-hover:border-gray-400 ${
+                      fieldErrors.typeOfCompany 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     value={formData.typeOfCompany}
                     onChange={handleChange}
                   >
@@ -2438,6 +2618,14 @@ const handleSubmit = async () => {
                     </svg>
                   </div>
                 </div>
+                {fieldErrors.typeOfCompany && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.typeOfCompany}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 flex items-center gap-1">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -2457,7 +2645,11 @@ const handleSubmit = async () => {
                 <div className="relative group">
                   <select
                     name="industry"
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white group-hover:border-gray-400"
+                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 outline-none transition-all duration-200 bg-white group-hover:border-gray-400 ${
+                      fieldErrors.industry 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     value={formData.industry}
                     onChange={handleChange}
                   >
@@ -2588,6 +2780,14 @@ const handleSubmit = async () => {
                     </svg>
                   </div>
                 </div>
+                {fieldErrors.industry && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.industry}
+                  </p>
+                )}
                 <p className="text-xs text-gray-500 flex items-center gap-1">
                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -2620,7 +2820,11 @@ const handleSubmit = async () => {
                 <div className="relative group">
                   <select
                     name="isGovernmentRegistered"
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white group-hover:border-gray-400"
+                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 outline-none transition-all duration-200 bg-white group-hover:border-gray-400 ${
+                      fieldErrors.isGovernmentRegistered 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     value={formData.isGovernmentRegistered}
                     onChange={e => {
                       const value = e.target.value === "true" ? true : e.target.value === "false" ? false : "";
@@ -2635,6 +2839,10 @@ const handleSubmit = async () => {
                         tin: "",
                         registrationCertificate: null,
                       }));
+                      // Clear error when selection is made
+                      if (fieldErrors.isGovernmentRegistered) {
+                        setFieldErrors(prev => ({ ...prev, isGovernmentRegistered: "" }));
+                      }
                     }}
                   >
                     <option value="">Select an option</option>
@@ -2647,6 +2855,14 @@ const handleSubmit = async () => {
                     </svg>
                   </div>
                 </div>
+                {fieldErrors.isGovernmentRegistered && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.isGovernmentRegistered}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -2664,7 +2880,11 @@ const handleSubmit = async () => {
                   <div className="relative group">
                     <select
                       name="registrationAgency"
-                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white group-hover:border-gray-400"
+                      className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 outline-none transition-all duration-200 bg-white group-hover:border-gray-400 ${
+                        fieldErrors.registrationAgency 
+                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
                       value={formData.registrationAgency}
                       onChange={e =>
                         setFormData(prev => ({
@@ -2685,6 +2905,14 @@ const handleSubmit = async () => {
                       </svg>
                     </div>
                   </div>
+                  {fieldErrors.registrationAgency && (
+                    <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {fieldErrors.registrationAgency}
+                    </p>
+                  )}
                 </div>
 
                 {/* Other Registration Agency (conditional) */}
@@ -2700,11 +2928,23 @@ const handleSubmit = async () => {
                     <input
                       type="text"
                       name="otherRegistrationAgency"
-                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+                      className={`w-full border-2 rounded-lg px-4 py-3 focus:ring-2 outline-none transition-all duration-200 ${
+                        fieldErrors.otherRegistrationAgency 
+                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
                       placeholder="Enter agency name"
                       value={formData.otherRegistrationAgency}
                       onChange={handleChange}
                     />
+                    {fieldErrors.otherRegistrationAgency && (
+                      <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        {fieldErrors.otherRegistrationAgency}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -2720,11 +2960,23 @@ const handleSubmit = async () => {
                   <input
                     type="text"
                     name="registrationNumber"
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+                    className={`w-full border-2 rounded-lg px-4 py-3 focus:ring-2 outline-none transition-all duration-200 ${
+                      fieldErrors.registrationNumber 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     placeholder="Enter registration/certificate number"
                     value={formData.registrationNumber}
                     onChange={handleChange}
                   />
+                  {fieldErrors.registrationNumber && (
+                    <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {fieldErrors.registrationNumber}
+                    </p>
+                  )}
                 </div>
 
                 {/* Registration Date */}
@@ -2743,14 +2995,22 @@ const handleSubmit = async () => {
                           ? new Date(formData.registrationDate)
                           : null
                       }
-                      onChange={date =>
+                      onChange={date => {
                         setFormData(prev => ({
                           ...prev,
                           registrationDate: date ? date.toISOString().split("T")[0] : null,
-                        }))
-                      }
+                        }));
+                        // Clear error when date is selected
+                        if (fieldErrors.registrationDate) {
+                          setFieldErrors(prev => ({ ...prev, registrationDate: "" }));
+                        }
+                      }}
                       placeholderText="Select registration date"
-                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                      className={`w-full border-2 rounded-lg px-4 py-3 pr-10 focus:ring-2 outline-none transition-all duration-200 group-hover:border-gray-400 ${
+                        fieldErrors.registrationDate 
+                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
                       maxDate={new Date()}
                       showYearDropdown
                       showMonthDropdown
@@ -2765,6 +3025,14 @@ const handleSubmit = async () => {
                       </svg>
                     </div>
                   </div>
+                  {fieldErrors.registrationDate && (
+                    <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {fieldErrors.registrationDate}
+                    </p>
+                  )}
                 </div>
 
                 {/* Business License Number */}
@@ -2779,11 +3047,23 @@ const handleSubmit = async () => {
                   <input
                     type="text"
                     name="businessLicenseNumber"
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+                    className={`w-full border-2 rounded-lg px-4 py-3 focus:ring-2 outline-none transition-all duration-200 ${
+                      fieldErrors.businessLicenseNumber 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     placeholder="Enter business license number"
                     value={formData.businessLicenseNumber}
                     onChange={handleChange}
                   />
+                  {fieldErrors.businessLicenseNumber && (
+                    <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {fieldErrors.businessLicenseNumber}
+                    </p>
+                  )}
                 </div>
 
                 {/* TIN */}
@@ -2798,11 +3078,23 @@ const handleSubmit = async () => {
                   <input
                     type="text"
                     name="tin"
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200"
+                    className={`w-full border-2 rounded-lg px-4 py-3 focus:ring-2 outline-none transition-all duration-200 ${
+                      fieldErrors.tin 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     placeholder="Enter TIN"
                     value={formData.tin}
                     onChange={handleChange}
                   />
+                  {fieldErrors.tin && (
+                    <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {fieldErrors.tin}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -2819,6 +3111,14 @@ const handleSubmit = async () => {
                   </svg>
                   Please upload your registration certificate in PDF format
                 </p>
+                {fieldErrors.registrationCertificate && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mb-2">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.registrationCertificate}
+                  </p>
+                )}
                 
                 {showCertificatePreview || formData.registrationCertificate ? (
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
@@ -2864,15 +3164,34 @@ const handleSubmit = async () => {
                             Change Certificate
                             <input
                               type="file"
-                              accept="application/pdf,image/*"
+                              accept="application/pdf"
                               onChange={e => {
                                 const file = e.target.files[0];
                                 if (file) {
+                                  // Validate PDF format
+                                  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                                    toast.error("Invalid file format. Please upload a PDF file only.");
+                                    e.target.value = ''; // Reset input
+                                    return;
+                                  }
+                                  
+                                  // Check file size (max 10MB)
+                                  const maxSize = 10 * 1024 * 1024;
+                                  if (file.size > maxSize) {
+                                    toast.error("File size too large. Maximum file size is 10MB.");
+                                    e.target.value = ''; // Reset input
+                                    return;
+                                  }
+                                  
                                   setFormData(prev => ({
                                     ...prev,
                                     registrationCertificate: file,
                                   }));
                                   setDraftCertificateUrl(null);
+                                  // Clear error when file is uploaded
+                                  if (fieldErrors.registrationCertificate) {
+                                    setFieldErrors(prev => ({ ...prev, registrationCertificate: "" }));
+                                  }
                                   toast.success("Certificate selected successfully!");
                                 }
                               }}
@@ -2902,19 +3221,38 @@ const handleSubmit = async () => {
                       <p className="mb-2 text-sm text-gray-500">
                         <span className="font-semibold">Click to upload</span> certificate
                       </p>
-                      <p className="text-xs text-gray-500">PDF or Image (MAX. 10MB)</p>
+                      <p className="text-xs text-gray-500">PDF only (MAX. 10MB)</p>
                     </div>
                     <input
                       type="file"
-                      accept="application/pdf,image/*"
+                      accept="application/pdf"
                       onChange={e => {
                         const file = e.target.files[0];
                         if (file) {
+                          // Validate PDF format
+                          if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+                            toast.error("Invalid file format. Please upload a PDF file only.");
+                            e.target.value = ''; // Reset input
+                            return;
+                          }
+                          
+                          // Check file size (max 10MB)
+                          const maxSize = 10 * 1024 * 1024;
+                          if (file.size > maxSize) {
+                            toast.error("File size too large. Maximum file size is 10MB.");
+                            e.target.value = ''; // Reset input
+                            return;
+                          }
+                          
                           setFormData(prev => ({
                             ...prev,
                             registrationCertificate: file,
                           }));
                           setShowCertificatePreview(true);
+                          // Clear error when file is uploaded
+                          if (fieldErrors.registrationCertificate) {
+                            setFieldErrors(prev => ({ ...prev, registrationCertificate: "" }));
+                          }
                           toast.success("Certificate selected successfully!");
                         }
                       }}
@@ -3054,7 +3392,11 @@ const handleSubmit = async () => {
                   type="tel"
                   name="phoneNumber"
                   placeholder="9XX XXX XXXX"
-                  className="w-full border-2 border-gray-300 rounded-lg pl-28 pr-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                  className={`w-full border-2 rounded-lg pl-28 pr-4 py-3 text-gray-900 placeholder-gray-400 focus:ring-2 outline-none transition-all duration-200 group-hover:border-gray-400 ${
+                    fieldErrors.phoneNumber 
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                   value={formData.phoneNumber.replace("+63 ", "").replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")}
                   onChange={(e) => {
                     const value = e.target.value.replace(/\D/g, "");
@@ -3078,7 +3420,14 @@ const handleSubmit = async () => {
               
               {/* Helper Text with Validation */}
               <div className="mt-2 flex items-start gap-2">
-                {formData.phoneNumber && formData.phoneNumber.replace("+63 ", "").replace(/\D/g, "").length === 10 ? (
+                {fieldErrors.phoneNumber ? (
+                  <div className="flex items-center gap-1.5 text-xs text-red-600">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium">{fieldErrors.phoneNumber}</span>
+                  </div>
+                ) : formData.phoneNumber && formData.phoneNumber.replace("+63 ", "").replace(/\D/g, "").length === 10 ? (
                   <div className="flex items-center gap-1.5 text-xs text-green-600">
                     <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -3160,14 +3509,42 @@ const handleSubmit = async () => {
               <label className="block mb-1 text-sm font-medium">Website
                 <span className="text-red-500"> *</span>
               </label>
-              <input
-                type="url"
-                name="website"
-                placeholder="Website link"
-                className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                value={formData.website}
-                onChange={handleChange}
-              />
+              <div className="relative">
+                <input
+                  type="url"
+                  name="website"
+                  placeholder="Website link"
+                  className={`w-full border-2 rounded-lg px-4 py-2.5 pr-10 focus:ring-2 focus:outline-none transition-all duration-200 ${
+                    fieldErrors.website 
+                      ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                      : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
+                  value={formData.website}
+                  onChange={handleChange}
+                />
+                {formData.website && !fieldErrors.website && (
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+                {fieldErrors.website && (
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                    <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              {fieldErrors.website && (
+                <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {fieldErrors.website}
+                </p>
+              )}
             </div>
             <div className="col-span-2 flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
               <button
@@ -3286,10 +3663,12 @@ const handleSubmit = async () => {
                 <div className="relative group">
                   <select
                     name="province"
-                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 ${
+                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 outline-none transition-all duration-200 ${
                       !selectedRegion 
                         ? 'bg-gray-50 border-gray-200 cursor-not-allowed text-gray-400' 
-                        : 'bg-white border-gray-300 group-hover:border-gray-400'
+                        : fieldErrors.province
+                        ? 'bg-white border-red-500 focus:ring-red-500 focus:border-red-500 group-hover:border-red-600'
+                        : 'bg-white border-gray-300 group-hover:border-gray-400 focus:ring-blue-500 focus:border-blue-500'
                     }`}
                     value={selectedProvince?.code || ""}
                     onChange={(e) => {
@@ -3321,6 +3700,14 @@ const handleSubmit = async () => {
                     </svg>
                   </div>
                 </div>
+                {fieldErrors.province && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.province}
+                  </p>
+                )}
               </div>
 
               {/* City */}
@@ -3335,10 +3722,12 @@ const handleSubmit = async () => {
                 <div className="relative group">
                   <select
                     name="city"
-                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 ${
+                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 outline-none transition-all duration-200 ${
                       !selectedProvince 
                         ? 'bg-gray-50 border-gray-200 cursor-not-allowed text-gray-400' 
-                        : 'bg-white border-gray-300 group-hover:border-gray-400'
+                        : fieldErrors.city
+                        ? 'bg-white border-red-500 focus:ring-red-500 focus:border-red-500 group-hover:border-red-600'
+                        : 'bg-white border-gray-300 group-hover:border-gray-400 focus:ring-blue-500 focus:border-blue-500'
                     }`}
                     value={selectedCity?.code || ""}
                     onChange={(e) => {
@@ -3368,6 +3757,14 @@ const handleSubmit = async () => {
                     </svg>
                   </div>
                 </div>
+                {fieldErrors.city && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.city}
+                  </p>
+                )}
               </div>
 
               {/* Barangay */}
@@ -3440,16 +3837,38 @@ const handleSubmit = async () => {
                       type="text"
                       name="streetAddress"
                       placeholder="e.g., 123 Main Street, Building 5"
-                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 hover:border-gray-400"
+                      className={`w-full border-2 rounded-lg px-4 py-3 pr-10 focus:ring-2 outline-none transition-all duration-200 hover:border-gray-400 ${
+                        fieldErrors.streetAddress 
+                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
                       value={formData.streetAddress}
                       onChange={handleChange}
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
+                      {formData.streetAddress && !fieldErrors.streetAddress ? (
+                        <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      ) : fieldErrors.streetAddress ? (
+                        <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                      )}
                     </div>
                   </div>
+                  {fieldErrors.streetAddress && (
+                    <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {fieldErrors.streetAddress}
+                    </p>
+                  )}
                 </div>
 
                 {/* Postal Code */}
@@ -3467,7 +3886,11 @@ const handleSubmit = async () => {
                       name="postalCode"
                       placeholder="XXXX"
                       maxLength="4"
-                      className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 hover:border-gray-400"
+                      className={`w-full border-2 rounded-lg px-4 py-3 pr-10 focus:ring-2 outline-none transition-all duration-200 hover:border-gray-400 ${
+                        fieldErrors.postalCode 
+                          ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                          : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                      }`}
                       value={formData.postalCode}
                       onChange={(e) => {
                         const value = e.target.value.replace(/\D/g, "");
@@ -3480,9 +3903,13 @@ const handleSubmit = async () => {
                       }}
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      {formData.postalCode && formData.postalCode.length === 4 ? (
+                      {formData.postalCode && formData.postalCode.length === 4 && !fieldErrors.postalCode ? (
                         <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      ) : fieldErrors.postalCode ? (
+                        <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                         </svg>
                       ) : (
                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3491,6 +3918,14 @@ const handleSubmit = async () => {
                       )}
                     </div>
                   </div>
+                  {fieldErrors.postalCode && (
+                    <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {fieldErrors.postalCode}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500 flex items-center gap-1">
                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -3596,18 +4031,37 @@ const handleSubmit = async () => {
                     type="url"
                     name="facebook"
                     placeholder="https://facebook.com/yourcompany"
-                    className="w-full border-2 border-gray-300 rounded-lg pl-12 pr-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                    className={`w-full border-2 rounded-lg pl-12 pr-4 py-3 focus:ring-2 outline-none transition-all duration-200 group-hover:border-gray-400 ${
+                      fieldErrors.facebook 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     value={formData.facebook}
                     onChange={handleChange}
                   />
-                  {formData.facebook && (
+                  {formData.facebook && !fieldErrors.facebook && (
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                       <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                     </div>
                   )}
+                  {fieldErrors.facebook && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
+                {fieldErrors.facebook && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.facebook}
+                  </p>
+                )}
               </div>
 
               {/* LinkedIn */}
@@ -3631,18 +4085,37 @@ const handleSubmit = async () => {
                     type="url"
                     name="linkedIn"
                     placeholder="https://linkedin.com/company/yourcompany"
-                    className="w-full border-2 border-gray-300 rounded-lg pl-12 pr-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 group-hover:border-gray-400"
+                    className={`w-full border-2 rounded-lg pl-12 pr-4 py-3 focus:ring-2 outline-none transition-all duration-200 group-hover:border-gray-400 ${
+                      fieldErrors.linkedIn 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     value={formData.linkedIn}
                     onChange={handleChange}
                   />
-                  {formData.linkedIn && (
+                  {formData.linkedIn && !fieldErrors.linkedIn && (
                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                       <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
                     </div>
                   )}
+                  {fieldErrors.linkedIn && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                      <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
+                {fieldErrors.linkedIn && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.linkedIn}
+                  </p>
+                )}
               </div>
 
               {/* Twitter */}
@@ -3815,7 +4288,11 @@ const handleSubmit = async () => {
                 <div className="relative group">
                   <select
                     name="fundingStage"
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 bg-white group-hover:border-gray-400"
+                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 appearance-none focus:ring-2 outline-none transition-all duration-200 bg-white group-hover:border-gray-400 ${
+                      fieldErrors.fundingStage 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     value={formData.fundingStage}
                     onChange={handleChange}
                   >
@@ -3846,6 +4323,14 @@ const handleSubmit = async () => {
                     </svg>
                   </div>
                 </div>
+                {fieldErrors.fundingStage && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.fundingStage}
+                  </p>
+                )}
               </div>
 
               {/* Business Activity */}
@@ -3862,14 +4347,22 @@ const handleSubmit = async () => {
                     type="text"
                     name="businessActivity"
                     placeholder="e.g., Software Development, E-commerce, Consulting"
-                    className="w-full border-2 border-gray-300 rounded-lg px-4 py-3 pr-10 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all duration-200 hover:border-gray-400"
+                    className={`w-full border-2 rounded-lg px-4 py-3 pr-10 focus:ring-2 outline-none transition-all duration-200 hover:border-gray-400 ${
+                      fieldErrors.businessActivity 
+                        ? 'border-red-500 focus:ring-red-500 focus:border-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'
+                    }`}
                     value={formData.businessActivity}
                     onChange={handleChange}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                    {formData.businessActivity ? (
+                    {formData.businessActivity && !fieldErrors.businessActivity ? (
                       <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    ) : fieldErrors.businessActivity ? (
+                      <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                       </svg>
                     ) : (
                       <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3878,6 +4371,14 @@ const handleSubmit = async () => {
                     )}
                   </div>
                 </div>
+                {fieldErrors.businessActivity && (
+                  <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {fieldErrors.businessActivity}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -3998,6 +4499,14 @@ const handleSubmit = async () => {
                   </div>
                 </div>
               </div>
+              {fieldErrors.operatingHours && (
+                <p className="text-xs text-red-600 flex items-center gap-1 mt-2">
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  {fieldErrors.operatingHours}
+                </p>
+              )}
             </div>
             <div className="col-span-2 flex justify-between items-center mt-6 pt-4 border-t border-gray-200">
               <button
@@ -4393,7 +4902,7 @@ const handleSubmit = async () => {
       <LoadingModal />
       <DraftLoadingModal />
       <SubmissionProgressModal />
-      <ToastContainer />
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
     </div>
     </>
   );
