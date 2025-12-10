@@ -79,13 +79,24 @@ export default function Startupmap({
   // Modify loadStartupMarkers to remove industry filtering
   const loadStartupMarkers = async (map) => {
     try {
+      // Fetch with pagination params - get large page size to show all startups on map
+      const params = new URLSearchParams({
+        page: "0",
+        size: "1000",
+        sortBy: "companyName",
+        sortDir: "ASC"
+      });
+      
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/startups/approved`,
+        `${import.meta.env.VITE_BACKEND_URL}/startups/approved?${params.toString()}`,
         {
           credentials: "include",
         }
       );
-      const startups = await response.json();
+      const data = await response.json();
+      
+      // Extract startups from paginated response
+      const startups = data.content || [];
       setStartupMarkers(startups);
       setFilteredStartups(startups);
 

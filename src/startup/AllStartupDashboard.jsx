@@ -49,8 +49,10 @@ export default function AllStartupDashboard() {
   );
   const [selectedIndustry, setSelectedIndustry] = useState("All");
   const [rankingMetric, setRankingMetric] = useState("overall");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [currentPage, setCurrentPage] = useState(0); // Changed to 0-based for API
+  const itemsPerPage = 10;
+  const [totalPagesState, setTotalPagesState] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [selectedReviewStartupId, setSelectedReviewStartupId] = useState(
     location.state?.reviewStartupId || null
@@ -62,6 +64,11 @@ export default function AllStartupDashboard() {
   const [loading, setLoading] = useState(true);
   const [industries, setIndustries] = useState([]);
   const [industryData, setIndustryData] = useState([]);
+
+  // Cache for startup locations to avoid repeated fetching
+  const [startupLocationsCache, setStartupLocationsCache] = useState(null);
+  const [industriesCache, setIndustriesCache] = useState(null);
+  const [topStartupsCache, setTopStartupsCache] = useState(null);
 
   // New state for dashboard analytics data
   const [growthData, setGrowthData] = useState([]);
@@ -120,6 +127,10 @@ export default function AllStartupDashboard() {
   };
 
   const refreshDashboard = () => {
+    // Clear caches to force fresh data fetch
+    setStartupLocationsCache(null);
+    setIndustriesCache(null);
+    setTopStartupsCache(null);
     setRefreshTrigger((prev) => prev + 1);
   };
 
@@ -162,11 +173,27 @@ export default function AllStartupDashboard() {
 
   useEffect(() => {
     const fetchTopStartups = async () => {
+      // Check if we can use cached data from rankings
+      if (topStartupsCache && 
+          topStartupsCache.industry === selectedIndustry && 
+          topStartupsCache.metric === rankingMetric) {
+        setTopStartups(topStartupsCache.data);
+        return;
+      }
+
       try {
+        const params = new URLSearchParams({
+          page: "0",
+          size: "5",
+          metric: rankingMetric
+        });
+        
+        if (selectedIndustry !== "All") {
+          params.append("industry", selectedIndustry);
+        }
+        
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/rankings/top?limit=5${
-            selectedIndustry !== "All" ? `&industry=${selectedIndustry}` : ""
-          }`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/rankings/top?${params.toString()}`,
           {
             credentials: "include",
           }
@@ -175,84 +202,145 @@ export default function AllStartupDashboard() {
           throw new Error("Failed to fetch top startups");
         }
         const data = await response.json();
-        setTopStartups(data);
+        const startups = data.content || data;
+        setTopStartups(startups);
+        
+        // Cache the result
+        setTopStartupsCache({
+          industry: selectedIndustry,
+          metric: rankingMetric,
+          data: startups
+        });
       } catch (error) {
         console.error("Error fetching top startups:", error);
       }
     };
 
     fetchTopStartups();
-  }, [selectedIndustry, refreshTrigger]);
+  }, [selectedIndustry, rankingMetric, refreshTrigger]);
 
   useEffect(() => {
     const fetchRankedStartups = async () => {
+      // Set loading to true at the start of fetching
       setLoading(true);
+      
+      // Scroll to top when page changes for better UX
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
       try {
-        // Get all startups for city information
-        const allStartupsResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/startups`,
-          {
-            credentials: "include",
-          }
-        );
+        // Get rankings with pagination
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          size: itemsPerPage.toString(),
+          metric: rankingMetric
+        });
+        
+        if (selectedIndustry !== "All") {
+          params.append("industry", selectedIndustry);
+        }
+        
+        const url = `${import.meta.env.VITE_BACKEND_URL}/api/rankings?${params.toString()}`;
 
-        if (!allStartupsResponse.ok) {
-          throw new Error("Failed to fetch all startups");
+        // Parallel fetch: rankings + location cache (only if not cached)
+        const fetchPromises = [fetch(url, { credentials: "include" })];
+        
+        // Only fetch locations if not already cached
+        if (!startupLocationsCache) {
+          fetchPromises.push(
+            fetch(
+              `${import.meta.env.VITE_BACKEND_URL}/startups?page=0&size=1000&sortBy=companyName&sortDir=ASC`,
+              { credentials: "include" }
+            )
+          );
         }
 
-        const allStartups = await allStartupsResponse.json();
-
-        // Get rankings
-        const industryParam =
-          selectedIndustry !== "All" ? `industry=${selectedIndustry}` : "";
-        const metricParam = `metric=${rankingMetric}`;
-        const url = `${import.meta.env.VITE_BACKEND_URL}/api/rankings?${industryParam}&${metricParam}`;
-
-
-        const response = await fetch(url, {
-          credentials: "include",
-        });
-        if (!response.ok) {
+        const responses = await Promise.all(fetchPromises);
+        
+        if (!responses[0].ok) {
           throw new Error("Failed to fetch rankings");
         }
 
-        const data = await response.json();
+        const data = await responses[0].json();
 
-        // Process startups with city information
-        const processedStartups = data.rankings.map((startup) => {
-          const matchingStartup = allStartups.find((s) => s.id === startup.id);
+        // Cache locations if fetched
+        if (responses[1]) {
+          if (responses[1].ok) {
+            const locationsData = await responses[1].json();
+            const locationsMap = {};
+            (locationsData.content || []).forEach(startup => {
+              locationsMap[startup.id] = startup.city || "Unknown";
+            });
+            setStartupLocationsCache(locationsMap);
+            setTotalStartups(locationsData.totalElements || 0);
+            
+            // Cache available regions
+            const uniqueCities = [...new Set(Object.values(locationsMap))].filter(Boolean);
+            setAvailableRegions(uniqueCities);
+          }
+        }
+
+        // Extract rankings from paginated response
+        const rankings = data.content || [];
+        
+        // Process startups with city information using cache
+        const processedStartups = rankings.map((startup) => {
           return {
             ...startup,
-            locationName: matchingStartup?.city || "Unknown",
+            locationName: startupLocationsCache ? startupLocationsCache[startup.id] || "Unknown" : "Unknown",
           };
         });
-        console.log(processedStartups);
+        
         setRankedStartups(processedStartups);
-        setTotalStartups(data.totalCount);
+        
+        // Update pagination state from API response
+        setTotalPagesState(data.totalPages || 0);
+        setTotalElements(data.totalElements || 0);
 
-        // Update available regions
-        const uniqueCities = [
-          ...new Set(allStartups.map((startup) => startup.city)),
-        ].filter(Boolean);
-        setAvailableRegions(uniqueCities);
-
-        if (!industryParam) {
-          const uniqueIndustries = [
-            ...new Set(processedStartups.map((startup) => startup.industry)),
-          ];
-          setIndustries(uniqueIndustries);
-
-          const industryBreakdown = uniqueIndustries.map((industry, index) => {
-            const count = processedStartups.filter(
-              (startup) => startup.industry === industry
-            ).length;
-            return {
-              name: industry,
-              value: count,
-              color: COLORS[index % COLORS.length],
-            };
-          });
-          setIndustryData(industryBreakdown);
+        // Update industries only if we're fetching all industries AND not cached
+        if (selectedIndustry === "All" && !industriesCache) {
+          // Fetch all rankings to get complete industry list (only once)
+          const allRankingsResponse = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/api/rankings?page=0&size=1000&metric=${rankingMetric}`,
+            { credentials: "include" }
+          );
+          
+          if (allRankingsResponse.ok) {
+            const allRankingsData = await allRankingsResponse.json();
+            const allRankings = allRankingsData.content || [];
+            
+            const uniqueIndustries = [
+              ...new Set(allRankings.map((startup) => startup.industry)),
+            ].filter(Boolean);
+            
+            const industryBreakdown = uniqueIndustries.map((industry, index) => {
+              const count = allRankings.filter(
+                (startup) => startup.industry === industry
+              ).length;
+              return {
+                name: industry,
+                value: count,
+                color: COLORS[index % COLORS.length],
+              };
+            });
+            
+            setIndustries(uniqueIndustries);
+            setIndustryData(industryBreakdown);
+            setIndustriesCache(true); // Mark as cached
+            
+            // Also cache top startups from this data to avoid separate API call
+            const topStartupsFromRankings = allRankings
+              .sort((a, b) => (b.overallScore || 0) - (a.overallScore || 0))
+              .slice(0, 5);
+            setTopStartups(topStartupsFromRankings);
+            setTopStartupsCache({
+              industry: "All",
+              metric: rankingMetric,
+              data: topStartupsFromRankings
+            });
+          }
+        } else if (industriesCache && industries.length === 0) {
+          // If cache flag is set but industries array is empty, refetch
+          setIndustriesCache(null);
         }
 
         setLoading(false);
@@ -263,7 +351,7 @@ export default function AllStartupDashboard() {
     };
 
     fetchRankedStartups();
-  }, [selectedIndustry, rankingMetric, refreshTrigger]);
+  }, [selectedIndustry, rankingMetric, currentPage, refreshTrigger]);
 
   useEffect(() => {
     if (activeTab === "reports") {
@@ -872,91 +960,97 @@ export default function AllStartupDashboard() {
     }
   }, [closeSidebar, location.state]);
 
-  // Add this function to handle pagination
-  const paginate = (array, page_size, page_number) => {
-    return array.slice((page_number - 1) * page_size, page_number * page_size);
-  };
-
-  // Calculate total pages
-  const totalPages = Math.ceil(rankedStartups.length / itemsPerPage);
-  const currentStartups = paginate(rankedStartups, itemsPerPage, currentPage);
-
-  // Update the PaginationControls component
+  // Update the PaginationControls component for 0-based server-side pagination
   const PaginationControls = () => {
+    const isFirstPage = currentPage === 0;
+    const isLastPage = currentPage === totalPagesState - 1 || totalPagesState === 0;
+    
     return (
-      <div className="flex items-center space-x-2 mt-4">
-        <button
-          onClick={() => setCurrentPage(1)}
-          disabled={currentPage === 1}
-          className={`p-2 rounded ${
-            currentPage === 1
-              ? "text-gray-400 cursor-not-allowed"
-              : "text-blue-600 hover:bg-blue-50"
-          }`}
-        >
-          <ChevronLeft size={16} className="ml-[-14px]" />
-        </button>
-
-        <button
-          onClick={() => setCurrentPage(currentPage - 1)}
-          disabled={currentPage === 1}
-          className={`p-2 rounded ${
-            currentPage === 1
-              ? "text-gray-400 cursor-not-allowed"
-              : "text-blue-600 hover:bg-blue-50"
-          }`}
-        ></button>
-
-        <div className="flex space-x-1">
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            let pageNum;
-            if (totalPages <= 5) {
-              pageNum = i + 1;
-            } else if (currentPage <= 3) {
-              pageNum = i + 1;
-            } else if (currentPage >= totalPages - 2) {
-              pageNum = totalPages - 4 + i;
-            } else {
-              pageNum = currentPage - 2 + i;
-            }
-
-            return (
-              <button
-                key={i}
-                onClick={() => setCurrentPage(pageNum)}
-                className={`w-8 h-8 flex items-center justify-center rounded ${
-                  currentPage === pageNum
-                    ? "bg-blue-600 text-white"
-                    : "hover:bg-blue-50 text-gray-700"
-                }`}
-              >
-                {pageNum}
-              </button>
-            );
-          })}
+      <div className="flex items-center justify-between mt-4">
+        <div className="text-sm text-gray-600">
+          Showing {totalElements === 0 ? 0 : currentPage * itemsPerPage + 1} to {Math.min((currentPage + 1) * itemsPerPage, totalElements)} of {totalElements} results
         </div>
+        
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setCurrentPage(0)}
+            disabled={isFirstPage}
+            className={`p-2 rounded ${
+              isFirstPage
+                ? "text-gray-400 cursor-not-allowed"
+                : "text-blue-600 hover:bg-blue-50"
+            }`}
+            title="First page"
+          >
+            <ChevronLeft size={16} className="ml-[-14px]" />
+          </button>
 
-        <button
-          onClick={() => setCurrentPage(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className={`p-2 rounded ${
-            currentPage === totalPages
-              ? "text-gray-400 cursor-not-allowed"
-              : "text-blue-600 hover:bg-blue-50"
-          }`}
-        ></button>
+          <button
+            onClick={() => setCurrentPage(currentPage - 1)}
+            disabled={isFirstPage}
+            className={`px-3 py-1 rounded text-sm ${
+              isFirstPage
+                ? "text-gray-400 cursor-not-allowed"
+                : "text-blue-600 hover:bg-blue-50"
+            }`}
+          >
+            Previous
+          </button>
 
-        <button
-          onClick={() => setCurrentPage(totalPages)}
-          disabled={currentPage === totalPages}
-          className={`p-2 rounded ${
-            currentPage === totalPages
-              ? "text-gray-400 cursor-not-allowed"
-              : "text-blue-600 hover:bg-blue-50"
-          }`}
-        >
-          <ChevronRight size={16} className="ml-[-14px]" />
-        </button>
+          <div className="flex space-x-1">
+            {Array.from({ length: Math.min(5, totalPagesState) }, (_, i) => {
+              let pageNum;
+              if (totalPagesState <= 5) {
+                pageNum = i;
+              } else if (currentPage <= 2) {
+                pageNum = i;
+              } else if (currentPage >= totalPagesState - 3) {
+                pageNum = totalPagesState - 5 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+
+              return (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`w-8 h-8 flex items-center justify-center rounded ${
+                    currentPage === pageNum
+                      ? "bg-indigo-600 text-white"
+                      : "text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  {pageNum + 1}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => setCurrentPage(currentPage + 1)}
+            disabled={isLastPage}
+            className={`px-3 py-1 rounded text-sm ${
+              isLastPage
+                ? "text-gray-400 cursor-not-allowed"
+                : "text-blue-600 hover:bg-blue-50"
+            }`}
+          >
+            Next
+          </button>
+
+          <button
+            onClick={() => setCurrentPage(totalPagesState - 1)}
+            disabled={isLastPage}
+            className={`p-2 rounded ${
+              isLastPage
+                ? "text-gray-400 cursor-not-allowed"
+                : "text-blue-600 hover:bg-blue-50"
+            }`}
+            title="Last page"
+          >
+            <ChevronRight size={16} className="ml-[-14px]" />
+          </button>
+        </div>
       </div>
     );
   };
@@ -1001,7 +1095,12 @@ export default function AllStartupDashboard() {
         queryParams.append("search", reviewSearchQuery.trim());
       }
       
-      // Fetch startups with filters
+      // Fetch startups with filters (with pagination)
+      queryParams.append("page", "0");
+      queryParams.append("size", "1000");
+      queryParams.append("sortBy", "companyName");
+      queryParams.append("sortDir", "ASC");
+      
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/startups/review?${queryParams.toString()}`,
         {
@@ -1014,9 +1113,11 @@ export default function AllStartupDashboard() {
       }
       
       const data = await response.json();
-      setFilteredStartups(data);
+      const startups = data.content || data || [];
+      setFilteredStartups(startups);
       
-      toast.success(`Found ${data.length} startups matching your criteria`);
+      const totalFound = data.totalElements || startups.length;
+      toast.success(`Found ${totalFound} startup${totalFound !== 1 ? 's' : ''} matching your criteria`);
     } catch (error) {
       console.error("Error applying filters:", error);
       toast.error("Failed to apply filters. Please try again.");
@@ -1287,12 +1388,12 @@ export default function AllStartupDashboard() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
-                              {startup.score}/100
+                              {startup.overallScore || startup.score || 0}/100
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-green-600">
-                              +{startup.growthRate.toFixed(1)}%
+                              +{(startup.growthScore || startup.growthRate || 0).toFixed(1)}%
                             </div>
                           </td>
                         </tr>
@@ -1417,7 +1518,7 @@ export default function AllStartupDashboard() {
                   value={selectedIndustry}
                   onChange={(e) => {
                     setSelectedIndustry(e.target.value);
-                    setCurrentPage(1); // Reset to first page when filter changes
+                    setCurrentPage(0); // Reset to first page when filter changes
                   }}
                 >
                   <option className="text-blue-900" value="All">
@@ -1438,7 +1539,7 @@ export default function AllStartupDashboard() {
                   value={rankingMetric}
                   onChange={(e) => {
                     setRankingMetric(e.target.value);
-                    setCurrentPage(1); // Reset to first page when metric changes
+                    setCurrentPage(0); // Reset to first page when metric changes
                   }}
                 >
                   <option className="text-blue-900" value="overall">
@@ -1462,7 +1563,10 @@ export default function AllStartupDashboard() {
 
             <div className="overflow-x-auto">
               {loading ? (
-                <div className="text-center py-6">Loading rankings...</div>
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                  <p className="text-gray-600 text-lg">Loading rankings...</p>
+                </div>
               ) : (
                 <>
                   <table className="min-w-full divide-y divide-gray-200">
@@ -1495,13 +1599,13 @@ export default function AllStartupDashboard() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {currentStartups.map((startup, index) => (
+                      {rankedStartups.map((startup, index) => (
                         <tr key={startup.id}>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center">
                                 <span className="text-indigo-700 font-medium">
-                                  {(currentPage - 1) * itemsPerPage + index + 1}
+                                  {currentPage * itemsPerPage + index + 1}
                                 </span>
                               </div>
                             </div>

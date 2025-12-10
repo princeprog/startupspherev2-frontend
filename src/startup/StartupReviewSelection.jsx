@@ -187,8 +187,13 @@ export default function EnhancedStartupReviewSection({
       setLoading(true);
       setError(null);
 
-      // Build query parameters
-      const queryParams = new URLSearchParams();
+      // Build query parameters with pagination
+      const queryParams = new URLSearchParams({
+        page: "0",
+        size: "1000",
+        sortBy: "companyName",
+        sortDir: "ASC"
+      });
 
       if (filters.industry) {
         queryParams.append("industry", filters.industry);
@@ -216,10 +221,8 @@ export default function EnhancedStartupReviewSection({
 
       // Fetch startups with filters
       const apiUrl = startupId
-        ? `${import.meta.env.VITE_BACKEND_URL}/startups/submitted`
-        : `${
-            import.meta.env.VITE_BACKEND_URL
-          }/startups/review?${queryParams.toString()}`; 
+        ? `${import.meta.env.VITE_BACKEND_URL}/startups/submitted?${queryParams.toString()}`
+        : `${import.meta.env.VITE_BACKEND_URL}/startups/review?${queryParams.toString()}`; 
 
       const response = await fetch(apiUrl, { credentials: "include" });
 
@@ -227,7 +230,10 @@ export default function EnhancedStartupReviewSection({
         throw new Error(`Failed to fetch startups: ${response.status}`);
       }
 
-      const data = await response.json();
+      const responseData = await response.json();
+      
+      // Extract startups from paginated response
+      const data = responseData.content || responseData || [];
 
       // If a specific startupId is requested, filter for that startup
       if (startupId) {

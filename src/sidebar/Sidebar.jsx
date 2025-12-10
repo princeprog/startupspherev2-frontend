@@ -458,8 +458,16 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
   const fetchStartups = async () => {
     setLoading(true);
     try {
+      // Fetch with pagination params - get large page size for sidebar
+      const params = new URLSearchParams({
+        page: "0",
+        size: "1000",
+        sortBy: "companyName",
+        sortDir: "ASC"
+      });
+      
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/startups/approved`,
+        `${import.meta.env.VITE_BACKEND_URL}/startups/approved?${params.toString()}`,
         {
           credentials: "include",
         }
@@ -469,8 +477,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
         throw new Error("Network response was not ok: ", data);
       }
 
-      console.log("Fetched startups:", data); // Debug log
-      setStartups(data);
+      // Extract startups from paginated response
+      const startups = data.content || [];
+      console.log("Fetched startups:", startups); // Debug log
+      setStartups(startups);
     } catch (error) {
       console.error("Fetch error:", error);
       toast.error("Failed to fetch startups");
@@ -524,7 +534,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
       }
 
       if (viewingType === "startups") {
-        setStartups(data);
+        // Extract startups from paginated response
+        const startups = data.content || [];
+        setStartups(startups);
       } else {
         setStakeholders(data);
       }
