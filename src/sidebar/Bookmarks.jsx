@@ -64,8 +64,11 @@ const Bookmarks = ({
         throw new Error('Failed to fetch bookmarks');
       }
 
-      const data = await response.json();
-      console.log("Bookmarks fetched:", data);
+      const responseData = await response.json();
+      console.log("Bookmarks fetched:", responseData);
+      
+      // Extract bookmarks from paginated response
+      const data = responseData.content || responseData || [];
 
       const bookmarkedStartups = data
         .filter(item => item.startup !== null)

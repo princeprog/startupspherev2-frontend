@@ -215,9 +215,12 @@ function NotificationComponent() {
       if (result.success) {
         let notificationData = [];
 
+        // Extract from paginated response if present
+        const dataSource = result.data?.content || result.data || [];
+        
         // Handle both array and single object responses
-        if (Array.isArray(result.data)) {
-          notificationData = result.data.map((item) =>
+        if (Array.isArray(dataSource)) {
+          notificationData = dataSource.map((item) =>
             transformNotificationData(item)
           );
         } else if (result.data) {

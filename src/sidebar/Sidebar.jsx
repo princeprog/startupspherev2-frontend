@@ -189,9 +189,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
       );
 
       if (response.ok) {
-        const data = await response.json();
+        const responseData = await response.json();
+        // Extract submissions from paginated response
+        const data = responseData.content || responseData || [];
         setAdminSubmissions(data);
-        setAdminSubmissionsCount(data.length);
+        setAdminSubmissionsCount(responseData.totalElements || data.length);
       } else {
         console.error("Failed to fetch admin submissions");
       }
@@ -804,7 +806,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
       );
 
       if (response.ok) {
-        const likesData = await response.json();
+        const responseData = await response.json();
+        // Extract likes from paginated response
+        const likesData = responseData.content || responseData || [];
 
         const userLikedStartups = likesData
           .filter((like) => like.startupId !== null && like.userId === user.id)
@@ -896,7 +900,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
       );
 
       if (response.ok) {
-        const bookmarks = await response.json();
+        const responseData = await response.json();
+        // Extract bookmarks from paginated response
+        const bookmarks = responseData.content || responseData || [];
         const isBookmarked = bookmarks.some(
           (bookmark) =>
             (startup && bookmark.startup?.id === startup.id) ||
@@ -1014,7 +1020,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
       credentials: "include",
     })
       .then((res) => res.json())
-      .then((likes) => {
+      .then((responseData) => {
+        // Extract likes from paginated response
+        const likes = responseData.content || responseData || [];
         const startupCounts = {};
         const investorCounts = {};
 
