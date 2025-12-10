@@ -1,4 +1,4 @@
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, memo, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Login from "../modals/Login";
 import Signup from "../modals/Signup";
@@ -98,7 +98,12 @@ const StakeholderCard = memo(({ stakeholder, onClick }) => {
   );
 });
 
-export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStakeholderRef, handleStartupClickRef }) {
+export default function Sidebar({
+  mapInstanceRef,
+  setUserDetails,
+  highlightStakeholderRef,
+  handleStartupClickRef,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const [openLogin, setOpenLogin] = useState(false);
@@ -284,27 +289,39 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
     }
   };
 
-  useEffect(() => { }, []);
+  useEffect(() => {}, []);
 
   // Close all sidebar panels and the sidebar itself when navigating to a different page
+  // Only close sidebar panels if the route actually changes
+  // Around line 289-309
+  const prevPathnameRef = useRef(location.pathname);
   useEffect(() => {
-    const wasViewingDetails = viewingStartup !== null || viewingStakeholder !== null;
-    
-    setShowSearchContainer(false);
-    setShowRecents(false);
-    setShowBookmarks(false);
-    setViewingStartup(null);
-    setViewingStakeholder(null);
-    setStartup(null);
-    setStakeholder(null);
-    setContainerMode(null);
-    setShowTooltip(false);
-    setNotificationTooltip(false);
-    
-    // If user was viewing startup/stakeholder details and navigated away, close the sidebar
-    if (wasViewingDetails) {
-      // You can add sidebar close logic here if needed
-      // For now, the panels are closed which effectively clears the view
+    const prev = prevPathnameRef.current;
+    prevPathnameRef.current = location.pathname;
+    if (prev !== location.pathname) {
+      const wasViewingDetails =
+        viewingStartup !== null || viewingStakeholder !== null;
+
+      // DON'T close search container if we just navigated to home AND it was intentionally opened
+      const navigatedToHome = location.pathname === "/" && prev !== "/";
+
+      if (!navigatedToHome) {
+        setShowSearchContainer(false);
+      }
+
+      setShowRecents(false);
+      setShowBookmarks(false);
+      setViewingStartup(null);
+      setViewingStakeholder(null);
+      setStartup(null);
+      setStakeholder(null);
+
+      if (!navigatedToHome) {
+        setContainerMode(null);
+      }
+
+      setShowTooltip(false);
+      setNotificationTooltip(false);
     }
   }, [location.pathname]);
 
@@ -389,9 +406,30 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
     localStorage.setItem(key, JSON.stringify(updatedRecents));
   };
 
-  const getRecents = (type) => {
-    const key = type === "startups" ? "recentStartups" : "recentStakeholders";
-    return JSON.parse(localStorage.getItem(key)) || [];
+  const getRecents = async (type) => {
+    // Fetch recents for startups and stakeholders from API
+    try {
+      let response;
+      if (type === "startups") {
+        response = await fetch("/recents/startups");
+      } else if (type === "stakeholders") {
+        response = await fetch("/recents/stakeholders");
+      } else {
+        return [];
+      }
+      if (!response.ok) throw new Error("Failed to fetch recents");
+      const data = await response.json();
+      // API returns array of objects with either 'startup' or 'stakeholder' field
+      if (type === "startups") {
+        return data.map(item => item.startup).filter(Boolean);
+      } else if (type === "stakeholders") {
+        return data.map(item => item.stakeholder).filter(Boolean);
+      }
+      return [];
+    } catch (error) {
+      console.error("Error fetching recents:", error);
+      return [];
+    }
   };
 
   const [recentStartups, setRecentStartups] = useState([]);
@@ -465,11 +503,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
         page: "0",
         size: "1000",
         sortBy: "companyName",
-        sortDir: "ASC"
+        sortDir: "ASC",
       });
-      
+
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/startups/approved?${params.toString()}`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/startups/approved?${params.toString()}`,
         {
           credentials: "include",
         }
@@ -513,9 +553,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
   };
 
   const handleSearch = async () => {
-    const currentQuery = viewingType === "startups"
-      ? filters.startups.query
-      : filters.stakeholders.query;
+    const currentQuery =
+      viewingType === "startups"
+        ? filters.startups.query
+        : filters.stakeholders.query;
 
     if (!currentQuery.trim()) return; // Do nothing if the search query is empty
 
@@ -527,9 +568,12 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
           ? `${import.meta.env.VITE_BACKEND_URL}/startups/search`
           : `${import.meta.env.VITE_BACKEND_URL}/stakeholders/search`;
 
-      const response = await fetch(`${endpoint}?query=${encodeURIComponent(currentQuery)}`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${endpoint}?query=${encodeURIComponent(currentQuery)}`,
+        {
+          credentials: "include",
+        }
+      );
       const data = await response.json();
       if (!response.ok) {
         throw new Error("Network response was not ok: ", data);
@@ -661,7 +705,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
 
     // Increment views and other logic
     fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id
+      `${import.meta.env.VITE_BACKEND_URL}/startups/${
+        startup.id
       }/increment-views`,
       {
         method: "PUT",
@@ -711,7 +756,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
 
     // Increment views on the backend by sending a PUT request
     fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/stakeholders/${stakeholder.id
+      `${import.meta.env.VITE_BACKEND_URL}/stakeholders/${
+        stakeholder.id
       }/increment-views`,
       {
         method: "PUT",
@@ -737,7 +783,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
       // First highlight the stakeholder before moving the map
       // This ensures the marker is created before any animation starts
       if (highlightStakeholderRef && highlightStakeholderRef.current) {
-        console.log("Highlighting stakeholder before map movement:", stakeholder.id);
+        console.log(
+          "Highlighting stakeholder before map movement:",
+          stakeholder.id
+        );
         highlightStakeholderRef.current(stakeholder.id);
       }
 
@@ -752,9 +801,12 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
       });
 
       // After map movement completes, highlight again to ensure visibility
-      mapInstanceRef.current.once('moveend', () => {
+      mapInstanceRef.current.once("moveend", () => {
         if (highlightStakeholderRef && highlightStakeholderRef.current) {
-          console.log("Re-highlighting stakeholder after map movement:", stakeholder.id);
+          console.log(
+            "Re-highlighting stakeholder after map movement:",
+            stakeholder.id
+          );
           highlightStakeholderRef.current(stakeholder.id);
         }
       });
@@ -775,8 +827,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
 
   useEffect(() => {
     if (containerMode === "recents") {
-      setRecentStartups(getRecents("startups"));
-      setRecentStakeholders(getRecents("stakeholders"));
+      (async () => {
+        setRecentStartups(await getRecents("startups"));
+        setRecentStakeholders(await getRecents("stakeholders"));
+      })();
     }
   }, [containerMode]);
 
@@ -951,7 +1005,8 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
 
           if (existingBookmark) {
             const deleteResponse = await fetch(
-              `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/${existingBookmark.id
+              `${import.meta.env.VITE_BACKEND_URL}/api/bookmarks/${
+                existingBookmark.id
               }`,
               {
                 method: "DELETE",
@@ -1051,9 +1106,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
   // Dynamic search effect - triggers search while typing
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      const currentQuery = viewingType === "startups"
-        ? filters.startups.query
-        : filters.stakeholders.query;
+      const currentQuery =
+        viewingType === "startups"
+          ? filters.startups.query
+          : filters.stakeholders.query;
 
       if (currentQuery && currentQuery.trim()) {
         handleSearch();
@@ -1082,18 +1138,18 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
     // Helper function to safely check if a field contains the query
     const safeFieldCheck = (fieldValue, query) => {
       try {
-        if (!fieldValue || typeof fieldValue !== 'string') return false;
+        if (!fieldValue || typeof fieldValue !== "string") return false;
         return fieldValue.toLowerCase().includes(query.toLowerCase());
       } catch (error) {
-        console.warn('Error checking field:', error);
+        console.warn("Error checking field:", error);
         return false;
       }
     };
 
     return items.filter((item) => {
       try {
-        if (!item || typeof item !== 'object') {
-          console.warn('Invalid item in search:', item);
+        if (!item || typeof item !== "object") {
+          console.warn("Invalid item in search:", item);
           return false;
         }
 
@@ -1103,17 +1159,17 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
         if (viewingType === "startups") {
           // Search only in the specified fields
           const searchableFields = [
-            'companyName',
-            'industry',
-            'companyDescription',
-            'city',
-            'status',
-            'businessActivity',
-            'foundedDate'
+            "companyName",
+            "industry",
+            "companyDescription",
+            "city",
+            "status",
+            "businessActivity",
+            "foundedDate",
           ];
 
           // Check if any field matches the query
-          return searchableFields.some(fieldName => {
+          return searchableFields.some((fieldName) => {
             try {
               const fieldValue = item[fieldName];
               return safeFieldCheck(fieldValue, query);
@@ -1125,31 +1181,34 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
         } else {
           // Stakeholder search - keep existing fields
           const searchableFields = [
-            'name',
-            'email',
-            'region',
-            'organization',
-            'city',
-            'province',
-            'sector',
-            'biography',
-            'phoneNumber',
-            'linkedIn',
-            'facebook'
+            "name",
+            "email",
+            "region",
+            "organization",
+            "city",
+            "province",
+            "sector",
+            "biography",
+            "phoneNumber",
+            "linkedIn",
+            "facebook",
           ];
 
-          return searchableFields.some(fieldName => {
+          return searchableFields.some((fieldName) => {
             try {
               const fieldValue = item[fieldName];
               return safeFieldCheck(fieldValue, query);
             } catch (error) {
-              console.warn(`Error checking stakeholder field ${fieldName}:`, error);
+              console.warn(
+                `Error checking stakeholder field ${fieldName}:`,
+                error
+              );
               return false;
             }
           });
         }
       } catch (error) {
-        console.error('Error in applyFilters:', error);
+        console.error("Error in applyFilters:", error);
         return false;
       }
     });
@@ -1216,7 +1275,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
           {/* Logo */}
           <div className="flex justify-center items-center py-6 border-b border-gray-200">
             <button
-              onClick={() => (window.location.href = "https://startupsphere-azure.vercel.app/")}
+              onClick={() =>
+                (window.location.href =
+                  "https://startupsphere-azure.vercel.app/")
+              }
               className="group relative flex flex-col items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
             >
               <img
@@ -1249,9 +1311,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                       setViewingStakeholder(null);
                     }}
                   >
-                    <FaGlobe
-                      className="h-6 w-6 opacity-80 group-hover:opacity-100"
-                    />
+                    <FaGlobe className="h-6 w-6 opacity-80 group-hover:opacity-100" />
                     <span className="absolute left-full ml-3 whitespace-nowrap rounded-md bg-gray-900 px-2 py-1.5 text-xs font-medium text-white opacity-0 group-hover:opacity-100 transition-all duration-200">
                       Browse
                     </span>
@@ -1460,9 +1520,10 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                   {isAuthenticated === null
                     ? "?"
                     : isAuthenticated && currentUser
-                      ? `${currentUser.firstname?.[0] ?? ""}${currentUser.lastname?.[0] ?? ""
-                        }`.toUpperCase()
-                      : "G"}
+                    ? `${currentUser.firstname?.[0] ?? ""}${
+                        currentUser.lastname?.[0] ?? ""
+                      }`.toUpperCase()
+                    : "G"}
                 </span>
               </div>
             </div>
@@ -1471,10 +1532,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               <div className="absolute top-14 right-0 w-96 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden">
                 {/* Header - Different for admin vs regular users */}
                 <div
-                  className={`px-4 py-3 border-b border-gray-100 ${currentUser?.role === "ROLE_ADMIN"
-                    ? "bg-gradient-to-r from-amber-50 to-white"
-                    : "bg-gradient-to-r from-blue-50 to-white"
-                    } flex justify-between items-center`}
+                  className={`px-4 py-3 border-b border-gray-100 ${
+                    currentUser?.role === "ROLE_ADMIN"
+                      ? "bg-gradient-to-r from-amber-50 to-white"
+                      : "bg-gradient-to-r from-blue-50 to-white"
+                  } flex justify-between items-center`}
                 >
                   <h3 className="text-sm font-semibold text-gray-900">
                     {currentUser?.role === "ROLE_ADMIN"
@@ -1485,14 +1547,15 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                     onClick={() =>
                       currentUser?.role === "ROLE_ADMIN"
                         ? navigate("/all-startup-dashboard", {
-                          state: { activeTab: "review" },
-                        })
+                            state: { activeTab: "review" },
+                          })
                         : navigate("/notifications")
                     }
-                    className={`text-xs ${currentUser?.role === "ROLE_ADMIN"
-                      ? "text-amber-600 hover:text-amber-800"
-                      : "text-blue-600 hover:text-blue-800"
-                      } hover:underline`}
+                    className={`text-xs ${
+                      currentUser?.role === "ROLE_ADMIN"
+                        ? "text-amber-600 hover:text-amber-800"
+                        : "text-blue-600 hover:text-blue-800"
+                    } hover:underline`}
                   >
                     {currentUser?.role === "ROLE_ADMIN"
                       ? "View all submissions"
@@ -1529,8 +1592,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                               <div className="relative">
                                 {startup.photo ? (
                                   <img
-                                    src={`${import.meta.env.VITE_BACKEND_URL
-                                      }/startups/${startup.id}/photo`}
+                                    src={`${
+                                      import.meta.env.VITE_BACKEND_URL
+                                    }/startups/${startup.id}/photo`}
                                     alt={startup.companyName}
                                     className="h-12 w-12 rounded-lg object-cover border border-gray-200"
                                     onError={(e) => {
@@ -1650,8 +1714,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                       <div className="flex justify-between items-center">
                         <span className="text-xs text-gray-500">
                           {adminSubmissionsCount > 0
-                            ? `${adminSubmissionsCount} submission${adminSubmissionsCount !== 1 ? "s" : ""
-                            } awaiting review`
+                            ? `${adminSubmissionsCount} submission${
+                                adminSubmissionsCount !== 1 ? "s" : ""
+                              } awaiting review`
                             : "No pending submissions"}
                         </span>
                         <button
@@ -1682,11 +1747,12 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                               fetchNewNotifications();
                             }
                           }}
-                          className={`flex-1 py-2 text-sm font-medium text-center ${notificationActiveIndex === tab &&
+                          className={`flex-1 py-2 text-sm font-medium text-center ${
+                            notificationActiveIndex === tab &&
                             !notificationAdminTab
-                            ? "text-blue-600 border-b-2 border-blue-600"
-                            : "text-gray-500 hover:text-gray-700"
-                            }`}
+                              ? "text-blue-600 border-b-2 border-blue-600"
+                              : "text-gray-500 hover:text-gray-700"
+                          }`}
                         >
                           {tab}
                           {tab === "New" && notificationsCount > 0 && (
@@ -1712,7 +1778,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                         notificationActiveIndex === "All" && (
                           <>
                             {Array.isArray(notifications) &&
-                              notifications.length > 0 ? (
+                            notifications.length > 0 ? (
                               <div className="divide-y divide-gray-100">
                                 {/* Existing notification mapping code */}
                                 {notifications.map((noti, index) => (
@@ -1723,17 +1789,20 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                                       if (!noti.viewed) markAsViewed(noti.id);
                                     }}
                                     key={index}
-                                    className={`p-3 flex items-start hover:bg-gray-50 transition-colors cursor-pointer ${!noti.viewed ? "bg-blue-50" : ""
-                                      }`}
+                                    className={`p-3 flex items-start hover:bg-gray-50 transition-colors cursor-pointer ${
+                                      !noti.viewed ? "bg-blue-50" : ""
+                                    }`}
                                   >
                                     {/* Avatar/Icon */}
                                     <div className="flex-shrink-0 mr-3">
                                       {noti.startup?.photo ? (
                                         <div className="relative">
                                           <img
-                                            src={`${import.meta.env.VITE_BACKEND_URL
-                                              }/startups/${noti.startup.id
-                                              }/photo`}
+                                            src={`${
+                                              import.meta.env.VITE_BACKEND_URL
+                                            }/startups/${
+                                              noti.startup.id
+                                            }/photo`}
                                             alt={noti.startup.companyName}
                                             className="h-10 w-10 rounded-full object-cover border border-gray-200"
                                             onError={(e) => {
@@ -1820,9 +1889,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                                       {noti.startup?.photo ? (
                                         <div className="relative">
                                           <img
-                                            src={`${import.meta.env.VITE_BACKEND_URL
-                                              }/startups/${noti.startup.id
-                                              }/photo`}
+                                            src={`${
+                                              import.meta.env.VITE_BACKEND_URL
+                                            }/startups/${
+                                              noti.startup.id
+                                            }/photo`}
                                             alt={noti.startup.companyName}
                                             className="h-10 w-10 rounded-full object-cover border border-gray-200"
                                             onError={(e) => {
@@ -2069,9 +2140,6 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                       : "Search stakeholders by name, organization, location..."
                   }
                 />
-
-
-
               </div>
             </div>
 
@@ -2079,35 +2147,39 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
             <div className="flex gap-2 p-1 bg-blue-800/40 rounded-lg">
               <button
                 onClick={() => setViewingType("startups")}
-                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${viewingType === "startups"
-                  ? "bg-white text-blue-700 shadow-sm"
-                  : "text-white/90 hover:text-white hover:bg-white/10"
-                  }`}
+                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
+                  viewingType === "startups"
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-white/90 hover:text-white hover:bg-white/10"
+                }`}
               >
                 <div className="flex items-center justify-center">
                   <BsBriefcase
-                    className={`mr-2 h-4 w-4 ${viewingType === "startups"
-                      ? "text-blue-600"
-                      : "text-white/80"
-                      }`}
+                    className={`mr-2 h-4 w-4 ${
+                      viewingType === "startups"
+                        ? "text-blue-600"
+                        : "text-white/80"
+                    }`}
                   />
                   Startups
                 </div>
               </button>
               <button
                 onClick={() => setViewingType("stakeholders")}
-                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${viewingType === "stakeholders"
-                  ? "bg-white text-blue-700 shadow-sm"
-                  : "text-white/90 hover:text-white hover:bg-white/10"
-                  }`}
+                className={`flex-1 py-2.5 px-4 rounded-md text-sm font-medium transition-all ${
+                  viewingType === "stakeholders"
+                    ? "bg-white text-blue-700 shadow-sm"
+                    : "text-white/90 hover:text-white hover:bg-white/10"
+                }`}
               >
                 <div className="flex items-center justify-center">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    className={`mr-2 h-4 w-4 ${viewingType === "stakeholders"
-                      ? "text-blue-600"
-                      : "text-white/80"
-                      }`}
+                    className={`mr-2 h-4 w-4 ${
+                      viewingType === "stakeholders"
+                        ? "text-blue-600"
+                        : "text-white/80"
+                    }`}
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -2125,7 +2197,6 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
             </div>
           </div>
 
-
           <div className="h-[calc(100vh-200px)] overflow-y-auto p-4 space-y-4">
             {loading ? (
               <div className="flex items-center justify-center h-full">
@@ -2135,113 +2206,117 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               startups && startups.length > 0 ? (
                 applyFilters(startups).length > 0 ? (
                   applyFilters(startups).map((startup) => (
-                  <div
-                    key={startup.id}
-                    onClick={() => handleStartupClick(startup)}
-                    className="bg-white rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200 p-4 cursor-pointer group"
-                  >
-                    <div className="flex items-start space-x-3">
-                      {/* Startup Logo */}
-                      <div className="flex-shrink-0">
-                        <img
-                          src={`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id
-                            }/photo`}
-                          alt={startup.companyName}
-                          className="h-12 w-12 rounded-md object-cover border border-gray-100 shadow-sm group-hover:shadow transition-shadow"
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                              startup.companyName
-                            )}&background=0D8ABC&color=fff&size=128&bold=true`;
-                          }}
-                        />
-                      </div>
-
-                      {/* Startup Details */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-1.5">
-                          <h3 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate pr-2">
-                            {startup.companyName}
-                          </h3>
-                          <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-full whitespace-nowrap">
-                            {startup.industry}
-                          </span>
+                    <div
+                      key={startup.id}
+                      onClick={() => handleStartupClick(startup)}
+                      className="bg-white rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200 p-4 cursor-pointer group"
+                    >
+                      <div className="flex items-start space-x-3">
+                        {/* Startup Logo */}
+                        <div className="flex-shrink-0">
+                          <img
+                            src={`${
+                              import.meta.env.VITE_BACKEND_URL
+                            }/startups/${startup.id}/photo`}
+                            alt={startup.companyName}
+                            className="h-12 w-12 rounded-md object-cover border border-gray-100 shadow-sm group-hover:shadow transition-shadow"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                startup.companyName
+                              )}&background=0D8ABC&color=fff&size=128&bold=true`;
+                            }}
+                          />
                         </div>
 
-                        <p className="text-xs text-gray-600 line-clamp-2 mb-2 leading-relaxed">
-                          {startup.companyDescription ||
-                            "No description available"}
-                        </p>
-
-                        <div className="flex items-center justify-between text-xs text-gray-500">
-                          <div className="flex items-center">
-                            <MdLocationOn className="mr-1 h-3.5 w-3.5 text-gray-400" />
-                            <span className="truncate max-w-[120px]">
-                              {startup.locationName ||
-                                startup.city ||
-                                "Location not specified"}
+                        {/* Startup Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between mb-1.5">
+                            <h3 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate pr-2">
+                              {startup.companyName}
+                            </h3>
+                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-50 rounded-full whitespace-nowrap">
+                              {startup.industry}
                             </span>
                           </div>
-                          <div className="flex items-center">
-                            <BsCalendarEvent className="mr-1 h-3 w-3 text-gray-400" />
-                            <span>
-                              {new Date(startup.foundedDate).getFullYear()}
-                            </span>
+
+                          <p className="text-xs text-gray-600 line-clamp-2 mb-2 leading-relaxed">
+                            {startup.companyDescription ||
+                              "No description available"}
+                          </p>
+
+                          <div className="flex items-center justify-between text-xs text-gray-500">
+                            <div className="flex items-center">
+                              <MdLocationOn className="mr-1 h-3.5 w-3.5 text-gray-400" />
+                              <span className="truncate max-w-[120px]">
+                                {startup.locationName ||
+                                  startup.city ||
+                                  "Location not specified"}
+                              </span>
+                            </div>
+                            <div className="flex items-center">
+                              <BsCalendarEvent className="mr-1 h-3 w-3 text-gray-400" />
+                              <span>
+                                {new Date(startup.foundedDate).getFullYear()}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
-              ) : searchQuery ? ((filters.startups.query && filters.startups.query.trim() !== "") && (
-                <div className="py-12 px-4 text-center">
-                  <div className="mx-auto h-16 w-16 text-gray-300 mb-5">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-full w-full"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth="1.5"
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-gray-700 font-medium text-lg mb-1">
-                    No results found
-                  </h3>
-                  <p className="text-gray-500 text-sm max-w-xs mx-auto">
-                    Try adjusting your search terms or filters to find what you’re looking for.
-                  </p>
-                  <button
-                    onClick={() =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        [viewingType]: {
-                          query: "",
-                          industry: "",
-                          customIndustry: "",
-                          foundedDate: "",
-                          teamSize: "",
-                          fundingStage: "",
-                          investmentStage: "",
-                          investmentRange: "",
-                          preferredIndustry: "",
-                          customPreferredIndustry: "",
-                          location: "",
-                        },
-                      }))
-                    }
-                    className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
-                  >
-                    Clear all filters
-                  </button>
-                </div>
-              )
+                  ))
+                ) : searchQuery ? (
+                  filters.startups.query &&
+                  filters.startups.query.trim() !== "" && (
+                    <div className="py-12 px-4 text-center">
+                      <div className="mx-auto h-16 w-16 text-gray-300 mb-5">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-full w-full"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="1.5"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
+                        </svg>
+                      </div>
+                      <h3 className="text-gray-700 font-medium text-lg mb-1">
+                        No results found
+                      </h3>
+                      <p className="text-gray-500 text-sm max-w-xs mx-auto">
+                        Try adjusting your search terms or filters to find what
+                        you’re looking for.
+                      </p>
+                      <button
+                        onClick={() =>
+                          setFilters((prev) => ({
+                            ...prev,
+                            [viewingType]: {
+                              query: "",
+                              industry: "",
+                              customIndustry: "",
+                              foundedDate: "",
+                              teamSize: "",
+                              fundingStage: "",
+                              investmentStage: "",
+                              investmentRange: "",
+                              preferredIndustry: "",
+                              customPreferredIndustry: "",
+                              location: "",
+                            },
+                          }))
+                        }
+                        className="mt-4 px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                      >
+                        Clear all filters
+                      </button>
+                    </div>
+                  )
                 ) : (
                   <div className="text-center py-12 px-4">
                     <div className="mx-auto h-16 w-16 text-gray-300 mb-4">
@@ -2282,7 +2357,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                 )
               ) : (
                 <div className="text-center py-10">
-                  <p className="text-gray-700 font-medium">No startups available.</p>
+                  <p className="text-gray-700 font-medium">
+                    No startups available.
+                  </p>
                 </div>
               )
             ) : stakeholders && stakeholders.length > 0 ? (
@@ -2333,31 +2410,31 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                 </div>
               )
             ) : (
-            <div className="text-center py-12 px-4">
-              <div className="mx-auto h-16 w-16 text-gray-300 mb-5">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-full w-full"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.5"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
+              <div className="text-center py-12 px-4">
+                <div className="mx-auto h-16 w-16 text-gray-300 mb-5">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-full w-full"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.5"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-gray-700 font-medium text-lg mb-1">
+                  No stakeholders found
+                </h3>
+                <p className="text-gray-500 text-sm max-w-xs mx-auto">
+                  Try adjusting your search terms or filters to find what you're
+                  looking for.
+                </p>
               </div>
-              <h3 className="text-gray-700 font-medium text-lg mb-1">
-                No stakeholders found
-              </h3>
-              <p className="text-gray-500 text-sm max-w-xs mx-auto">
-                Try adjusting your search terms or filters to find what you're
-                looking for.
-              </p>
-            </div>
             )}
           </div>
         </div>
@@ -2404,19 +2481,21 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
             <div className="flex gap-2">
               <button
                 onClick={() => setViewingType("startups")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "startups"
-                  ? "bg-white text-blue-600"
-                  : "bg-white/20 text-white hover:bg-white/30"
-                  }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  viewingType === "startups"
+                    ? "bg-white text-blue-600"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
               >
                 Startups
               </button>
               <button
                 onClick={() => setViewingType("stakeholders")}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${viewingType === "stakeholders"
-                  ? "bg-white text-blue-600"
-                  : "bg-white/20 text-white hover:bg-white/30"
-                  }`}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  viewingType === "stakeholders"
+                    ? "bg-white text-blue-600"
+                    : "bg-white/20 text-white hover:bg-white/30"
+                }`}
               >
                 Stakeholders
               </button>
@@ -2435,8 +2514,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                     <div className="flex items-center mb-2">
                       {/* Add startup image */}
                       <img
-                        src={`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id
-                          }/photo`}
+                        src={`${import.meta.env.VITE_BACKEND_URL}/startups/${
+                          startup.id
+                        }/photo`}
                         alt={startup.companyName}
                         className="h-10 w-10 rounded-lg object-cover border border-gray-200 mr-3"
                         onError={(e) => {
@@ -2541,8 +2621,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
             <div className="flex items-center gap-1">
               <button
                 onClick={toggleBookmark}
-                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${isCurrentItemBookmarked ? "text-blue-600" : "text-gray-500"
-                  }`}
+                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${
+                  isCurrentItemBookmarked ? "text-blue-600" : "text-gray-500"
+                }`}
                 title={
                   isCurrentItemBookmarked ? "Remove Bookmark" : "Add Bookmark"
                 }
@@ -2555,10 +2636,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               </button>
               <button
                 onClick={() => toggleLike(user?.id, null, stakeholder.id)}
-                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${likedStakeholders?.includes(stakeholder.id)
-                  ? "text-red-500"
-                  : "text-gray-500"
-                  }`}
+                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${
+                  likedStakeholders?.includes(stakeholder.id)
+                    ? "text-red-500"
+                    : "text-gray-500"
+                }`}
                 title={
                   likedStakeholders?.includes(stakeholder.id)
                     ? "Unlike"
@@ -2602,13 +2684,13 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               <div className="h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-3xl font-medium mr-4 border-2 border-white/50 shadow-lg">
                 {stakeholder.name
                   ? (() => {
-                    const names = stakeholder.name.split(" ");
-                    if (names.length === 1)
-                      return names[0].charAt(0).toUpperCase();
-                    return `${names[0].charAt(0)}${names[
-                      names.length - 1
-                    ].charAt(0)}`.toUpperCase();
-                  })()
+                      const names = stakeholder.name.split(" ");
+                      if (names.length === 1)
+                        return names[0].charAt(0).toUpperCase();
+                      return `${names[0].charAt(0)}${names[
+                        names.length - 1
+                      ].charAt(0)}`.toUpperCase();
+                    })()
                   : "S"}
               </div>
 
@@ -2838,7 +2920,7 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                           stakeholder.province,
                           stakeholder.region,
                           stakeholder.postalCode &&
-                          `Postal Code: ${stakeholder.postalCode}`,
+                            `Postal Code: ${stakeholder.postalCode}`,
                         ]
                           .filter(Boolean)
                           .join(", ")}
@@ -3074,8 +3156,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
             <div className="flex items-center gap-1">
               <button
                 onClick={toggleBookmark}
-                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${isCurrentItemBookmarked ? "text-blue-600" : "text-gray-500"
-                  }`}
+                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${
+                  isCurrentItemBookmarked ? "text-blue-600" : "text-gray-500"
+                }`}
                 title={
                   isCurrentItemBookmarked ? "Remove Bookmark" : "Add Bookmark"
                 }
@@ -3088,10 +3171,11 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
               </button>
               <button
                 onClick={() => toggleLike(user?.id, startup.id, null)}
-                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${likedStartups?.includes(startup.id)
-                  ? "text-red-500"
-                  : "text-gray-500"
-                  }`}
+                className={`p-2 rounded-md hover:bg-gray-100 transition-colors ${
+                  likedStartups?.includes(startup.id)
+                    ? "text-red-500"
+                    : "text-gray-500"
+                }`}
                 title={likedStartups?.includes(startup.id) ? "Unlike" : "Like"}
               >
                 {likedStartups?.includes(startup.id) ? (
@@ -3141,8 +3225,9 @@ export default function Sidebar({ mapInstanceRef, setUserDetails, highlightStake
                 </div>
               ) : (
                 <img
-                  src={`${import.meta.env.VITE_BACKEND_URL}/startups/${startup.id
-                    }/photo`}
+                  src={`${import.meta.env.VITE_BACKEND_URL}/startups/${
+                    startup.id
+                  }/photo`}
                   alt={startup.companyName}
                   className="w-full h-full object-contain rounded"
                   onError={(e) => {

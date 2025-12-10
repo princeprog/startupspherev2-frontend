@@ -110,6 +110,18 @@ export default function Startupmap({
       const mapRef = mapInstanceRef.current || map;
       if (mapRef && startupsWithLocation.length) {
         renderStartupMarkers(mapRef, startupsWithLocation);
+      } else if (mapRef) {
+        // Hide startup layers if no data
+        const sourceId = "startups-src";
+        const layerId = "startups-layer";
+        const highlightLayerId = "startups-highlight";
+        
+        if (mapRef.getLayer(layerId)) {
+          mapRef.setLayoutProperty(layerId, 'visibility', 'none');
+        }
+        if (mapRef.getLayer(highlightLayerId)) {
+          mapRef.setLayoutProperty(highlightLayerId, 'visibility', 'none');
+        }
       }
       return startups;
     } catch (error) {
@@ -584,6 +596,12 @@ export default function Startupmap({
   // Render startups using a Mapbox symbol layer (professional marker)
   const renderStartupMarkers = (map, startupsWithLocation) => {
     if (!map) return;
+    
+    // Don't render anything if there are no startups with valid locations
+    if (!startupsWithLocation || startupsWithLocation.length === 0) {
+      console.log("No startups with valid locations to render");
+      return;
+    }
 
     const sourceId = "startups-src";
     const layerId = "startups-layer";
@@ -2936,9 +2954,6 @@ export default function Startupmap({
       
       // Add dynamic lighting effects
       addDynamicLighting(map);
-
-      // Add default startup marker for Cebu
-      addDefaultStartupMarker(map);
 
       // Load markers after 3D is set up
       loadStartupMarkers(map);

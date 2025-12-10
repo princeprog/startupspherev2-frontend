@@ -621,7 +621,35 @@ export default function UpdateStartup() {
     if (!csvFile) {
       setUploadStatus({
         success: false,
-        message: "Please select a CSV file to upload.",
+        message: "Please select a file to upload.",
+      });
+      return;
+    }
+
+    // Get file extension
+    const fileExtension = csvFile.name.split('.').pop().toLowerCase();
+    const validExtensions = ['csv', 'xlsx'];
+    const validMimeTypes = [
+      'text/csv',
+      'application/csv',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel'
+    ];
+    const isValidExtension = validExtensions.includes(fileExtension);
+    if (!isValidExtension) {
+      setUploadStatus({
+        success: false,
+        message: "Invalid file type. Please upload a .csv or .xlsx file.",
+      });
+      return;
+    }
+
+    // Check file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (csvFile.size > maxSize) {
+      setUploadStatus({
+        success: false,
+        message: "File size too large. Maximum file size is 10MB.",
       });
       return;
     }
@@ -629,17 +657,39 @@ export default function UpdateStartup() {
     setUploading(true);
     setUploadStatus(null);
 
+    const formData = new FormData();
+    formData.append("file", csvFile);
+
     try {
-      const { blob, headers } = await validateCsvData(csvFile);
-      
-      // Store preview data and show confirmation
-      setCsvPreviewData({ blob, headers });
-      setShowUploadConfirmation(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/startups/${id}/upload-csv`,
+        {
+          method: "PUT",
+          body: formData,
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        setUploadStatus({
+          success: true,
+          message: "File uploaded successfully!",
+        });
+        setCsvFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        await fetchStartupData();
+      } else {
+        const errorData = await response.json();
+        setUploadStatus({
+          success: false,
+          message: errorData.message || "Unknown error",
+        });
+      }
     } catch (error) {
-      console.error("Error validating CSV:", error);
+      console.error("Error uploading file:", error);
       setUploadStatus({
         success: false,
-        message: error.message,
+        message: "An error occurred while uploading the file.",
       });
     } finally {
       setUploading(false);
@@ -1863,368 +1913,74 @@ export default function UpdateStartup() {
 
       case "upload":
         return (
-          <div>
-            <h2 className="text-2xl font-semibold mb-6 text-gray-800">Upload Data</h2>
-            
-            {/* Info Banner */}
-            <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Upload size={20} className="text-blue-600" />
-                  </div>
-                </div>
-                <div className="ml-4 flex-1">
-                  <h3 className="text-base font-semibold text-gray-900">CSV Data Import</h3>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Upload a CSV file to update startup data fields. Choose how to handle existing information before proceeding.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="max-w-2xl mx-auto space-y-6">
-                
-                {/* Step 1: Data Handling Strategy */}
-                <div>
-                  <div className="flex items-center mb-3">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-sm font-bold mr-3">
-                      1
-                    </div>
-                    <h3 className="text-base font-semibold text-gray-800">Select Data Handling Mode</h3>
-                  </div>
-                  
-                  <div className="ml-10 space-y-3">
-                    <label className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                      uploadMode === "skip" 
-                        ? "border-green-500 bg-green-50 shadow-sm" 
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                    }`}>
-                      <input
-                        type="radio"
-                        name="uploadMode"
-                        value="skip"
-                        checked={uploadMode === "skip"}
-                        onChange={(e) => setUploadMode(e.target.value)}
-                        className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500"
-                      />
-                      <div className="ml-3 flex-1">
-                        <div className="flex items-center">
-                          <span className="font-semibold text-gray-900">Do Not Update Existing Data</span>
-                          <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
-                            Recommended
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1.5">
-                          Only fill in empty fields. All existing data will be preserved and remain unchanged.
-                        </p>
-                      </div>
-                    </label>
-
-                    <label className={`flex items-start p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                      uploadMode === "replace" 
-                        ? "border-orange-500 bg-orange-50 shadow-sm" 
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                    }`}>
-                      <input
-                        type="radio"
-                        name="uploadMode"
-                        value="replace"
-                        checked={uploadMode === "replace"}
-                        onChange={(e) => setUploadMode(e.target.value)}
-                        className="mt-1 h-4 w-4 text-orange-600 focus:ring-orange-500"
-                      />
-                      <div className="ml-3 flex-1">
-                        <div className="flex items-center">
-                          <span className="font-semibold text-gray-900">Update All Data</span>
-                          <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded-full">
-                            Caution
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1.5">
-                          Replace all field values with CSV data. This will overwrite existing information.
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Divider */}
-                <div className="border-t border-gray-200"></div>
-
-                {/* Step 2: File Selection */}
-                <div>
-                  <div className="flex items-center mb-3">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-sm font-bold mr-3">
-                      2
-                    </div>
-                    <h3 className="text-base font-semibold text-gray-800">Choose CSV File</h3>
-                  </div>
-
-                  <div className="ml-10">
-                    <div 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all"
-                    >
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".csv"
-                        className="hidden"
-                        onChange={handleFileChange}
-                      />
-                      <div className="mx-auto w-14 h-14 bg-white rounded-full flex items-center justify-center mb-3 shadow-sm">
+          <div className="max-w-xl mx-auto">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 flex flex-col items-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center">
+                <Upload className="mr-2 text-blue-600" size={28} /> Upload Startup Data
+              </h2>
+              <p className="text-gray-600 mb-6 text-center">
+                Upload your startup data in <span className="font-semibold text-blue-600">CSV</span> or <span className="font-semibold text-blue-600">XLSX</span> format.<br />
+                Max file size: <span className="font-semibold">10MB</span>.
+              </p>
+              <div
+                className={`w-full border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center transition-colors duration-200 ${csvFile ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50'}`}
+                onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                style={{ cursor: 'pointer' }}
+              >
+                <input
+                  type="file"
+                  accept=".csv,.xlsx"
+                  ref={fileInputRef}
+                  style={{ display: 'none' }}
+                  onChange={handleFileChange}
+                />
+                {!csvFile ? (
+                  <>
+                    <Upload size={40} className="text-blue-400 mb-2" />
+                    <span className="text-gray-700 font-medium">Drag & drop or click to select a file</span>
+                    <span className="text-xs text-gray-500 mt-1">Supported formats: .csv, .xlsx</span>
+                  </>
+                ) : (
+                  <div className="w-full flex flex-col items-center">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="bg-blue-100 rounded-lg p-2">
                         <Upload size={24} className="text-blue-600" />
                       </div>
-                      <h4 className="text-gray-700 font-semibold mb-1">Select a CSV file</h4>
-                      <p className="text-sm text-gray-500 mb-3">or drag and drop it here</p>
-                      <span className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                        Browse Files
-                      </span>
-                    </div>
-
-                    {/* Selected file indicator */}
-                    {csvFile && (
-                      <div className="mt-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200 flex items-center animate-fadeIn">
-                        <div className="flex-shrink-0 p-3 bg-blue-600 rounded-lg mr-4">
-                          <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">{csvFile.name}</p>
-                          <p className="text-sm text-gray-600 mt-0.5">
-                            {(csvFile.size / 1024).toFixed(1)} KB • CSV Document
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          className="flex-shrink-0 ml-4 p-2 hover:bg-blue-200 rounded-full transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCsvFile(null);
-                            setUploadStatus(null);
-                            if (fileInputRef.current) fileInputRef.current.value = '';
-                          }}
-                        >
-                          <X size={18} className="text-blue-600" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Upload status */}
-                {uploadStatus && (
-                  <div className={`p-4 rounded-lg border-2 animate-fadeIn ${
-                    uploadStatus.success 
-                      ? 'bg-green-50 border-green-200' 
-                      : 'bg-red-50 border-red-200'
-                  }`}>
-                    <div className="flex items-start">
-                      {uploadStatus.success ? (
-                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                          <CheckCircle2 size={20} className="text-green-600" />
-                        </div>
-                      ) : (
-                        <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                          <AlertCircle size={20} className="text-red-600" />
-                        </div>
-                      )}
-                      <div className="ml-4 flex-1">
-                        <h4 className={`font-semibold ${uploadStatus.success ? 'text-green-900' : 'text-red-900'}`}>
-                          {uploadStatus.success ? 'Upload Successful!' : 'Upload Failed'}
-                        </h4>
-                        <p className={`text-sm mt-1 ${uploadStatus.success ? 'text-green-700' : 'text-red-700'}`}>
-                          {uploadStatus.message}
-                        </p>
+                      <div>
+                        <span className="font-semibold text-gray-800">{csvFile.name}</span>
+                        <span className="block text-xs text-gray-500">{csvFile.type || 'Unknown type'} • {(csvFile.size / 1024).toFixed(1)} KB</span>
                       </div>
                       <button
                         type="button"
-                        onClick={() => setUploadStatus(null)}
-                        className={`flex-shrink-0 ml-4 p-1 rounded-full hover:bg-opacity-20 ${
-                          uploadStatus.success ? 'hover:bg-green-600' : 'hover:bg-red-600'
-                        }`}
+                        className="ml-2 text-red-500 hover:text-red-700"
+                        onClick={e => { e.stopPropagation(); setCsvFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+                        title="Remove file"
                       >
-                        <X size={16} className={uploadStatus.success ? 'text-green-600' : 'text-red-600'} />
+                        <X size={18} />
                       </button>
                     </div>
                   </div>
                 )}
-
-                {/* Divider */}
-                <div className="border-t border-gray-200"></div>
-
-                {/* Step 3: Action Button */}
-                <div>
-                  <div className="flex items-center mb-3">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white text-sm font-bold mr-3">
-                      3
-                    </div>
-                    <h3 className="text-base font-semibold text-gray-800">Proceed with Upload</h3>
-                  </div>
-
-                  <div className="ml-10">
-                    <button
-                      type="button"
-                      onClick={handleCsvUpload}
-                      disabled={!csvFile || uploading}
-                      className={`w-full py-3.5 px-6 rounded-lg font-semibold flex items-center justify-center transition-all ${
-                        !csvFile || uploading
-                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg'
-                      }`}
-                    >
-                      {uploading ? (
-                        <>
-                          <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
-                          Processing Upload...
-                        </>
-                      ) : (
-                        <>
-                          <Upload size={20} className="mr-3" />
-                          {uploadMode === "skip" ? "Upload & Preserve Existing Data" : "Upload & Update All Data"}
-                        </>
-                      )}
-                    </button>
-                    
-                    {!csvFile && (
-                      <p className="mt-3 text-center text-sm text-gray-500">
-                        Please select a CSV file to continue
-                      </p>
-                    )}
-                  </div>
-                </div>
               </div>
+              <button
+                type="button"
+                onClick={handleCsvUpload}
+                disabled={uploading || !csvFile}
+                className={`mt-6 w-full py-3 px-6 rounded-xl font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-all shadow ${uploading || !csvFile ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                {uploading ? (
+                  <span className="flex items-center justify-center"><div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>Uploading...</span>
+                ) : (
+                  <span className="flex items-center justify-center"><Upload size={18} className="mr-2" />Upload File</span>
+                )}
+              </button>
+              {uploadStatus && (
+                <div className={`mt-6 w-full p-4 rounded-lg text-sm font-medium flex items-center gap-2 ${uploadStatus.success ? 'bg-green-50 border-l-4 border-green-500 text-green-700' : 'bg-red-50 border-l-4 border-red-500 text-red-700'}`}>
+                  {uploadStatus.success ? <CheckCircle2 size={20} className="text-green-500" /> : <AlertCircle size={20} className="text-red-500" />}
+                  <span>{uploadStatus.message}</span>
+                </div>
+              )}
             </div>
-
-            {/* Confirmation Modal */}
-            {showUploadConfirmation && csvPreviewData && (
-              <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
-                <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full">
-                  {/* Header */}
-                  <div className="px-6 py-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                    <div className="flex items-start">
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                          <AlertCircle className="text-blue-600" size={24} />
-                        </div>
-                      </div>
-                      <div className="ml-4 flex-1">
-                        <h3 className="text-xl font-bold text-gray-900">
-                          Confirm Data Upload
-                        </h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                          Please review before proceeding
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Body */}
-                  <div className="px-6 py-5">
-                    <div className="space-y-4">
-                      {/* File info */}
-                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-700">File:</span>
-                          <span className="text-sm text-gray-900 font-semibold">{csvFile?.name}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-700">Fields to update:</span>
-                          <span className="text-sm text-blue-600 font-semibold">{csvPreviewData.headers.length} fields</span>
-                        </div>
-                      </div>
-
-                      {/* Fields list */}
-                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                        <p className="text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wide">Fields in CSV:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {csvPreviewData.headers.map((header, index) => (
-                            <span
-                              key={index}
-                              className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-white text-blue-700 border border-blue-200"
-                            >
-                              {header}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Mode confirmation */}
-                      <div className={`rounded-lg p-4 border-2 ${
-                        uploadMode === "replace" 
-                          ? "bg-orange-50 border-orange-300" 
-                          : "bg-green-50 border-green-300"
-                      }`}>
-                        <div className="flex items-start">
-                          {uploadMode === "replace" ? (
-                            <AlertCircle className="text-orange-600 mt-0.5 flex-shrink-0" size={18} />
-                          ) : (
-                            <CheckCircle2 className="text-green-600 mt-0.5 flex-shrink-0" size={18} />
-                          )}
-                          <div className="ml-3">
-                            <p className={`text-sm font-semibold ${
-                              uploadMode === "replace" ? "text-orange-800" : "text-green-800"
-                            }`}>
-                              {uploadMode === "replace" ? "Replace Mode" : "Skip Mode"}
-                            </p>
-                            <p className={`text-xs mt-1 ${
-                              uploadMode === "replace" ? "text-orange-700" : "text-green-700"
-                            }`}>
-                              {uploadMode === "replace" 
-                                ? "All existing values in these fields will be overwritten with CSV data."
-                                : "Only empty fields will be updated. Existing data will be preserved."}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Warning */}
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                        <p className="text-xs text-yellow-800">
-                          <strong>⚠️ Important:</strong> This action cannot be undone. Make sure you have backed up your data if needed.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowUploadConfirmation(false);
-                        setCsvPreviewData(null);
-                      }}
-                      disabled={uploading}
-                      className="px-5 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={confirmCsvUpload}
-                      disabled={uploading}
-                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg flex items-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {uploading ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                          Uploading...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 size={18} className="mr-2" />
-                          Confirm & Upload
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         );
 

@@ -6,11 +6,11 @@ const Bookmarks = ({
   userId,
   mapInstanceRef,
   setViewingStartup,
-  setViewingInvestor,
+  setViewingStakeholder,
   setContainerMode
 }) => {
   const [startups, setStartups] = useState([]);
-  const [investors, setInvestors] = useState([]);
+  const [stakeholders, setStakeholders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("startups");
 
@@ -35,9 +35,9 @@ const Bookmarks = ({
           setStartups((prevStartups) =>
             prevStartups.filter((startup) => startup.id !== item.id)
           );
-        } else if (type === 'investors') {
-          setInvestors((prevInvestors) =>
-            prevInvestors.filter((investor) => investor.id !== item.id)
+        } else if (type === 'stakeholders') {
+          setStakeholders((prevStakeholders) =>
+            prevStakeholders.filter((stakeholder) => stakeholder.id !== item.id)
           );
         }
       } else {
@@ -77,15 +77,15 @@ const Bookmarks = ({
           id: item.id // Use the bookmark's ID
         }));
 
-      const bookmarkedInvestors = data
-        .filter(item => item.investor !== null)
+      const bookmarkedStakeholders = data
+        .filter(item => item.stakeholder !== null)
         .map(item => ({
-          ...item.investor,
+          ...item.stakeholder,
           id: item.id // Use the bookmark's ID
         }));
 
       setStartups(bookmarkedStartups);
-      setInvestors(bookmarkedInvestors);
+      setStakeholders(bookmarkedStakeholders);
     } catch (error) {
       console.error("Fetch bookmarks error:", error.message);
     } finally {
@@ -115,14 +115,14 @@ const Bookmarks = ({
     }
   };
 
-  const handlePreviewInvestor = (investor) => {
-    if (investor.locationLang && investor.locationLat) {
+  const handlePreviewStakeholder = (stakeholder) => {
+    if (stakeholder.locationLng && stakeholder.locationLat) {
       mapInstanceRef.current.flyTo({
-        center: [parseFloat(investor.locationLang), parseFloat(investor.locationLat)],
+        center: [parseFloat(stakeholder.locationLng), parseFloat(stakeholder.locationLat)],
         zoom: 14,
         essential: true,
       });
-      setViewingInvestor(investor);
+      setViewingStakeholder(stakeholder);
       setContainerMode(null); // Close the bookmarks panel
     }
   };
@@ -175,14 +175,14 @@ const Bookmarks = ({
             Startups
           </button>
           <button
-            onClick={() => setActiveTab("investors")}
+            onClick={() => setActiveTab("stakeholders")}
             className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === "investors"
+              activeTab === "stakeholders"
                 ? "bg-white text-blue-600"
                 : "bg-white/20 text-white hover:bg-white/30"
             }`}
           >
-            Investors
+            Stakeholders
           </button>
         </div>
       </div>
@@ -239,27 +239,27 @@ const Bookmarks = ({
               <p className="text-sm text-gray-500 mt-1">Startups you bookmark will appear here</p>
             </div>
           )
-        ) : investors.length > 0 ? (
-          investors.map((investor) => (
-            <div key={investor.id} className="mb-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 border border-gray-100">
+        ) : stakeholders.length > 0 ? (
+          stakeholders.map((stakeholder) => (
+            <div key={stakeholder.id} className="mb-4 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 border border-gray-100">
               <div className="flex justify-between">
                 <div className="space-y-2">
                   <h1 className="text-lg font-semibold text-gray-900">
-                    {investor.firstname} {investor.lastname}
+                    {stakeholder.name || `${stakeholder.firstname} ${stakeholder.lastname}`}
                   </h1>
                   <p className="text-gray-600 flex items-center text-sm">
                     <CiLocationOn className="mr-1" />
-                    {investor.locationName || "No location specified"}
+                    {stakeholder.locationName || "No location specified"}
                   </p>
-                  {investor.website && (
-                    <p className="text-blue-600 flex items-center text-sm hover:underline">
+                  {stakeholder.email && (
+                    <p className="text-gray-600 flex items-center text-sm">
                       <CiGlobe className="mr-1 text-gray-700" />
-                      {investor.website}
+                      {stakeholder.email}
                     </p>
                   )}
-                  {investor.gender && (
+                  {stakeholder.organization && (
                     <span className="inline-block px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded-full">
-                      {investor.gender}
+                      {stakeholder.organization}
                     </span>
                   )}
                 </div>
@@ -267,13 +267,13 @@ const Bookmarks = ({
 
               <div className="mt-4 flex items-center justify-between">
                 <button
-                  onClick={() => handlePreviewInvestor(investor)}
+                  onClick={() => handlePreviewStakeholder(stakeholder)}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                 >
                   Preview
                 </button>
                 <button
-                  onClick={() => handleRemoveBookmark(investor, "investors")}
+                  onClick={() => handleRemoveBookmark(stakeholder, "stakeholders")}
                   className="flex items-center text-red-500 hover:text-red-700 transition-colors text-sm font-medium"
                 >
                   <FaBookmark className="mr-1" />
@@ -285,8 +285,8 @@ const Bookmarks = ({
         ) : (
           <div className="text-center py-12 text-gray-500">
             <FaBookmark className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <p className="text-lg font-medium text-gray-900">No bookmarked investors</p>
-            <p className="text-sm text-gray-500 mt-1">Investors you bookmark will appear here</p>
+            <p className="text-lg font-medium text-gray-900">No bookmarked stakeholders</p>
+            <p className="text-sm text-gray-500 mt-1">Stakeholders you bookmark will appear here</p>
           </div>
         )}
       </div>
