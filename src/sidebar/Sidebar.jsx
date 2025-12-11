@@ -396,39 +396,46 @@ export default function Sidebar({
     }
   }, []);
 
-  const addToRecents = (item, type) => {
-    const key = type === "startups" ? "recentStartups" : "recentStakeholders";
-    const existingRecents = JSON.parse(localStorage.getItem(key)) || [];
-    const updatedRecents = [
-      item,
-      ...existingRecents.filter((i) => i.id !== item.id),
-    ].slice(0, 10); // Limit to 10 items
-    localStorage.setItem(key, JSON.stringify(updatedRecents));
-  };
+  const addToRecents = async(type,id) =>{
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/recents/${type}/${id}`,{
+        method:'POST',
+        headers:{
+          'Content-Type': 'application/json'
+        },
+        credentials:'include'
+      })
+      const data = await response.json();
+      if(response.ok){
+        console.log(`Startup with an id ${id} has successfully added to recents: `,data)
+      }else{
+        console.log(`Error adding startup with an id ${id}: `,data)
+      }
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
 
   const getRecents = async (type) => {
-    // Fetch recents for startups and stakeholders from API
     try {
-      let response;
-      if (type === "startups") {
-        response = await fetch("/recents/startups");
-      } else if (type === "stakeholders") {
-        response = await fetch("/recents/stakeholders");
-      } else {
-        return [];
-      }
-      if (!response.ok) throw new Error("Failed to fetch recents");
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/recents/${type}`,{
+        credentials:'include'
+      })
+
       const data = await response.json();
-      // API returns array of objects with either 'startup' or 'stakeholder' field
-      if (type === "startups") {
-        return data.map(item => item.startup).filter(Boolean);
-      } else if (type === "stakeholders") {
-        return data.map(item => item.stakeholder).filter(Boolean);
+      if(response.ok){
+        console.log(`Fetched ${type} recents: `,data)
+        if(type === "stakeholders"){
+          setRecentStakeholders(data)
+        }else if(type === "startups"){
+          setRecentStartups(data);
+        }
+      }else{
+        console.log(`Error fetching ${type}: `,data)
       }
-      return [];
     } catch (error) {
-      console.error("Error fetching recents:", error);
-      return [];
+      console.log(error)
     }
   };
 
@@ -656,7 +663,7 @@ export default function Sidebar({
     }
   };
 
-  const handleStartupClick = (startup) => {
+  const handleStartupClick = (startup, type) => {
     setStakeholder(null);
     setViewingStartup(null);
     setViewingStakeholder(null);
@@ -737,7 +744,7 @@ export default function Sidebar({
     }
 
     // Add the startup to recents and update the UI
-    addToRecents(startup, "startups");
+    addToRecents("startup",startup.id);
     setStartup(startup);
     setShowSearchContainer(false);
   };
@@ -820,7 +827,7 @@ export default function Sidebar({
     }
 
     // Add the stakeholder to recents and update the UI
-    addToRecents(stakeholder, "stakeholders");
+    addToRecents("stakeholder",stakeholder.id);
     setStakeholder(stakeholder);
     setShowSearchContainer(false);
   };
@@ -828,8 +835,9 @@ export default function Sidebar({
   useEffect(() => {
     if (containerMode === "recents") {
       (async () => {
-        setRecentStartups(await getRecents("startups"));
-        setRecentStakeholders(await getRecents("stakeholders"));
+        console.log("Fetching recents...");
+        getRecents("startups")
+        getRecents("stakeholders")
       })();
     }
   }, [containerMode]);
@@ -2208,7 +2216,7 @@ export default function Sidebar({
                   applyFilters(startups).map((startup) => (
                     <div
                       key={startup.id}
-                      onClick={() => handleStartupClick(startup)}
+                      onClick={() => handleStartupClick(startup,'startup')}
                       className="bg-white rounded-lg border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all duration-200 p-4 cursor-pointer group"
                     >
                       <div className="flex items-start space-x-3">
@@ -2505,74 +2513,80 @@ export default function Sidebar({
           <div className="h-[calc(100vh-200px)] overflow-y-auto p-4 space-y-4">
             {viewingType === "startups" ? (
               recentStartups.length > 0 ? (
-                recentStartups.map((startup) => (
-                  <div
-                    key={startup.id}
-                    onClick={() => handleStartupClick(startup)}
-                    className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
-                  >
-                    <div className="flex items-center mb-2">
-                      {/* Add startup image */}
-                      <img
-                        src={`${import.meta.env.VITE_BACKEND_URL}/startups/${
-                          startup.id
-                        }/photo`}
-                        alt={startup.companyName}
-                        className="h-10 w-10 rounded-lg object-cover border border-gray-200 mr-3"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            startup.companyName
-                          )}&background=0D8ABC&color=fff`;
-                        }}
-                      />
-                      <div>
-                        <h3 className="text-md font-semibold text-gray-900">
-                          {startup.companyName}
-                        </h3>
-                        <span className="text-xs text-gray-500">
-                          {startup.locationName}
-                        </span>
+                recentStartups.map((item) => {
+                  const startup = item.startup;
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => startup && handleStartupClick(startup)}
+                      className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
+                    >
+                      <div className="flex items-center mb-2">
+                        {/* Add startup image */}
+                        <img
+                          src={`${import.meta.env.VITE_BACKEND_URL}/startups/${
+                            startup?.id
+                          }/photo`}
+                          alt={startup?.companyName}
+                          className="h-10 w-10 rounded-lg object-cover border border-gray-200 mr-3"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                              startup?.companyName || "Startup"
+                            )}&background=0D8ABC&color=fff`;
+                          }}
+                        />
+                        <div>
+                          <h3 className="text-md font-semibold text-gray-900">
+                            {startup?.companyName}
+                          </h3>
+                          <span className="text-xs text-gray-500">
+                            {startup?.locationName}
+                          </span>
+                        </div>
                       </div>
+                      <p className="text-sm text-gray-600 line-clamp-2">
+                        {startup?.companyDescription}
+                      </p>
                     </div>
-                    <p className="text-sm text-gray-600 line-clamp-2">
-                      {startup.companyDescription}
-                    </p>
-                  </div>
-                ))
+                  );
+                })
               ) : (
                 <div className="text-center text-gray-500 mt-4">
                   No recent startups found.
                 </div>
               )
             ) : recentStakeholders.length > 0 ? (
-              recentStakeholders.map((stakeholder) => (
-                <div
-                  key={stakeholder.id}
-                  onClick={() => handleStakeholderClick(stakeholder)}
-                  className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
-                >
-                  <div className="flex items-center mb-2">
-                    {/* Stakeholder Avatar */}
-                    <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center border border-gray-100 text-blue-700 font-semibold uppercase shadow-sm mr-3">
-                      {stakeholder.name ? stakeholder.name.charAt(0) : "S"}
+              recentStakeholders.map((item) => {
+                const stakeholder = item.stakeholder;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => stakeholder && handleStakeholderClick(stakeholder)}
+                    className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 cursor-pointer border border-gray-100"
+                  >
+                    <div className="flex items-center mb-2">
+                      {/* Stakeholder Avatar */}
+                      <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center border border-gray-100 text-blue-700 font-semibold uppercase shadow-sm mr-3">
+                        {stakeholder?.name ? stakeholder.name.charAt(0) : "S"}
+                      </div>
+                      <div>
+                        <h3 className="text-md font-semibold text-gray-900">
+                          {stakeholder?.name || "Unnamed Stakeholder"}
+                        </h3>
+                        <span className="text-xs text-gray-500">
+                          {stakeholder?.region ||
+                            stakeholder?.city ||
+                            "Location N/A"}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-md font-semibold text-gray-900">
-                        {stakeholder.name || "Unnamed Stakeholder"}
-                      </h3>
-                      <span className="text-xs text-gray-500">
-                        {stakeholder.region ||
-                          stakeholder.city ||
-                          "Location N/A"}
-                      </span>
-                    </div>
+                    <p className="text-sm text-gray-600 line-clamp-2">
+                      {stakeholder?.biography || "No biography provided"}
+                    </p>
                   </div>
-                  <p className="text-sm text-gray-600 line-clamp-2">
-                    {investor.biography}
-                  </p>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="text-center text-gray-500 mt-4">
                 No recent stakeholders found.
