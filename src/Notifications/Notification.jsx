@@ -1735,28 +1735,6 @@ function ReviewForm({ startupId, onSubmit, currentStatus, rejectionComment }) {
                 is now visible on our platform. You can now access all the
                 features available to startups.
               </p>
-              <div className="mt-3 flex">
-                <button
-                  onClick={() =>
-                    (window.location.href = `/startups/${startupId}`)
-                  }
-                  className="text-sm text-green-700 hover:text-green-900 font-medium flex items-center"
-                >
-                  View your startup profile
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4 ml-1"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-              </div>
             </div>
           </div>
         ) : currentStatus === "Pending" || currentStatus === "In Review" ? (
