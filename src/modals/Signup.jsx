@@ -140,22 +140,22 @@ export default function Signup({ closeModal, openLogin }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity p-3 md:p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity p-4 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="w-full max-w-4xl lg:max-w-5xl max-h-[80vh] my-auto bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row"
+        className="w-full max-w-5xl max-h-[90vh] my-auto bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Left Side - Brand Section */}
-        <div className="w-2/5 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 px-6 py-6 flex flex-col justify-between relative overflow-hidden">
+        <div className="w-2/5 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 p-12 flex flex-col justify-between relative overflow-hidden">
           {/* Decorative shapes */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full -mr-40 -mt-40"></div>
           <div className="absolute bottom-0 left-0 w-60 h-60 bg-white/5 rounded-full -ml-30 -mb-30"></div>
           
           {/* Content */}
-          <div className="relative z-10 space-y-6">
+          <div className="relative z-10 space-y-8">
             {/* Logo */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
@@ -166,8 +166,8 @@ export default function Signup({ closeModal, openLogin }) {
               <motion.img
                 src="/StartUpSphere_loginLogo.png"
                 alt="StartUpSphere Logo"
-                className="h-28 w-auto object-contain drop-shadow-lg brightness-110 filter"
-                animate={{ y: [0, -7, 0] }}
+                className="h-32 w-auto object-contain drop-shadow-lg brightness-110 filter"
+                animate={{ y: [0, -8, 0] }}
                 transition={{
                   duration: 4,
                   ease: "easeInOut",
@@ -240,16 +240,16 @@ export default function Signup({ closeModal, openLogin }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.35, duration: 0.4 }}
-            className="relative z-10 pt-4 border-t border-blue-400/30 text-center"
+            className="relative z-10 pt-8 border-t border-blue-400/30 text-center"
           >
-            <p className="text-xs font-medium italic text-gray-800">
+            <p className="text-sm font-medium italic text-gray-800">
               "Bridging Startups and Government for a Unified Ecosystem"
             </p>
           </motion.div>
         </div>
 
         {/* Right Side - Form Section */}
-        <div className="w-3/5 px-6 py-6 bg-white overflow-y-auto flex flex-col relative">
+        <div className="w-3/5 px-8 py-8 bg-white overflow-y-auto flex flex-col relative">
           {/* Close button - Desktop positioned */}
           <button
             className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors border-0 bg-transparent z-50"
@@ -273,14 +273,14 @@ export default function Signup({ closeModal, openLogin }) {
           </button>
 
           {/* Header */}
-          <div className="mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Create Account</h2>
-            <p className="text-gray-600 mt-1">Join StartUpSphere today and get started</p>
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
+            <p className="text-gray-600 mt-2">Join StartUpSphere today and get started</p>
           </div>
 
           {/* Registration Form */}
-          <form onSubmit={handleSignup} className="space-y-2.5 flex-1">
-            <div className="grid grid-cols-2 gap-2.5">
+          <form onSubmit={handleSignup} className="space-y-4 flex-1">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="firstname" className="block text-sm font-medium text-gray-700 mb-1.5 ml-0.5">
                   First Name
@@ -756,7 +756,7 @@ export default function Signup({ closeModal, openLogin }) {
           </form>
 
           {/* Footer */}
-          <div className="mt-6 text-center border-t border-gray-100 pt-4">
+          <div className="mt-8 text-center border-t border-gray-100 pt-6">
             <p className="text-sm text-gray-600">
               Already have an account?{" "}
               <button
