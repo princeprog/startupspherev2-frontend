@@ -11,7 +11,9 @@ export default function TermsAndConditions() {
         <div className="max-w-6xl mx-auto w-full px-4 py-3">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => {window.close();
+                              navigate("/");
+              }}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md px-3 py-1"
             >
               <ArrowLeft className="h-4 w-4" />
