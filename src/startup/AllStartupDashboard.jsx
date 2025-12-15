@@ -59,6 +59,8 @@ export default function AllStartupDashboard() {
   );
 
   const [topStartups, setTopStartups] = useState([]);
+  const [topStartupsLoading, setTopStartupsLoading] = useState(false);
+  const [topStartupsError, setTopStartupsError] = useState(null);
   const [rankedStartups, setRankedStartups] = useState([]);
   const [totalStartups, setTotalStartups] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -75,6 +77,12 @@ export default function AllStartupDashboard() {
   const [fundingData, setFundingData] = useState([]);
   const [locationData, setLocationData] = useState([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
+
+  // New state for chart filtering and interaction
+  const [selectedChartIndustry, setSelectedChartIndustry] = useState(null);
+  const [selectedFundingStage, setSelectedFundingStage] = useState(null);
+  const [hoveredIndustry, setHoveredIndustry] = useState(null);
+  const [hoveredFundingStage, setHoveredFundingStage] = useState(null);
 
   // New states for Reports tab
   const [generatedReports, setGeneratedReports] = useState([]);
@@ -173,14 +181,22 @@ export default function AllStartupDashboard() {
 
   useEffect(() => {
     const fetchTopStartups = async () => {
-      // Check if we can use cached data from rankings
-      if (topStartupsCache && 
+      // Always fetch fresh data when filtering by a specific industry
+      // Only use cache when viewing all industries
+      const isFiltered = selectedIndustry !== "All";
+      
+      if (!isFiltered && topStartupsCache && 
           topStartupsCache.industry === selectedIndustry && 
           topStartupsCache.metric === rankingMetric) {
         setTopStartups(topStartupsCache.data);
+        setTopStartupsError(null);
         return;
       }
 
+      setTopStartupsLoading(true);
+      setTopStartups([]); // Clear old data while loading for visual feedback
+      setTopStartupsError(null);
+      
       try {
         const params = new URLSearchParams({
           page: "0",
@@ -202,17 +218,43 @@ export default function AllStartupDashboard() {
           throw new Error("Failed to fetch top startups");
         }
         const data = await response.json();
-        const startups = data.content || data;
-        setTopStartups(startups);
+        const startups = Array.isArray(data) ? data : (data.content || []);
         
-        // Cache the result
-        setTopStartupsCache({
-          industry: selectedIndustry,
-          metric: rankingMetric,
-          data: startups
+        // Normalize startup data to ensure all score fields are properly set
+        const normalizedStartups = startups.map(startup => {
+          // Get overall score from various possible field names
+          const overallScore = startup.overallScore ?? startup.score ?? startup.overallScore ?? 0;
+          const growthRate = startup.growthScore ?? startup.growthRate ?? startup.growth ?? 0;
+          
+          return {
+            ...startup,
+            overallScore: Number(overallScore),
+            growthScore: Number(growthRate)
+          };
         });
+        
+        // Validate that we have startup data
+        if (!normalizedStartups || normalizedStartups.length === 0) {
+          console.warn("No startups returned from API for industry:", selectedIndustry);
+        }
+        
+        setTopStartups(normalizedStartups);
+        setTopStartupsError(null);
+        
+        // Cache the result only for non-filtered requests
+        if (!isFiltered) {
+          setTopStartupsCache({
+            industry: selectedIndustry,
+            metric: rankingMetric,
+            data: normalizedStartups
+          });
+        }
       } catch (error) {
         console.error("Error fetching top startups:", error);
+        setTopStartups([]);
+        setTopStartupsError(error.message || "Failed to fetch top startups");
+      } finally {
+        setTopStartupsLoading(false);
       }
     };
 
@@ -1173,6 +1215,40 @@ export default function AllStartupDashboard() {
     }
   }, [activeTab]);
 
+  // Helper function to get industry icon
+  const getIndustryIcon = (industryName) => {
+    const iconMap = {
+      "Mobile App Development": "📱",
+      "Food & Beverage": "🍴",
+      "Technology & IT Services": "💻",
+      "Healthcare & Medical Services": "🏥",
+      "Agriculture & Farming": "🌾",
+      "Education & Training": "🎓",
+      "Web Development": "🌐",
+      "Software Development": "⚙️",
+      "IT Solutions & Consulting": "🔧",
+      "Manufacturing": "🏭",
+      "Retail & E-commerce": "🛍️",
+      "Wholesale Trade": "📦",
+      "Aquaculture & Fisheries": "🐠",
+      "Sari-Sari Store": "🏪",
+      "Other Services": "✨"
+    };
+    return iconMap[industryName] || "💼";
+  };
+
+  // Helper function to get funding stage description
+  const getFundingStageDescription = (stageName) => {
+    const descriptions = {
+      "Seed": "Early-stage funding, often from angel investors",
+      "Series A": "First institutional funding round",
+      "Series B": "Growth and expansion stage",
+      "Series C": "Late-stage scaling and expansion",
+      "Other": "Alternative funding sources"
+    };
+    return descriptions[stageName] || "";
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50">
       <main className="flex-grow p-6">
@@ -1185,68 +1261,94 @@ export default function AllStartupDashboard() {
           <span>Back to Home</span>
         </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-          <div className="bg-white p-4 rounded-lg shadow flex items-center">
-            <div className="p-3 bg-indigo-100 rounded-full mr-4">
-              <TrendingUp className="h-6 w-6 text-indigo-700" />
-            </div>
-            <div>
-              <p className="text-gray-500 text-sm">Total Startups</p>
-              <p className="text-xl text-blue-900 font-bold">{totalStartups}</p>
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow flex items-center">
-            <div className="p-3 bg-green-100 rounded-full mr-4">
-              <DollarSign className="h-6 w-6 text-green-700" />
-            </div>
-            <div>
-              <p className="text-gray-500 text-sm">Total Funding</p>
-              <p className="text-xl text-blue-900 font-bold">
-                ₱
-                {(
-                  rankedStartups.reduce((sum, startup) => {
-                    // Get funding value, accounting for different possible paths
-                    const funding =
-                      startup.totalFunding || // Direct path
-                      startup.metrics?.totalFunding || // Nested in metrics
-                      (typeof startup.metrics === "string"
-                        ? JSON.parse(startup.metrics)?.totalFunding
-                        : 0) || // Parse if string
-                      0; // Default to 0 if none found
-                    return sum + Number(funding);
-                  }, 0) / 1000000
-                ).toFixed(2)}
-                M
-              </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          {/* Total Startups Card */}
+          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-6 border border-indigo-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-indigo-700 text-sm font-medium mb-1">Total Startups</p>
+                <p className="text-3xl font-bold text-indigo-900 mb-2">{totalStartups}</p>
+                <p className="text-xs text-indigo-600 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                  Active in ecosystem
+                </p>
+              </div>
+              <div className="p-3 bg-indigo-200 rounded-lg">
+                <TrendingUp className="h-6 w-6 text-indigo-700" />
+              </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow flex items-center">
-            <div className="p-3 bg-blue-100 rounded-full mr-4">
-              <MapPin className="h-6 w-6 text-blue-700" />
-            </div>
-            <div>
-              <p className="text-gray-500 text-sm">Startup Hubs</p>
-              <p className="text-xl font-bold text-blue-900">
-                {industries.length} Industries
-              </p>
+
+          {/* Total Funding Card */}
+          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-6 border border-green-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-green-700 text-sm font-medium mb-1">Total Funding</p>
+                <p className="text-3xl font-bold text-green-900 mb-2">
+                  ₱{(
+                    rankedStartups.reduce((sum, startup) => {
+                      const funding =
+                        startup.totalFunding ||
+                        startup.metrics?.totalFunding ||
+                        (typeof startup.metrics === "string"
+                          ? JSON.parse(startup.metrics)?.totalFunding
+                          : 0) ||
+                        0;
+                      return sum + Number(funding);
+                    }, 0) / 1000000
+                  ).toFixed(1)}M
+                </p>
+                <p className="text-xs text-green-600 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                  Total invested
+                </p>
+              </div>
+              <div className="p-3 bg-green-200 rounded-lg">
+                <DollarSign className="h-6 w-6 text-green-700" />
+              </div>
             </div>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow flex items-center">
-            <div className="p-3 bg-yellow-100 rounded-full mr-4">
-              <Users className="h-6 w-6 text-yellow-700" />
+
+          {/* Industries Card */}
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-6 border border-blue-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-blue-700 text-sm font-medium mb-1">Industries</p>
+                <p className="text-3xl font-bold text-blue-900 mb-2">{industries.length}</p>
+                <p className="text-xs text-blue-600 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                  Diversified sectors
+                </p>
+              </div>
+              <div className="p-3 bg-blue-200 rounded-lg">
+                <MapPin className="h-6 w-6 text-blue-700" />
+              </div>
             </div>
-            <div>
-              <p className="text-gray-500 text-sm">Average Score</p>
-              <p className="text-xl font-bold text-blue-900">
-                {rankedStartups.length > 0
-                  ? Math.round(
-                      rankedStartups.reduce(
-                        (sum, startup) => sum + startup.overallScore,
-                        0
-                      ) / rankedStartups.length
-                    )
-                  : "N/A"}
-              </p>
+          </div>
+
+          {/* Average Score Card */}
+          <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-6 border border-amber-200">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-amber-700 text-sm font-medium mb-1">Avg. Score</p>
+                <p className="text-3xl font-bold text-amber-900 mb-2">
+                  {rankedStartups.length > 0
+                    ? Math.round(
+                        rankedStartups.reduce(
+                          (sum, startup) => sum + startup.overallScore,
+                          0
+                        ) / rankedStartups.length
+                      )
+                    : "N/A"}/100
+                </p>
+                <p className="text-xs text-amber-600 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                  Performance metric
+                </p>
+              </div>
+              <div className="p-3 bg-amber-200 rounded-lg">
+                <Users className="h-6 w-6 text-amber-700" />
+              </div>
             </div>
           </div>
         </div>
@@ -1309,198 +1411,446 @@ export default function AllStartupDashboard() {
         </div>
 
         {activeTab === "overview" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow lg:col-span-2">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-lg font-semibold text-blue-900">
-                  Top Performing Startups
-                </h2>
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-500">Industry:</span>
-                  <select
-                    className="text-sm border rounded p-1 text-blue-800 w-30"
-                    value={selectedIndustry}
-                    onChange={(e) => setSelectedIndustry(e.target.value)}
-                  >
-                    <option value="All" className="text-blue-700">
-                      All Industries
-                    </option>
-                    {industries.map((industry, index) => (
-                      <option
-                        className="text-blue-700"
-                        key={index}
-                        value={industry}
-                      >
-                        {industry}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                {loading ? (
-                  <div className="text-center py-6">
-                    Loading top startups...
+          <div className="space-y-6">
+            {/* Top Performing Startups Section */}
+            <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+              <div className="border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-5">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600 mr-3"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                      Top Performing Startups
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">Leading startups by overall performance metrics</p>
                   </div>
-                ) : (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Rank
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Startup
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Industry
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Score
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Growth
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {topStartups.map((startup, index) => (
-                        <tr key={startup.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                                <span className="text-indigo-700 font-medium">
-                                  {index + 1}
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {startup.companyName}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                              {startup.industry}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {startup.overallScore || startup.score || 0}/100
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-green-600">
-                              +{(startup.growthScore || startup.growthRate || 0).toFixed(1)}%
-                            </div>
-                          </td>
-                        </tr>
+                  <div className="flex items-center space-x-3">
+                    <label htmlFor="industry-select" className="text-sm font-medium text-gray-700">Filter by Industry:</label>
+                    <select
+                      id="industry-select"
+                      className={`px-4 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 hover:border-gray-400 ${
+                        selectedIndustry !== "All" 
+                          ? 'border-indigo-500 ring-2 ring-indigo-200 font-semibold' 
+                          : 'border-gray-300'
+                      }`}
+                      value={selectedIndustry}
+                      onChange={(e) => {
+                        setSelectedIndustry(e.target.value);
+                      }}
+                    >
+                      <option value="All">All Industries</option>
+                      {industries.map((industry, index) => (
+                        <option key={index} value={industry}>
+                          {industry}
+                        </option>
                       ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold text-blue-900 mb-4">
-                Industry Breakdown
-              </h2>
-              {loading ? (
-                <div className="text-center py-6">Loading industry data...</div>
-              ) : (
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={industryData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {industryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                    </select>
+                  </div>
                 </div>
-              )}
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow lg:col-span-2">
-              <h2 className="text-lg font-semibold mb-4 text-blue-900">
-                Growth Trends by Industry
-              </h2>
-              <div className="h-64">
-                {dashboardLoading ? (
-                  <div className="text-center py-6">Loading growth data...</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={growthData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      {growthData.length > 0 &&
-                        Object.keys(growthData[0])
-                          .filter((key) => key !== "name")
-                          .map((industry, index) => (
-                            <Line
-                              key={industry}
-                              type="monotone"
-                              dataKey={industry}
-                              stroke={COLORS[index % COLORS.length]}
-                              activeDot={{ r: 8 }}
-                            />
-                          ))}
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
               </div>
-            </div>
 
-            <div className="bg-white p-6 rounded-lg shadow">
-              <h2 className="text-lg font-semibold mb-4 text-blue-900">
-                Funding Stages
-              </h2>
-              <div className="h-64">
-                {dashboardLoading ? (
-                  <div className="text-center py-6">
-                    Loading funding data...
+              <div className="p-6">
+                {topStartupsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                    <p className="text-gray-600 font-medium">Loading top startups {selectedIndustry !== "All" ? `for ${selectedIndustry}` : ""}...</p>
+                  </div>
+                ) : topStartupsError ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg max-w-md">
+                      <p className="text-red-700 font-semibold mb-2">Failed to Load Top Startups</p>
+                      <p className="text-red-600 text-sm mb-4">{topStartupsError}</p>
+                      <button
+                        onClick={() => window.location.reload()}
+                        className="text-sm font-medium text-red-700 hover:text-red-800 bg-red-100 hover:bg-red-200 px-3 py-2 rounded transition-colors"
+                      >
+                        Try Refreshing Page
+                      </button>
+                    </div>
+                  </div>
+                ) : topStartups.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Rank</th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Company Name</th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Industry</th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Overall Score</th>
+                          <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Growth Rate</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {topStartups.map((startup, index) => (
+                          <tr key={startup.id} className="hover:bg-indigo-50 transition-colors duration-150">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="h-8 w-8 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center">
+                                <span className="text-white font-bold text-sm">{index + 1}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="text-sm font-semibold text-gray-900">{startup.companyName}</span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="px-3 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                                {startup.industry}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="w-16 h-2 bg-gray-200 rounded-full mr-2">
+                                  <div 
+                                    className="h-2 bg-gradient-to-r from-green-400 to-green-600 rounded-full transition-all duration-300" 
+                                    style={{width: `${Math.min(Math.max(startup.overallScore || 0, 0), 100)}%`}}
+                                  ></div>
+                                </div>
+                                <span className="text-sm font-semibold text-gray-900">{Math.round(Math.min(Math.max(startup.overallScore || 0, 0), 100))}/100</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center text-sm font-semibold text-green-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                                +{(startup.growthScore ?? startup.growthRate ?? 0).toFixed(1)}%
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={fundingData}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        label
-                      >
-                        {fundingData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={COLORS[index % COLORS.length]}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
+                  <div className="text-center py-12">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mx-auto text-gray-400 mb-3"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3.05h16.94a2 2 0 0 0 1.71-3.05L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    <p className="text-gray-600">No startups found for the selected filters</p>
+                  </div>
                 )}
+              </div>
+            </div>
+
+            {/* Charts Grid Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Industry Distribution */}
+              <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col">
+                <div className="border-b border-gray-200 bg-gradient-to-r from-indigo-50 via-blue-50 to-purple-50 px-6 py-5">
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600 mr-3"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                    Industry Distribution
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">Startup count across {industries.length} industries • Total: <span className="font-bold text-indigo-700">{industryData.reduce((sum, ind) => sum + ind.value, 0)}</span> startups</p>
+                </div>
+                <div className="p-6 flex-1 flex flex-col">
+                  {loading ? (
+                    <div className="flex items-center justify-center flex-1">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                    </div>
+                  ) : industryData.length > 0 ? (
+                    <div className="flex flex-col flex-1">
+                      <div className="h-56">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                            <Pie
+                              data={industryData}
+                              cx="50%"
+                              cy="45%"
+                              innerRadius={45}
+                              outerRadius={72}
+                              paddingAngle={3}
+                              dataKey="value"
+                              animationBegin={0}
+                              animationDuration={800}
+                              animationEasing="ease-out"
+                            >
+                              {industryData.map((entry, index) => (
+                                <Cell 
+                                  key={`cell-${index}`} 
+                                  fill={entry.color}
+                                  opacity={selectedChartIndustry === null || selectedChartIndustry === entry.name ? 1 : 0.3}
+                                  className="cursor-pointer transition-opacity duration-200 hover:opacity-100"
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{
+                                backgroundColor: '#fff',
+                                border: '2px solid #4f46e5',
+                                borderRadius: '12px',
+                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)',
+                                padding: '12px 16px',
+                                fontSize: '13px',
+                                fontWeight: '600'
+                              }}
+                              formatter={(value) => [
+                                `${value} startups`,
+                                'Count'
+                              ]}
+                              labelFormatter={(label) => `${label}`}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="mt-5 pt-5 border-t border-gray-200">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-sm font-bold text-gray-900">Industries Breakdown</h4>
+                          {selectedChartIndustry && (
+                            <button 
+                              onClick={() => setSelectedChartIndustry(null)}
+                              className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-100 px-3 py-1.5 rounded-md transition-colors bg-indigo-50"
+                            >
+                              ✕ Clear Filter
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-h-56 overflow-y-auto">
+                          {industryData.map((entry, index) => {
+                            const isSelected = selectedChartIndustry === entry.name;
+                            const percentage = ((entry.value / industryData.reduce((sum, ind) => sum + ind.value, 0)) * 100).toFixed(1);
+                            return (
+                              <div 
+                                key={index} 
+                                onClick={() => setSelectedChartIndustry(isSelected ? null : entry.name)}
+                                onMouseEnter={() => setHoveredIndustry(entry.name)}
+                                onMouseLeave={() => setHoveredIndustry(null)}
+                                className={`p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 shadow-sm hover:shadow-md ${
+                                  isSelected 
+                                    ? 'bg-indigo-50 border-indigo-500 shadow-md' 
+                                    : hoveredIndustry === entry.name
+                                    ? 'bg-gray-50 border-gray-300 shadow-sm'
+                                    : 'bg-white border-gray-200 hover:border-indigo-300'
+                                }`}
+                              >
+                                <div className="flex items-start gap-2 mb-2">
+                                  <span className="text-2xl flex-shrink-0" title={entry.name}>{getIndustryIcon(entry.name)}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-xs font-bold text-gray-900 line-clamp-2">{entry.name}</p>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full rounded-full transition-all duration-300" 
+                                      style={{
+                                        width: `${percentage}%`,
+                                        backgroundColor: entry.color
+                                      }}
+                                    ></div>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-semibold text-gray-600">{percentage}%</span>
+                                    <span className="text-xs font-bold text-gray-900 bg-gray-100 rounded px-2 py-1">{entry.value}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center flex-1">
+                      <p className="text-gray-600">No industry data available</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Funding Stages */}
+              <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col ">
+                <div className="border-b border-gray-200 bg-gradient-to-r from-purple-50 via-pink-50 to-indigo-50 px-6 py-5">
+                  <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-600 mr-3"><path d="M6 9c0-1 1-2 2-2s2 1 2 2M18 9c0-1-1-2-2-2s-2 1-2 2M6 15c0 1 1 2 2 2s2-1 2-2M18 15c0 1-1 2-2 2s-2-1-2-2"></path><path d="M12 3v3m0 12v3M3 12h3m12 0h3"></path></svg>
+                    Funding Stages
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">Funding distribution • Total: <span className="font-bold text-purple-700">{fundingData.reduce((sum, stage) => sum + stage.value, 0)}</span> startups</p>
+                </div>
+                <div className="p-6 flex-1 flex flex-col">
+                  {dashboardLoading ? (
+                    <div className="flex items-center justify-center flex-1">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                    </div>
+                  ) : fundingData.length > 0 ? (
+                    <div className="flex flex-col flex-1">
+                      <div className="h-56">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                            <Pie
+                              data={fundingData}
+                              cx="50%"
+                              cy="45%"
+                              outerRadius={72}
+                              dataKey="value"
+                              animationBegin={0}
+                              animationDuration={800}
+                              animationEasing="ease-out"
+                            >
+                              {fundingData.map((entry, index) => (
+                                <Cell
+                                  key={`cell-${index}`}
+                                  fill={COLORS[index % COLORS.length]}
+                                  opacity={selectedFundingStage === null || selectedFundingStage === entry.name ? 1 : 0.3}
+                                  className="cursor-pointer transition-opacity duration-200 hover:opacity-100"
+                                />
+                              ))}
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{
+                                backgroundColor: '#fff',
+                                border: '2px solid #7c3aed',
+                                borderRadius: '12px',
+                                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15)',
+                                padding: '12px 16px',
+                                fontSize: '13px',
+                                fontWeight: '600'
+                              }}
+                              formatter={(value) => [
+                                `${value} startups`,
+                                'Count'
+                              ]}
+                              labelFormatter={(label) => `${label}`}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="mt-5 pt-5 border-t border-gray-200">
+                        <div className="flex items-center justify-between mb-4">
+                          <h4 className="text-sm font-bold text-gray-900">Funding Stages Breakdown</h4>
+                          {selectedFundingStage && (
+                            <button 
+                              onClick={() => setSelectedFundingStage(null)}
+                              className="text-xs font-semibold text-purple-600 hover:text-purple-700 hover:bg-purple-100 px-3 py-1.5 rounded-md transition-colors bg-purple-50"
+                            >
+                              ✕ Clear Filter
+                            </button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 max-h-56 overflow-y-auto">
+                          {fundingData.map((entry, index) => {
+                            const isSelected = selectedFundingStage === entry.name;
+                            const percentage = ((entry.value / fundingData.reduce((sum, stage) => sum + stage.value, 0)) * 100).toFixed(1);
+                            const description = getFundingStageDescription(entry.name);
+                            return (
+                              <div 
+                                key={index} 
+                                onClick={() => setSelectedFundingStage(isSelected ? null : entry.name)}
+                                onMouseEnter={() => setHoveredFundingStage(entry.name)}
+                                onMouseLeave={() => setHoveredFundingStage(null)}
+                                className={`p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 shadow-sm hover:shadow-md ${
+                                  isSelected 
+                                    ? 'bg-purple-50 border-purple-500 shadow-md' 
+                                    : hoveredFundingStage === entry.name
+                                    ? 'bg-gray-50 border-gray-300 shadow-sm'
+                                    : 'bg-white border-gray-200 hover:border-purple-300'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-2">
+                                  <h5 className="text-sm font-bold text-gray-900">{entry.name}</h5>
+                                  <span className={`text-xs font-bold text-white rounded-full px-3 py-1 transition-colors ${
+                                    isSelected 
+                                      ? 'bg-purple-600' 
+                                      : 'bg-purple-500 group-hover:bg-purple-600'
+                                  }`}>{percentage}%</span>
+                                </div>
+                                {description && (
+                                  <p className="text-xs text-gray-600 mb-3 italic">{description}</p>
+                                )}
+                                <div className="space-y-2">
+                                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                    <div 
+                                      className="h-full rounded-full transition-all duration-300" 
+                                      style={{
+                                        width: `${percentage}%`,
+                                        backgroundColor: COLORS[index % COLORS.length]
+                                      }}
+                                    ></div>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-semibold text-gray-600">Startups</span>
+                                    <span className="text-sm font-bold text-gray-900 bg-gray-100 rounded px-2 py-1">{entry.value}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center flex-1 flex-col">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-gray-300 mb-2"><circle cx="12" cy="12" r="10"></circle></svg>
+                      <p className="text-gray-600 font-medium">No funding data available</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Growth Trends */}
+            <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden">
+              <div className="border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-blue-50 px-6 py-5">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600 mr-3"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+                  Growth Trends by Industry
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">Year-over-year growth analysis across all industries</p>
+              </div>
+              <div className="p-6">
+                <div className="h-72">
+                  {dashboardLoading ? (
+                    <div className="flex items-center justify-center h-full">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                    </div>
+                  ) : growthData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={growthData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
+                        <defs>
+                          <linearGradient id="colorGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis 
+                          dataKey="name" 
+                          stroke="#9ca3af"
+                          style={{ fontSize: '12px' }}
+                        />
+                        <YAxis 
+                          stroke="#9ca3af"
+                          style={{ fontSize: '12px' }}
+                        />
+                        <Tooltip 
+                          contentStyle={{
+                            backgroundColor: '#fff',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '8px',
+                            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+                          }}
+                        />
+                        <Legend 
+                          wrapperStyle={{ paddingTop: '20px' }}
+                          iconType="line"
+                        />
+                        {growthData.length > 0 &&
+                          Object.keys(growthData[0])
+                            .filter((key) => key !== "name")
+                            .map((industry, index) => (
+                              <Line
+                                key={industry}
+                                type="monotone"
+                                dataKey={industry}
+                                stroke={COLORS[index % COLORS.length]}
+                                strokeWidth={2.5}
+                                dot={{ fill: COLORS[index % COLORS.length], r: 4 }}
+                                activeDot={{ r: 6 }}
+                                isAnimationActive={true}
+                              />
+                            ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex items-center justify-center h-full">
+                      <p className="text-gray-600">No growth data available</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>

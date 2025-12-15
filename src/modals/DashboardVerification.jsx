@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-toastify";
 
 export default function DashboardVerification({ setVerificationModal, startupId, contactEmail, resetForm, onVerifySuccess }) {
@@ -7,6 +7,7 @@ export default function DashboardVerification({ setVerificationModal, startupId,
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const hasInitialized = useRef(false);
 
   useEffect(() => {
     if (resendTimer > 0) {
@@ -18,6 +19,14 @@ export default function DashboardVerification({ setVerificationModal, startupId,
       setCanResend(true);
     }
   }, [resendTimer]);
+
+  useEffect(() => {
+    // Prevent double execution in React Strict Mode
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      handleSendCode();
+    }
+  }, [startupId, contactEmail]);
 
 const handleVerify = async () => {
   if (!verificationCode) {
@@ -142,7 +151,7 @@ const handleVerify = async () => {
             value={verificationCode}
             onChange={(e) => setVerificationCode(e.target.value)}
             placeholder="Enter code"
-            className="w-full border border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="w-full border text-gray-800 font-bold border-gray-300 rounded-md px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           />
           {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
         </div>
