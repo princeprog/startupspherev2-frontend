@@ -95,6 +95,7 @@ export default function UpdateStartup() {
   const [certificatePreviewUrl, setCertificatePreviewUrl] = useState(null);
   const [certificateLoading, setCertificateLoading] = useState(false);
   const [certificateUploading, setCertificateUploading] = useState(false);
+  const [certificateError, setCertificateError] = useState(null);
   const [openingTime, setOpeningTime] = useState("09:00");
   const [closingTime, setClosingTime] = useState("17:00");
   const [selectedDays, setSelectedDays] = useState(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]);
@@ -1702,10 +1703,27 @@ export default function UpdateStartup() {
                     <input
                       ref={certificateInputRef}
                       type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
+                      accept=".pdf"
                       onChange={(e) => {
                         if (e.target.files[0]) {
                           const file = e.target.files[0];
+                          setCertificateError(null);
+                          
+                          // Validate file type
+                          if (file.type !== 'application/pdf') {
+                            setCertificateError('Invalid file format. Please upload a PDF file.');
+                            e.target.value = '';
+                            return;
+                          }
+                          
+                          // Validate file size (max 10MB)
+                          const maxSize = 10 * 1024 * 1024;
+                          if (file.size > maxSize) {
+                            setCertificateError('File size exceeds 10MB limit. Please upload a smaller file.');
+                            e.target.value = '';
+                            return;
+                          }
+                          
                           setUploadedCertificate(file);
                           const tempUrl = URL.createObjectURL(file);
                           setCertificatePreviewUrl(tempUrl);
@@ -1713,6 +1731,36 @@ export default function UpdateStartup() {
                       }}
                       className="hidden"
                     />
+                    {certificateError && (
+                      <div className="mb-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-start gap-3 opacity-0 animate-pulse" style={{
+                        animation: 'slideInDown 0.4s ease-out forwards'
+                      }}>
+                        <style>{`
+                          @keyframes slideInDown {
+                            from {
+                              opacity: 0;
+                              transform: translateY(-12px);
+                            }
+                            to {
+                              opacity: 1;
+                              transform: translateY(0);
+                            }
+                          }
+                        `}</style>
+                        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="font-semibold text-red-800 text-sm">Upload Error</h4>
+                          <p className="text-red-700 text-sm mt-1">{certificateError}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCertificateError(null)}
+                          className="text-red-500 hover:text-red-700 ml-auto transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                     <div className="border-2 border-gray-200 rounded-xl overflow-hidden bg-gradient-to-br from-gray-50 to-white">
                       {certificateLoading ? (
                         <div className="p-8">
@@ -1866,7 +1914,7 @@ export default function UpdateStartup() {
                               Upload Certificate
                             </button>
                             <p className="text-xs text-gray-400 mt-4">
-                              PDF, PNG, JPG or JPEG (max. 10MB)
+                              PDF only (max. 10MB)
                             </p>
                           </div>
                         </div>
