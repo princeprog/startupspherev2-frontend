@@ -1857,151 +1857,161 @@ export default function AllStartupDashboard() {
         )}
 
         {activeTab === "rankings" && (
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold text-blue-900">
-                Startup Rankings
-              </h2>
-              <div className="flex space-x-4">
-                <select
-                  className="border rounded p-2 text-sm w-30 text-blue-900"
-                  value={selectedIndustry}
-                  onChange={(e) => {
-                    setSelectedIndustry(e.target.value);
-                    setCurrentPage(0); // Reset to first page when filter changes
-                  }}
-                >
-                  <option className="text-blue-900" value="All">
-                    All Industries
-                  </option>
-                  {industries.map((industry, index) => (
-                    <option
-                      className="text-blue-900"
-                      key={index}
-                      value={industry}
-                    >
-                      {industry}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="border rounded p-2 text-sm text-blue-900"
-                  value={rankingMetric}
-                  onChange={(e) => {
-                    setRankingMetric(e.target.value);
-                    setCurrentPage(0); // Reset to first page when metric changes
-                  }}
-                >
-                  <option className="text-blue-900" value="overall">
-                    Overall Score
-                  </option>
-                  <option className="text-blue-900" value="growth">
-                    Growth Score
-                  </option>
-                  <option className="text-blue-900" value="investment">
-                    Investment Score
-                  </option>
-                  <option className="text-blue-900" value="ecosystem">
-                    Ecosystem Score
-                  </option>
-                  <option className="text-blue-900" value="engagement">
-                    Engagement Score
-                  </option>
-                </select>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                  <p className="text-gray-600 text-lg">Loading rankings...</p>
-                </div>
-              ) : (
-                <>
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Rank
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Startup
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Industry
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 overflow-hidden">
+              {/* Header Section */}
+              <div className="border-b border-gray-200 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 px-6 py-6">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-bold text-black flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600 mr-3"><path d="M6 9c0-1 1-2 2-2s2 1 2 2"></path><path d="M9 9h12M9 13h12M9 17h12M5 9c0-1-1-2-2-2S1 8 1 9"></path><path d="M5 13c0-1-1-2-2-2S1 12 1 13"></path><path d="M5 17c0-1-1-2-2-2S1 16 1 17"></path></svg>
+                      Startup Rankings
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">Comprehensive rankings by multiple performance metrics</p>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <div className="flex flex-col sm:flex-row gap-3"> 
+                      <select
+                        className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium text-gray-900 bg-white hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                        value={selectedIndustry}
+                        onChange={(e) => {
+                          setSelectedIndustry(e.target.value);
+                          setCurrentPage(0);
+                        }}
+                      >
+                        <option className="text-gray-900" value="All">
+                          All Industries
+                        </option>
+                        {industries.map((industry, index) => (
+                          <option
+                            className="text-gray-900"
+                            key={index}
+                            value={industry}
+                          >
+                            {industry}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="px-4 py-2 border-2 border-gray-300 rounded-lg text-sm font-medium text-gray-900 bg-white hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+                        value={rankingMetric}
+                        onChange={(e) => {
+                          setRankingMetric(e.target.value);
+                          setCurrentPage(0);
+                        }}
+                      >
+                        <option className="text-gray-900" value="overall">
                           Overall Score
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        </option>
+                        <option className="text-gray-900" value="growth">
                           Growth Score
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        </option>
+                        <option className="text-gray-900" value="investment">
                           Investment Score
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        </option>
+                        <option className="text-gray-900" value="ecosystem">
                           Ecosystem Score
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        </option>
+                        <option className="text-gray-900" value="engagement">
                           Engagement Score
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {rankedStartups.map((startup, index) => (
-                        <tr key={startup.id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-8 w-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                                <span className="text-indigo-700 font-medium">
-                                  {currentPage * itemsPerPage + index + 1}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Table Section */}
+              <div className="p-6">
+                <div className="overflow-x-auto">
+                  {loading ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                      <p className="text-gray-600 font-medium text-lg">Loading rankings...</p>
+                    </div>
+                  ) : (
+                    <>
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                          <tr>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Rank</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Startup</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Industry</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Overall Score</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Growth Score</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Investment Score</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Ecosystem Score</th>
+                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Engagement Score</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {rankedStartups.map((startup, index) => (
+                            <tr key={startup.id} className="hover:bg-indigo-50 transition-colors duration-150">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 h-8 w-8 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-lg flex items-center justify-center">
+                                    <span className="text-white font-bold text-sm">
+                                      {currentPage * itemsPerPage + index + 1}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="text-sm font-semibold text-gray-900">
+                                  {startup.companyName}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                  {startup.industry}
                                 </span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
-                              {startup.companyName}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                              {startup.industry}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {startup.overallScore}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {startup.growthScore}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {startup.investmentScore}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {startup.ecosystemScore}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {startup.engagementScore}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <PaginationControls />
-                </>
-              )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <span className="text-sm font-semibold text-gray-900 bg-indigo-50 px-3 py-1 rounded-lg">
+                                    {startup.overallScore}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <span className="text-sm font-semibold text-gray-900 bg-blue-50 px-3 py-1 rounded-lg">
+                                    {startup.growthScore}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <span className="text-sm font-semibold text-gray-900 bg-purple-50 px-3 py-1 rounded-lg">
+                                    {startup.investmentScore}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <span className="text-sm font-semibold text-gray-900 bg-pink-50 px-3 py-1 rounded-lg">
+                                    {startup.ecosystemScore}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <span className="text-sm font-semibold text-gray-900 bg-amber-50 px-3 py-1 rounded-lg">
+                                    {startup.engagementScore}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <div className="mt-6">
+                        <PaginationControls />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -2656,7 +2666,7 @@ export default function AllStartupDashboard() {
               </div>
             </div>
 
-            {/* Statistics for Review Progress */}
+            {/* 
             <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-white p-4 rounded-lg shadow">
                 <h3 className="text-sm font-medium text-gray-600 mb-1">Pending Reviews</h3>
@@ -2692,6 +2702,7 @@ export default function AllStartupDashboard() {
                 </div>
               </div>
             </div>
+             */}
           </div>
         )}
       </main>
