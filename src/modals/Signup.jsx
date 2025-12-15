@@ -140,28 +140,125 @@ export default function Signup({ closeModal, openLogin }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity p-4 md:p-0 overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm transition-opacity p-4 overflow-y-auto">
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="w-full max-h-[90vh] my-auto max-w-sm sm:max-w-md mx-auto bg-white rounded-xl shadow-[0_15px_50px_-12px_rgba(0,0,0,0.25)] border border-gray-100 flex flex-col"
+        className="w-full max-w-5xl max-h-[90vh] my-auto bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Subtle top accent line */}
-        <div className="h-1 w-full bg-gradient-to-r from-blue-600/80 via-blue-600 to-blue-600/80"></div>
-        
-        {/* Header */}
-        <div className="relative bg-gray-200 px-5 sm:px-8 pt-6 sm:pt-7 pb-5 sm:pb-6 bg-gradient-to-b from-gray-500 to-white border-b border-gray-100">
-          {/* Close button */}
+        {/* Left Side - Brand Section */}
+        <div className="w-2/5 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 p-12 flex flex-col justify-between relative overflow-hidden">
+          {/* Decorative shapes */}
+          <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full -mr-40 -mt-40"></div>
+          <div className="absolute bottom-0 left-0 w-60 h-60 bg-white/5 rounded-full -ml-30 -mb-30"></div>
+          
+          {/* Content */}
+          <div className="relative z-10 space-y-8">
+            {/* Logo */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
+              className="flex justify-center"
+            >
+              <motion.img
+                src="/StartUpSphere_loginLogo.png"
+                alt="StartUpSphere Logo"
+                className="h-32 w-auto object-contain drop-shadow-lg brightness-110 filter"
+                animate={{ y: [0, -8, 0] }}
+                transition={{
+                  duration: 4,
+                  ease: "easeInOut",
+                  repeat: Infinity,
+                  delay: 0.5,
+                }}
+              />
+            </motion.div>
+
+            {/* Heading */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.4 }}
+              className="space-y-4 text-center"
+            >
+              <h1 className="text-4xl font-bold text-gray-900 leading-tight">
+                Build Your Future
+              </h1>
+              <p className="text-gray-600 font-medium italic text-base leading-relaxed">
+                Connect with government support and industry leaders to accelerate your startup growth
+              </p>
+            </motion.div>
+
+            {/* Benefits Section */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25, duration: 0.4 }}
+              className="space-y-4"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mt-1">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-blue-900 font-medium text-sm">Secure & Verified</p>
+                  <p className="text-blue-600 text-xs">Industry-leading security standards</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mt-1">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-blue-900 font-medium text-sm">Quick Setup</p>
+                  <p className="text-blue-600 text-xs">Get started in minutes</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mt-1">
+                  <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-blue-900 font-medium text-sm">Expert Support</p>
+                  <p className="text-blue-600 text-xs">24/7 dedicated assistance</p>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Tagline at bottom */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.35, duration: 0.4 }}
+            className="relative z-10 pt-8 border-t border-blue-400/30 text-center"
+          >
+            <p className="text-sm font-medium italic text-gray-800">
+              "Bridging Startups and Government for a Unified Ecosystem"
+            </p>
+          </motion.div>
+        </div>
+
+        {/* Right Side - Form Section */}
+        <div className="w-3/5 px-8 py-8 bg-white overflow-y-auto flex flex-col relative">
+          {/* Close button - Desktop positioned */}
           <button
-            className="absolute top-3 sm:top-4 right-3 sm:right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors border-0 bg-transparent"
+            className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors border-0 bg-transparent z-50"
             onClick={closeModal}
             aria-label="Close signup modal"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
+              className="h-6 w-6"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -175,30 +272,15 @@ export default function Signup({ closeModal, openLogin }) {
             </svg>
           </button>
 
-          {/* Logo with subtle shadow */}
-          <div className="flex justify-center mb-4 sm:mb-5">
-            <div className="relative">
-              <img
-                src="/StartUpSphere_loginLogo.png"
-                alt="StartUpSphere Logo"
-                className="h-14 sm:h-16 w-auto object-contain drop-shadow-sm"
-              />
-            </div>
+          {/* Header */}
+          <div className="mb-8">
+            <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
+            <p className="text-gray-600 mt-2">Join StartUpSphere today and get started</p>
           </div>
 
-          {/* Title text */}
-          <h3 className="text-xl sm:text-2xl font-bold text-center text-gray-800 mb-1">
-            Join StartUpSphere
-          </h3>
-          <p className="text-center text-gray-500 text-sm">
-            Create an account and connect with innovators
-          </p>
-        </div>
-
-        {/* Registration Form */}
-        <div className="px-5 sm:px-8 py-5 sm:py-7 bg-white overflow-y-auto flex-1">
-          <form onSubmit={handleSignup} className="space-y-4 sm:space-y-5 pb-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Registration Form */}
+          <form onSubmit={handleSignup} className="space-y-4 flex-1">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label htmlFor="firstname" className="block text-sm font-medium text-gray-700 mb-1.5 ml-0.5">
                   First Name
@@ -386,9 +468,9 @@ export default function Signup({ closeModal, openLogin }) {
               </div>
 
               {/* Password Strength Indicator */}
-              {password && (
-                <div className="mt-3 space-y-2">
-                  {/* Progress Bar */}
+              <div className="mt-3 space-y-2">
+                {/* Progress Bar */}
+                {password && (
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div
@@ -410,82 +492,82 @@ export default function Signup({ closeModal, openLogin }) {
                       </span>
                     )}
                   </div>
+                )}
 
-                  {/* Password Requirements Checklist */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
-                    <div className="flex items-center gap-1.5">
-                      {passwordStrength.checks.minLength ? (
-                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                      <span className={passwordStrength.checks.minLength ? "text-green-700" : "text-gray-500"}>
-                        At least 8 characters
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {passwordStrength.checks.hasUpperCase ? (
-                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                      <span className={passwordStrength.checks.hasUpperCase ? "text-green-700" : "text-gray-500"}>
-                        Uppercase letter
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {passwordStrength.checks.hasLowerCase ? (
-                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                      <span className={passwordStrength.checks.hasLowerCase ? "text-green-700" : "text-gray-500"}>
-                        Lowercase letter
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {passwordStrength.checks.hasNumber ? (
-                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                      <span className={passwordStrength.checks.hasNumber ? "text-green-700" : "text-gray-500"}>
-                        Number
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1.5 sm:col-span-2">
-                      {passwordStrength.checks.hasSpecialChar ? (
-                        <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      )}
-                      <span className={passwordStrength.checks.hasSpecialChar ? "text-green-700" : "text-gray-500"}>
-                        Special character (!@#$%^&*...)
-                      </span>
-                    </div>
+                {/* Password Requirements Checklist - Always Visible */}
+                <div className="grid grid-cols-2 gap-1.5 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    {passwordStrength.checks.minLength ? (
+                      <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    )}
+                    <span className={passwordStrength.checks.minLength ? "text-green-700" : "text-gray-700"}>
+                      At least 8 characters
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {passwordStrength.checks.hasUpperCase ? (
+                      <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    )}
+                    <span className={passwordStrength.checks.hasUpperCase ? "text-green-700" : "text-gray-700"}>
+                      Uppercase letter
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {passwordStrength.checks.hasLowerCase ? (
+                      <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    )}
+                    <span className={passwordStrength.checks.hasLowerCase ? "text-green-700" : "text-gray-700"}>
+                      Lowercase letter
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {passwordStrength.checks.hasNumber ? (
+                      <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    )}
+                    <span className={passwordStrength.checks.hasNumber ? "text-green-700" : "text-gray-700"}>
+                      Number
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 col-span-2">
+                    {passwordStrength.checks.hasSpecialChar ? (
+                      <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    )}
+                    <span className={passwordStrength.checks.hasSpecialChar ? "text-green-700" : "text-gray-700"}>
+                      Special character (!@#$%^&*...)
+                    </span>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             <div>
@@ -566,6 +648,8 @@ export default function Signup({ closeModal, openLogin }) {
                     </svg>
                   )}
                 </button>
+              </div>
+              <div className="h-5">
                 {confirmPassword && password !== confirmPassword && (
                   <p className="mt-1 text-xs text-red-600 ml-0.5">
                     Passwords do not match
@@ -639,7 +723,7 @@ export default function Signup({ closeModal, openLogin }) {
             <button
               type="submit"
               disabled={loading || (confirmPassword && password !== confirmPassword) || !acceptedTerms || (password && passwordStrength.score < 4)}
-              className="w-full py-2.5 sm:py-3 px-4 cursor-pointer text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-medium rounded-lg transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm border-0 flex items-center justify-center mt-3 text-sm sm:text-base"
+              className="w-full py-3 px-4 cursor-pointer text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-medium rounded-lg transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed shadow-sm border-0 flex items-center justify-center mt-3 text-base"
             >
               {loading ? (
                 <>
@@ -671,12 +755,13 @@ export default function Signup({ closeModal, openLogin }) {
             </button>
           </form>
 
-          <div className="mt-5 sm:mt-7 text-center border-t border-gray-100 pt-5 sm:pt-6">
+          {/* Footer */}
+          <div className="mt-8 text-center border-t border-gray-100 pt-6">
             <p className="text-sm text-gray-600">
               Already have an account?{" "}
               <button
                 onClick={handleSwitchToLogin}
-                className="font-medium text-blue-600 hover:text-blue-700 transition-colors hover:underline bg-transparent p-0 border-0"
+                className="font-semibold text-blue-600 hover:text-blue-700 transition-colors hover:underline bg-transparent p-0 border-0"
               >
                 Sign in
               </button>
