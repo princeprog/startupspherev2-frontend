@@ -834,14 +834,126 @@ export default function UpdateStartup() {
                       required
                       className="text-gray-800 w-full px-3 py-2.5 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white appearance-none pr-10"
                     >
-                      <option value="" disabled>Select Industry</option>
-                      <option value="Agriculture">Agriculture</option>
-                      <option value="Construction">Construction</option>
-                      <option value="Education">Education</option>
-                      <option value="Healthcare">Healthcare</option>
-                      <option value="Information Technology">Information Technology</option>
-                      <option value="Manufacturing">Manufacturing</option>
-                      <option value="Retail">Retail</option>
+                      <option value="">Select Industry</option>
+                      
+                      {/* Agriculture & Food */}
+                      <optgroup label="🌾 Agriculture & Food">
+                        <option value="Agriculture & Farming">Agriculture & Farming</option>
+                        <option value="Aquaculture & Fisheries">Aquaculture & Fisheries</option>
+                        <option value="Food & Beverage">Food & Beverage</option>
+                        <option value="Food Manufacturing">Food Manufacturing</option>
+                        <option value="Restaurant & Catering">Restaurant & Catering</option>
+                        <option value="Sari-Sari Store">Sari-Sari Store</option>
+                      </optgroup>
+
+                      {/* Technology & IT */}
+                      <optgroup label="💻 Technology & IT">
+                        <option value="IT Solutions & Consulting">IT Solutions & Consulting</option>
+                        <option value="Mobile App Development">Mobile App Development</option>
+                        <option value="Software Development">Software Development</option>
+                        <option value="Technology & IT Services">Technology & IT Services</option>
+                        <option value="Telecommunications">Telecommunications</option>
+                        <option value="Web Development">Web Development</option>
+                      </optgroup>
+
+                      {/* Healthcare & Wellness */}
+                      <optgroup label="⚕️ Healthcare & Wellness">
+                        <option value="Beauty & Wellness">Beauty & Wellness</option>
+                        <option value="Dental Clinic">Dental Clinic</option>
+                        <option value="Fitness & Gym">Fitness & Gym</option>
+                        <option value="Healthcare & Medical Services">Healthcare & Medical Services</option>
+                        <option value="Pharmacy & Drugstore">Pharmacy & Drugstore</option>
+                        <option value="Salon & Barbershop">Salon & Barbershop</option>
+                        <option value="Spa & Massage">Spa & Massage</option>
+                      </optgroup>
+
+                      {/* Business Services */}
+                      <optgroup label="💼 Business Services">
+                        <option value="Accounting & Bookkeeping">Accounting & Bookkeeping</option>
+                        <option value="BPO & Call Center">BPO & Call Center</option>
+                        <option value="Consulting Services">Consulting Services</option>
+                        <option value="Legal Services">Legal Services</option>
+                      </optgroup>
+
+                      {/* Creative & Marketing */}
+                      <optgroup label="🎨 Creative & Marketing">
+                        <option value="Content Creation">Content Creation</option>
+                        <option value="Digital Marketing">Digital Marketing</option>
+                        <option value="Graphic Design">Graphic Design</option>
+                        <option value="Photography & Videography">Photography & Videography</option>
+                        <option value="Printing & Publishing">Printing & Publishing</option>
+                        <option value="Social Media Management">Social Media Management</option>
+                      </optgroup>
+
+                      {/* Retail & E-commerce */}
+                      <optgroup label="🛒 Retail & E-commerce">
+                        <option value="Retail & E-commerce">Retail & E-commerce</option>
+                        <option value="Wholesale Trade">Wholesale Trade</option>
+                      </optgroup>
+
+                      {/* Education & Training */}
+                      <optgroup label="📚 Education & Training">
+                        <option value="Education & Training">Education & Training</option>
+                        <option value="Online Tutoring">Online Tutoring</option>
+                        <option value="Skills Training Center">Skills Training Center</option>
+                      </optgroup>
+
+                      {/* Construction & Manufacturing */}
+                      <optgroup label="🏗️ Construction & Manufacturing">
+                        <option value="Construction & Engineering">Construction & Engineering</option>
+                        <option value="Garments & Textiles">Garments & Textiles</option>
+                        <option value="Handicrafts & Crafts">Handicrafts & Crafts</option>
+                        <option value="Manufacturing & Production">Manufacturing & Production</option>
+                      </optgroup>
+
+                      {/* Transportation & Logistics */}
+                      <optgroup label="🚚 Transportation & Logistics">
+                        <option value="Courier Services">Courier Services</option>
+                        <option value="Delivery Services">Delivery Services</option>
+                        <option value="Freight & Cargo">Freight & Cargo</option>
+                        <option value="Transportation & Logistics">Transportation & Logistics</option>
+                      </optgroup>
+
+                      {/* Hospitality & Tourism */}
+                      <optgroup label="🏨 Hospitality & Tourism">
+                        <option value="Event Planning">Event Planning</option>
+                        <option value="Hospitality & Tourism">Hospitality & Tourism</option>
+                        <option value="Hotel & Resort">Hotel & Resort</option>
+                        <option value="Travel Agency">Travel Agency</option>
+                      </optgroup>
+
+                      {/* Real Estate & Property */}
+                      <optgroup label="🏠 Real Estate & Property">
+                        <option value="Real Estate & Property">Real Estate & Property</option>
+                      </optgroup>
+
+                      {/* Energy & Utilities */}
+                      <optgroup label="⚡ Energy & Utilities">
+                        <option value="Energy & Utilities">Energy & Utilities</option>
+                        <option value="Renewable Energy">Renewable Energy</option>
+                      </optgroup>
+
+                      {/* Financial Services */}
+                      <optgroup label="💰 Financial Services">
+                        <option value="Financial Services">Financial Services</option>
+                        <option value="Insurance">Insurance</option>
+                      </optgroup>
+
+                      {/* Entertainment & Media */}
+                      <optgroup label="🎬 Entertainment & Media">
+                        <option value="Entertainment & Media">Entertainment & Media</option>
+                      </optgroup>
+
+                      {/* Other Services */}
+                      <optgroup label="🔧 Other Services">
+                        <option value="Automotive & Repair">Automotive & Repair</option>
+                        <option value="Cleaning Services">Cleaning Services</option>
+                        <option value="Home Services & Repair">Home Services & Repair</option>
+                        <option value="Laundry & Dry Cleaning">Laundry & Dry Cleaning</option>
+                        <option value="Pet Care Services">Pet Care Services</option>
+                        <option value="Security Services">Security Services</option>
+                        <option value="Other Services">Other Services</option>
+                      </optgroup>
                     </select>
                     <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                       <ChevronRight size={18} className="text-gray-400 rotate-90" />
