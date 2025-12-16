@@ -2,6 +2,7 @@ import { useState, useEffect, memo, useRef } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import Login from "../modals/Login";
 import Signup from "../modals/Signup";
+import { motion } from "framer-motion";
 import { CiLocationOn } from "react-icons/ci";
 import { FaGlobe } from "react-icons/fa";
 import { FaBookmark } from "react-icons/fa6";
@@ -109,6 +110,8 @@ export default function Sidebar({
   const [openLogin, setOpenLogin] = useState(false);
   const [openRegister, setOpenRegister] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showLogoutSuccess, setShowLogoutSuccess] = useState(false);
   const [showSearchContainer, setShowSearchContainer] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [showRecents, setShowRecents] = useState(false);
@@ -454,20 +457,26 @@ export default function Sidebar({
 
       if (response.ok) {
         console.log("Logout successful");
-        setIsAuthenticated(false);
-        setUser(null);
-        setCurrentUser(null);
-        setLikedStartups([]);
-        setLikedStakeholders([]);
+        setShowLogoutConfirm(false);
+        setShowLogoutSuccess(true);
+        
+        setTimeout(() => {
+          setIsAuthenticated(false);
+          setUser(null);
+          setCurrentUser(null);
+          setLikedStartups([]);
+          setLikedStakeholders([]);
 
-        localStorage.removeItem("likedStartups");
-        localStorage.removeItem("likedStakeholders");
-        localStorage.removeItem("user");
-        localStorage.removeItem("isAuthenticated");
-        document.cookie =
-          "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        setUserDetails(null);
-        navigate("/");
+          localStorage.removeItem("likedStartups");
+          localStorage.removeItem("likedStakeholders");
+          localStorage.removeItem("user");
+          localStorage.removeItem("isAuthenticated");
+          document.cookie =
+            "session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+          setUserDetails(null);
+          navigate("/");
+          setShowLogoutSuccess(false);
+        }, 1500);
       } else {
         console.error("Failed to logout");
       }
@@ -1472,7 +1481,7 @@ export default function Sidebar({
             <div className="flex justify-center">
               <button
                 className="group relative flex flex-col items-center justify-center rounded-lg px-2 py-1.5 text-sm text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all duration-200 cursor-pointer"
-                onClick={logout}
+                onClick={() => setShowLogoutConfirm(true)}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -2021,7 +2030,7 @@ export default function Sidebar({
                     </div>
                     <button
                       onClick={() => {
-                        logout();
+                        setShowLogoutConfirm(true);
                         setShowTooltip(false);
                       }}
                       className="cursor-pointer block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-red-50 hover:text-red-600 transition-colors"
@@ -3447,6 +3456,105 @@ export default function Sidebar({
             setOpenLogin(true);
           }}
         />
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutConfirm && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowLogoutConfirm(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="bg-white rounded-xl shadow-lg w-[90%] max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <svg
+                  className="w-6 h-6 text-red-600"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <h3 className="text-xl font-semibold text-gray-900 text-center mb-2">
+              Sign Out?
+            </h3>
+            <p className="text-gray-600 text-sm text-center mb-6">
+              Are you sure you want to sign out from your account?
+            </p>
+
+            <div className="flex gap-3">
+              <motion.button
+                whileHover={{ backgroundColor: "#f3f4f6" }}
+                whileTap={{ scale: 0.98 }}
+                className="flex-1 px-4 py-2.5 text-gray-700 font-medium bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors border-0 cursor-pointer"
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                Cancel
+              </motion.button>
+              <motion.button
+                whileHover={{ backgroundColor: "#0077BG" }}
+                whileTap={{ scale: 0.98 }}
+                className="flex-1 px-4 py-2.5 text-white font-medium bg-blue-600 hover:bg-blue-900 rounded-lg transition-colors border-0 cursor-pointer"
+                onClick={logout}
+              >
+                Sign Out
+              </motion.button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* Logout Success Message */}
+      {showLogoutSuccess && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          className="fixed top-4 right-4 z-[120] flex items-center gap-3 bg-white rounded-lg shadow-lg p-4 max-w-sm"
+        >
+          <div className="flex-shrink-0">
+            <motion.svg
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.1, duration: 0.3 }}
+              className="w-6 h-6 text-green-500"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </motion.svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-medium text-gray-900">Signed out successfully</p>
+            <p className="text-xs text-gray-600">You have been logged out</p>
+          </div>
+        </motion.div>
       )}
     </div>
   );

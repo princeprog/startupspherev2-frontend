@@ -6,6 +6,8 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -49,8 +51,11 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
         const userData = await userResponse.json();
         console.log("Login successful, user data:", userData);
 
-        onLoginSuccess(userData);
-        closeModal();
+        setSuccess(true);
+        setTimeout(() => {
+          onLoginSuccess(userData);
+          closeModal();
+        }, 1500);
       }
     } catch (err) {
       setError(err.message);
@@ -188,7 +193,44 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
                 <p className="text-gray-600 text-sm">Enter your credentials to access your account</p>
               </div>
 
-              {/* Email Field */}
+              {/* Success message */}
+              {success && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center gap-3"
+                >
+                  <div className="flex-shrink-0">
+                    <motion.svg
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ delay: 0.15, duration: 0.3 }}
+                      className="h-6 w-6 text-green-500"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </motion.svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-green-800">Login successful!</p>
+                    <p className="text-xs text-green-700">Redirecting to your dashboard...</p>
+                  </div>
+                </motion.div>
+              )}
+
+              {success ? null : (
+                <>
+                  {/* Email Field */}
               <div>
                 <label
                   htmlFor="email"
@@ -260,13 +302,57 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
                   </div>
                   <input
                     id="password"
-                    className="block w-full px-4 py-3 pl-11 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200"
-                    type="password"
+                    className="block w-full px-4 py-3 pl-11 pr-11 text-gray-900 placeholder-gray-400 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200"
+                    type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-2 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors border-0 bg-transparent p-0"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <svg
+                        className="w-5 h-5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-4.803m5.596-3.856a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0M15 12a3 3 0 11-6 0 3 3 0 016 0zm6 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-5 h-5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -346,6 +432,8 @@ export default function Login({ closeModal, openRegister, onLoginSuccess }) {
                   </button>
                 </p>
               </div>
+                </>
+              )}
             </form>
           </div>
         </div>
